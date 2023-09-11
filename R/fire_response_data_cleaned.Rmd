@@ -1,0 +1,1155 @@
+---
+title: "Fire response data"
+output: html_notebook
+editor_options:
+  chunk_output_type: console
+---
+
+
+```{r}
+library(tidyverse)
+
+austraits <- read_rds("data/austraits-a8118973-20230629.rds") # Updated version of austraits as of 29/06/2023
+```
+
+
+# Extract `resprouting_capacity` trait records
+
+```{r}
+resprouting_capacity <-
+  austraits$traits %>%
+  filter(trait_name == "resprouting_capacity") %>%
+  distinct() %>% # Currently needed because duplicate trait values are not being collapsed
+  pivot_wider(values_from = value, names_from = trait_name)
+```
+
+
+Filter out non-native taxa
+
+```{r}
+aus_native_lookup <- read_csv("data/aus_native_lookup.csv")
+
+resprouting_capacity <-
+  resprouting_capacity %>%
+  left_join(aus_native_lookup,
+            by = "taxon_name") %>%
+  filter(aus_native == TRUE) %>%
+  select(-aus_native)
+```
+
+
+Join taxonomic information
+
+```{r}
+resprouting_capacity <-
+  resprouting_capacity %>%
+  left_join(
+    austraits$taxa %>%
+      select(
+        taxon_name, genus, family, taxon_rank, taxonomic_status, taxon_distribution
+        ),
+    by = "taxon_name")
+```
+
+
+Create dataframe with tallies of the number of observations for each value
+
+```{r}
+resprouting_capacity_summary <-
+  resprouting_capacity %>%
+  group_by(taxon_name, resprouting_capacity, taxon_rank) %>%
+  summarise(count = n()) %>%
+  pivot_wider(names_from = resprouting_capacity,
+              values_from = count) %>%
+  ungroup() %>%
+  mutate(across(where(is.integer), ~ replace_na(., 0)))
+
+names(resprouting_capacity_summary) <-
+  names(resprouting_capacity_summary) %>%
+  str_replace_all(c(" " = "_"))
+```
+
+
+Calculate a binary column for whether there is variation in observations
+
+```{r}
+col <- colnames(resprouting_capacity_summary)
+col <- col[!col %in% c("taxon_name", "taxon_rank")]
+
+resprouting_capacity_summary <-
+  resprouting_capacity_summary %>%
+  mutate(variation_in_strat = (rowSums(resprouting_capacity_summary[,col] > 0) > 1))
+```
+
+
+## For taxa with no variation in observation of resprouting capacity
+
+```{r}
+resprouting_capacity_summary <-
+  resprouting_capacity_summary %>%
+  mutate(
+    resprouting = if_else(
+      variation_in_strat == FALSE,
+      case_when(
+        fire_killed >= 1 ~ "does not resprout",
+        resprouts >= 1 ~ "mostly resprouts",
+        fire_killed_partial_resprouting >= 1 ~ "sometimes resprouts",
+        fire_killed_resprouts >= 1 ~ "sometimes resprouts",
+        partial_resprouting >= 1 ~ "sometimes resprouts",
+        fire_killed_partial_resprouting_resprouts >= 1 ~ "sometimes resprouts",
+        partial_resprouting_resprouts >= 1 ~ "mostly resprouts"),
+      NA_character_
+      )
+    )
+```
+
+
+## For taxa with variation
+
+Make columns that tally the number of observations for fire-killed, resprouts, mixed
+fire responses, fire resistors and no fire exposure
+
+```{r}
+resprouting_capacity_summary <-
+  resprouting_capacity_summary %>%
+  mutate(
+    resprout_tally =
+      resprouts + fire_killed_partial_resprouting + fire_killed_resprouts + partial_resprouting +
+      fire_killed_partial_resprouting_resprouts + partial_resprouting_resprouts,
+    does_not_resprout_tally =
+      fire_killed + fire_killed_partial_resprouting + fire_killed_resprouts +
+      fire_killed_partial_resprouting_resprouts
+  )
+```
+
+
+Plot histogram of percentage of resprout observations
+
+```{r}
+resprouting_capacity_summary <-
+  resprouting_capacity_summary %>%
+  mutate(resprout_prop = resprout_tally / (resprout_tally + does_not_resprout_tally))
+
+resprouting_capacity_summary %>%
+  filter(variation_in_strat == TRUE) %>%
+  ggplot(aes(x = resprout_prop)) +
+  geom_histogram() +
+  scale_x_continuous(breaks = seq(0.0, 1.0, by = 0.1)) +
+  theme_classic()
+```
+
+
+If over 70% of observations are resprouts, then can designate as mostly resprouts.
+If less than 30% are resprouts, designate as does not resprout.
+If less than 70% but more than 30% observations are resprouts, then designate as sometimes resprouts.
+
+```{r}
+resprouting_capacity_summary <-
+  resprouting_capacity_summary %>%
+  mutate(
+    resprouting = if_else(
+      variation_in_strat == TRUE,
+      case_when(
+        resprout_tally < 0.3 ~ "does not resprout",
+        (resprout_tally / (resprout_tally + does_not_resprout_tally) < 0.7) ~ "sometimes resprouts",
+        (resprout_tally / (resprout_tally + does_not_resprout_tally) >= 0.7) ~ "mostly resprouts"),
+      resprouting
+      )
+    )
+```
+
+
+Summary of final resprouting values and counts
+
+```{r}
+resprouting_capacity_summary %>%
+  group_by(resprouting) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+# Final tibble for resprouting variable
+resprouting <-
+  resprouting_capacity_summary %>%
+  select(taxon_name, taxon_rank, resprouting)
+```
+
+
+
+---
+
+# Extract post_fire_recruitment trait records
+
+
+Subset traits to post_fire_recruitment records only
+
+```{r}
+post_fire_recruitment <-
+  austraits$traits %>%
+  filter(trait_name == "post_fire_recruitment") %>%
+  distinct() %>% # Currently needed because duplicate trait values are not being collapsed
+  pivot_wider(values_from = value, names_from = trait_name)
+```
+
+
+Filter out non-native species
+
+```{r}
+post_fire_recruitment <-
+  post_fire_recruitment %>%
+  left_join(aus_native_lookup,
+            by = "taxon_name") %>%
+  filter(aus_native == TRUE) %>%
+  select(-aus_native)
+```
+
+
+Join taxonomic information
+
+```{r}
+post_fire_recruitment <-
+  post_fire_recruitment %>%
+  left_join(
+    austraits$taxa %>%
+      select(
+        taxon_name, genus, family, taxon_rank, taxonomic_status, taxon_distribution
+        ),
+    by = "taxon_name")
+```
+
+
+Create dataframe with tallies of the number of observations for each value
+
+```{r}
+post_fire_recruitment_summary <-
+  post_fire_recruitment %>%
+  group_by(taxon_name, post_fire_recruitment, taxon_rank) %>%
+  summarise(count = n()) %>%
+  pivot_wider(names_from = post_fire_recruitment,
+              values_from = count) %>%
+  ungroup() %>%
+  mutate(across(where(is.integer), ~ replace_na(., 0)))
+
+names(post_fire_recruitment_summary) <-
+  names(post_fire_recruitment_summary) %>%
+  str_replace_all(c(" " = "_"))
+```
+
+
+Calculate a binary column for whether there is variation in observations
+
+```{r}
+col <- colnames(post_fire_recruitment_summary)
+col <- col[!col %in% c("taxon_name", "taxon_rank")]
+
+post_fire_recruitment_summary <-
+  post_fire_recruitment_summary %>%
+  mutate(variation_in_seeding = (rowSums(post_fire_recruitment_summary[,col] > 0) > 1))
+```
+
+
+## For taxa with no variation in observation of post-fire recruitment
+
+```{r}
+post_fire_recruitment_summary <-
+  post_fire_recruitment_summary %>%
+  mutate(
+    post_fire_seeding = if_else(
+      variation_in_seeding == FALSE,
+      case_when(
+        post_fire_recruitment >= 1 ~ "robust post-fire seeding",
+        post_fire_recruitment_absent >= 1 ~ "no post-fire seeding",
+        post_fire_recruitment_post_fire_recruitment_absent >= 1 ~ "some post-fire seeding"),
+      NA_character_
+      )
+    )
+```
+
+
+## For taxa with no variation
+
+Make columns that tally the number of observations for post-fire recruitment and no
+post-fire recruitment
+
+```{r}
+post_fire_recruitment_summary <-
+  post_fire_recruitment_summary %>%
+  mutate(post_fire_recruitment_tally =
+           post_fire_recruitment +
+           post_fire_recruitment_post_fire_recruitment_absent,
+         no_post_fire_recruitment_tally =
+           post_fire_recruitment_absent +
+           post_fire_recruitment_post_fire_recruitment_absent)
+```
+
+
+Plot histogram of percentage of seeding observations
+
+```{r}
+post_fire_recruitment_summary <-
+  post_fire_recruitment_summary %>%
+  mutate(seeding_prop = post_fire_recruitment_tally / (post_fire_recruitment_tally + no_post_fire_recruitment_tally))
+
+post_fire_recruitment_summary %>%
+  filter(variation_in_seeding == TRUE) %>%
+  ggplot(aes(x = seeding_prop)) +
+  geom_histogram() +
+  scale_x_continuous(breaks = seq(0.0, 1.0, by = 0.1)) +
+  theme_bw()
+```
+
+
+If over 70% of observations are post-fire recruitment, then can designate as robust
+post-fire seeding. If less than 30% of observations are no post-fire recruitment, designate as no post-fire seeding. If less than 70% but more than 30% observations are post-fire recruitment, then designate as some post-fire seeding. (Decided 70% based on previous histogram.)
+
+```{r}
+post_fire_recruitment_summary <-
+  post_fire_recruitment_summary %>%
+  mutate(
+    post_fire_seeding = if_else(
+      variation_in_seeding == TRUE,
+      case_when(
+        post_fire_recruitment_tally < 0.3 ~ "no post-fire seeding",
+        (post_fire_recruitment_tally / (post_fire_recruitment_tally + no_post_fire_recruitment_tally) < 0.7) ~ "some post-fire seeding",
+        (post_fire_recruitment_tally / (post_fire_recruitment_tally + no_post_fire_recruitment_tally) >= 0.7) ~ "robust post-fire seeding"),
+      post_fire_seeding)
+    )
+```
+
+
+Summary of final seeding values and counts
+
+```{r}
+post_fire_recruitment_summary %>%
+  group_by(post_fire_seeding) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+# Final tibble for seeding variable
+post_fire_seeding <- post_fire_recruitment_summary %>%
+  select(taxon_name, taxon_rank, post_fire_seeding)
+```
+
+
+
+---
+
+# Join resprouting_capacity and post_fire_recruitment
+
+```{r}
+resprouting_taxa <- resprouting$taxon_name %>% unique() # 10735 taxa
+seeding_taxa <- post_fire_seeding$taxon_name %>% unique() # 3594 taxa
+
+intersecting_taxa <- intersect(resprouting_taxa, seeding_taxa)
+# 3448 taxa intersect between post_fire_recruitment and resprouting_capacity
+```
+
+
+```{r}
+resprouting_seeding <-
+  resprouting %>%
+  full_join(post_fire_seeding, by = c("taxon_name", "taxon_rank"))
+
+resprouting_seeding <-
+  resprouting_seeding %>%
+  mutate(data_on_both = !is.na(resprouting) & !is.na(post_fire_seeding))
+```
+
+
+Make new resprouter or seeder variable
+
+```{r}
+resprouting_seeding <-
+  resprouting_seeding %>%
+  mutate(
+    resprouter_or_seeder = case_when(
+      (resprouting == "mostly resprouts" | resprouting == "sometimes resprouts") & post_fire_seeding == "no post-fire seeding" ~ "resprouter",
+      (post_fire_seeding == "some post-fire seeding" | post_fire_seeding == "robust post-fire seeding") & resprouting == "does not resprout" ~ "seeder",
+      (resprouting == "mostly resprouts" | resprouting == "sometimes resprouts") & (post_fire_seeding == "some post-fire seeding" | post_fire_seeding == "robust post-fire seeding") ~ "facultative",
+      (resprouting == "does not resprout" | is.na(resprouting)) & post_fire_seeding == "no post-fire seeding" ~ "neither")
+    )
+```
+
+
+Clean data
+
+```{r}
+# Remove hybrids
+resprouting_seeding <-
+  resprouting_seeding %>%
+  filter(!str_detect(taxon_name, pattern = " x "))
+
+# Align taxon_rank values with gbif taxon_rank values
+resprouting_seeding$taxon_rank <-
+  resprouting_seeding$taxon_rank %>%
+  str_replace("Forma", "Form")
+
+resprouting_seeding$taxon_rank <-
+  resprouting_seeding$taxon_rank %>%
+  str_replace("Varietas", "Variety")
+
+resprouting_seeding$taxon_rank <-
+  resprouting_seeding$taxon_rank %>%
+  toupper()
+
+# Make variables ordered factors
+resprouting_seeding$resprouting <-
+  factor(
+    resprouting_seeding$resprouting,
+    ordered = TRUE,
+    levels = c("does not resprout", "sometimes resprouts", "mostly resprouts")
+    )
+
+resprouting_seeding$post_fire_seeding <-
+  factor(
+    resprouting_seeding$post_fire_seeding,
+    ordered = TRUE,
+    levels = c("no post-fire seeding", "some post-fire seeding", "robust post-fire seeding")
+    )
+
+resprouting_seeding$resprouter_or_seeder <-
+  factor(
+    resprouting_seeding$resprouter_or_seeder,
+    ordered = TRUE,
+    levels = c("resprouter", "seeder", "facultative", "neither")
+    )
+```
+
+
+Summarise values
+
+```{r}
+resprouting_seeding %>%
+  group_by(resprouter_or_seeder) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+# Filter for taxa with data on both variables
+resprouting_seeding %>%
+  filter(data_on_both == TRUE) %>%
+  group_by(resprouter_or_seeder) %>%
+  summarise(count = n()) %>%
+  ungroup()
+```
+
+
+# Extract woodiness data
+
+**Use Lizzy's curated dataset instead (Wenk_2022)**
+
+```{r}
+woodiness <-
+  austraits$traits %>%
+  filter(dataset_id == "Wenk_2022", trait_name == "woodiness_detailed") %>%
+  distinct(.keep_all = TRUE) %>%
+  pivot_wider(values_from = value, names_from = trait_name) %>%
+  select(taxon_name, woodiness_detailed)
+```
+
+
+```{r}
+resprouting_seeding_woodiness <-
+  resprouting_seeding %>%
+  left_join(woodiness, by = "taxon_name")
+
+woody <- c("woody", "semi_woody woody", "woody woody_base")
+herbaceous <- c("herbaceous", "herbaceous woody", "herbaceous woody_base", "herbaceous woody_root",
+                "herbaceous semi_woody", "herbaceous semi_woody woody")
+semi_woody <- "semi_woody"
+unclear <- c("woody_like_stem", "woody_base")
+
+resprouting_seeding_woodiness <-
+  resprouting_seeding_woodiness %>%
+  mutate(
+    woody_or_herb = case_when(
+      woodiness_detailed %in% woody ~ "woody",
+      woodiness_detailed %in% herbaceous ~ "herb",
+      woodiness_detailed %in% semi_woody ~ "semi-woody",
+      woodiness_detailed %in% unclear ~ "unclear")
+    )
+
+resprouting_seeding_woodiness %>%
+  group_by(woody_or_herb) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+# 4503 herbs, 6229 woody, 63 semi-woody, 45 unclear, 11 NA
+```
+
+
+
+Make binomial fire response variables
+
+```{r}
+resprouting_seeding <-
+  resprouting_seeding_woodiness %>%
+  mutate(
+    resprouting_binomial = case_when(
+      resprouting %in% c("mostly resprouts", "sometimes resprouts") ~ TRUE,
+      resprouting %in% c("does not resprout") ~ FALSE),
+    seeding_binomial = case_when(
+      post_fire_seeding %in% c("robust post-fire seeding", "some post-fire seeding") ~ TRUE,
+      post_fire_seeding %in% c("no post-fire seeding") ~ FALSE),
+    obligate_resprouting_or_seeding = if_else(
+      data_on_both == TRUE, case_when(
+        resprouter_or_seeder == "seeder" ~ "obligate seeder",
+        resprouter_or_seeder == "resprouter" ~ "obligate resprouter"
+        ), NA_character_),
+    resprouting_seeding_binomial = if_else(data_on_both == TRUE, case_when(
+      resprouting == "mostly resprouts" & post_fire_seeding == "some post-fire seeding" ~ "resprouter",
+      resprouting == "sometimes resprouts" & post_fire_seeding == "robust post-fire seeding" ~ "seeder",
+      resprouter_or_seeder == "seeder" ~ "seeder",
+      resprouter_or_seeder == "resprouter" ~ "resprouter"
+      ), NA_character_)
+    )
+```
+
+
+```{r}
+saveRDS(resprouting_seeding, "data/resprouting_seeding.rds")
+resprouting_seeding <- read_rds("data/resprouting_seeding.rds")
+
+fire_response_woody_herb_only <-
+  resprouting_seeding %>%
+  filter(woody_or_herb %in% c("woody", "herb"))
+saveRDS(
+  fire_response_woody_herb_only, "data/fire_response_woody_herb_only.rds")
+fire_response_woody_herb_only <-
+  read_rds("data/fire_response_woody_herb_only.rds")
+```
+
+
+---
+
+# Read in gbif data
+
+The GBIF download and cleaning process is in R/gbif_process.R
+
+```{r}
+#gbif <- read_csv("data/filtered_aus_obs.csv", guess_max = 13607514)
+#gbif <- read.csv("data/filtered_aus_obs.csv", fileEncoding = "ISO-8859-1", skipNul = TRUE)
+gbif <- read.csv("data/filtered_aus_obs.csv", skipNul = TRUE)
+#gbif <- fread("data/filtered_aus_obs.csv", quote = "")
+```
+
+## Try use ausflora to align GBIF names with APC names
+
+```{r}
+#remotes::install_github("yangsophieee/ausflora", ref = "sophie_debugging") # Version with fixed bug
+remotes::install_github("traitecoevo/APCalign")
+detach("package:APCalign", unload = TRUE)
+library(APCalign)
+```
+
+
+```{r}
+gbif_taxa <- gbif$verbatimscientificname %>% unique()
+
+resources <- load_taxonomic_resources()
+
+create_taxonomic_update_lookup(
+  taxa = gbif_taxa,
+  resources = resources
+)
+```
+
+
+```{r}
+gbif <-
+  gbif %>%
+  left_join(taxonomic_updates, by = c("verbatimscientificname" = "original_name"))
+```
+
+
+## Join gbif species occurrences to austraits data
+
+```{r}
+# Does not include austraits taxa that cannot be matched to gbif records
+joined_fire_data <-
+  resprouting_seeding %>%
+  inner_join(gbif, by = c("taxon_name" = "canonicalName"))
+
+joined_fire_data %>% write_rds("data/joined_fire_data.rds")
+joined_fire_data <- read_rds("data/joined_fire_data.rds")
+
+resprouting_seeding_taxa <- resprouting_seeding$taxon_name %>% unique()
+joined_fire_data_taxa <- joined_fire_data$taxon_name %>% unique()
+# Lost 294 taxa
+```
+
+
+
+# Maps of resprouting and seeding
+
+Try new method like with Australian annuals project
+
+```{r}
+joined_fire_data_vect <- joined_fire_data %>%
+  terra::vect(geom = c("decimalLongitude", "decimalLatitude"))
+base_raster <- joined_fire_data_vect %>% terra::ext() %>% terra::rast()
+terra::res(base_raster) <- 1.5
+
+joined_fire_data$cell <-
+  terra::extract(
+    base_raster,
+    cbind(joined_fire_data$decimalLongitude, joined_fire_data$decimalLatitude),
+    cell = TRUE)$cell # Tracking cell numbers
+
+# Take single record per species per cell, to avoid oversampling
+data_grid <-
+  joined_fire_data %>%
+  group_by(cell, taxon_name) %>%
+  mutate(n_obs = n()) %>%
+  slice(1) %>%
+  ungroup
+
+# Replace "x", which is the location of the obs, with grid-based x which is better just for plotting
+xy_from_grid <- as_tibble(terra::xyFromCell(base_raster, data_grid$cell))
+data_grid$x <- xy_from_grid$x
+data_grid$y <- xy_from_grid$y
+
+# Save for later use in analysis
+data_grid %>%
+  saveRDS("outputs/data_grid.rds")
+```
+
+```{r}
+data_grid <-
+  readRDS("outputs/data_grid.rds")
+
+output_grid <-
+  data_grid %>%
+  filter(
+    woody_or_herb %in% c("herb", "woody"),
+    x < 155, y > -45
+  ) %>%
+  # Summaries for each cell
+  group_by(cell, woody_or_herb) %>%
+  summarise(
+    x = x[1],
+    y = y[1],
+    n_obs = sum(n_obs),
+    n_species = n_distinct(taxon_name),
+    n_resprouters = sum(resprouting_binomial, na.rm = TRUE),
+    n_seeders = sum(seeding_binomial, na.rm = TRUE),
+    frac_resprouters = n_resprouters / n_species,
+    frac_seeders = n_seeders / n_species
+  ) %>%
+  ungroup
+```
+
+```{r}
+#library(gridExtra)
+library(patchwork)
+library(maps)
+
+map_australia <-
+  map_data("world") %>%
+  filter(region == "Australia") %>%
+  filter(lat > -45 | long < 155)
+
+n_woody_resprouters <-
+  output_grid %>%
+  filter(woody_or_herb == "woody") %>%
+  ggplot(aes(x, y, fill = n_resprouters)) +
+  geom_tile() +
+  geom_polygon(
+    data = map_australia,
+    mapping = aes(x = long, y = lat, group = group),
+    fill = NA,
+    colour = "#1a1a1a",
+    linewidth = 0.4) +
+  coord_fixed() +
+  scale_fill_continuous(type = "viridis") +
+  labs(fill = "Number of\nresprouting species", x = "Longitude", y = "Latitude", tag = "a)") +
+  theme_bw() +
+  theme(plot.tag = element_text()) +
+  ggtitle("Woody")
+
+n_herb_resprouters <-
+  output_grid %>%
+  filter(woody_or_herb == "herb") %>%
+  ggplot(aes(x, y, fill = n_resprouters)) +
+  geom_tile() +
+  geom_polygon(
+    data = map_australia,
+    mapping = aes(x = long, y = lat, group = group),
+    fill = NA,
+    colour = "#1a1a1a",
+    linewidth = 0.4) +
+  coord_fixed() +
+  scale_fill_continuous(type = "viridis") +
+  labs(fill = "Number of\nresprouting species", x = "Longitude", y = "Latitude", tag = "b)") +
+  theme_bw() +
+  theme(plot.tag = element_text()) +
+  ggtitle("Herbaceous")
+
+n_woody_resprouters + n_herb_resprouters
+ggsave("figures/sr_resprouters.jpg", width = 8.5, height = 3)
+ggsave("figures/sr_resprouters.pdf", width = 8.5, height = 3)
+
+frac_woody_resprouters <-
+  output_grid %>%
+  filter(woody_or_herb == "woody") %>%
+  filter(n_obs >= 10, frac_resprouters > 0.37) %>%
+  ggplot(aes(x, y, fill = frac_resprouters)) +
+  geom_tile() +
+  geom_polygon(
+    data = map_australia,
+    mapping = aes(x = long, y = lat, group = group),
+    fill = NA,
+    colour = "#1a1a1a",
+    linewidth = 0.4) +
+  scale_fill_continuous(type = "viridis") +
+  theme_bw() +
+  coord_fixed() +
+  labs(fill = "Fraction of species\nthat are resprouters", x = "Longitude", y = "Latitude", tag = "a)") +
+  theme(plot.tag = element_text()) +
+  ggtitle("Woody N>=10")
+
+frac_herbaceous_resprouters <-
+  output_grid %>%
+  filter(woody_or_herb == "herb") %>%
+  filter(n_obs >= 10) %>%
+  ggplot(aes(x, y, fill = frac_resprouters)) +
+  geom_tile() +
+  geom_polygon(
+    data = map_australia,
+    mapping = aes(x = long, y = lat, group = group),
+    fill = NA,
+    colour = "#1a1a1a",
+    linewidth = 0.4) +
+  coord_fixed() +
+  scale_fill_continuous(type = "viridis") +
+  theme_bw() +
+  coord_fixed() +
+  ggtitle("Herbaceous N>=10") +
+  labs(fill = "Fraction of species\nthat are resprouters", x = "Longitude", y = "Latitude", tag = "(B)") +
+  theme(plot.tag = element_text())
+
+frac_woody_resprouters + frac_herbaceous_resprouters
+ggsave("figures/frac_resprouters.jpg", width = 8.5, height = 3)
+```
+
+
+## Make map of resprouting across Australia
+
+Import map of Australia
+
+```{r}
+#library(raster)
+library(maps)
+library(viridis)
+
+map_australia <-
+  map_data("world") %>%
+  filter(region == "Australia") %>%
+  filter(lat > -45 | long < 155)
+```
+
+
+## Make maps of proportion of taxa in each class
+
+This accounts for spatial sampling bias for different taxa
+
+```{r}
+calc_taxa_proportions <-
+
+  function(data, value, na.rm = TRUE) {
+    browser()
+    n_taxa_in_value <- data %>% unique() %>% str_detect(value) %>% sum()
+    n_taxa <- data %>% unique %>% length()
+    prop_taxa_in_value <- n_taxa_in_value / n_taxa
+    return(prop_taxa_in_value)
+
+    }
+
+
+make_taxa_proportion_plot <- function(df, variable, pixel_size = 1) {
+
+  # variable must be a string
+  browser()
+  # Make SpatialPointsDataFrame and base raster
+  fire_data <- df
+  values_in_var <-
+    fire_data[,variable] %>% pull() %>% unique() %>% discard(is.na)
+  fire_data <- fire_data %>% unite(new_variable, c(all_of(variable), "taxon_name"))
+  fire_data <- fire_data %>% terra::vect(geom = c("decimalLongitude", "decimalLatitude"))
+  fire_data <- fire_data[,"new_variable"]
+  base_raster <- fire_data %>% terra::ext() %>% terra::rast()
+  terra::res(base_raster) <- pixel_size
+
+# terra::rasterize doesn't work the same way as raster::rasterize, it only summarises the geometries in the cell, not the data values associated with the geometries
+
+  # Calculate RasterLayer for each value in variable
+  for (i in 1:length(values_in_var)) {
+    if (i == 1) {
+      prop_raster <-
+        terra::rasterize(
+          fire_data, base_raster, field = "new_variable",
+          fun = function(x, na.rm = TRUE) {
+            calc_taxa_proportions(x, values_in_var[i])
+            }
+          )
+      prop_raster <-
+        prop_raster %>% terra::rast(names = values_in_var[i])
+    } else {
+      next_raster <-
+        terra::rasterize(
+          fire_data, base_raster, field = "new_variable",
+          fun = function(x, na.rm = TRUE) {
+            calc_taxa_proportions(x, values_in_var[i])
+            }
+          )
+      next_raster <-
+        next_raster %>% terra::rast(names = values_in_var[i])
+      prop_raster <- c(prop_raster, next_raster)
+      }
+    }
+    return(prop_raster)
+  }
+```
+
+
+
+
+```{r}
+joined_fire_data$resprouting_binomial <-
+  joined_fire_data$resprouting_binomial %>% as.character()
+joined_fire_data$seeding_binomial <-
+  joined_fire_data$seeding_binomial %>% as.character()
+joined_fire_data$resprouting_seeding_binomial <-
+  joined_fire_data$resprouting_seeding_binomial %>% as.character()
+
+#joined_fire_data <-
+#  joined_fire_data %>% filter(decimalLatitude > -45 | decimalLongitude < 155)
+# Maps without dividing into woody and herb
+#resprouting_stack <-
+#  make_taxa_proportion_plot(joined_fire_data, "resprouting_binomial", pixel_size = 2)
+#seeding_stack <-
+#  make_taxa_proportion_plot(joined_fire_data, "seeding_binomial", pixel_size = 2)
+#fire_response_stack <-
+#  make_taxa_proportion_plot(joined_fire_data, "resprouting_seeding_binomial", pixel_size = 2)
+
+# Maps divided into woody and herb
+
+woody_subset <- joined_fire_data %>% filter(woody_or_herb == "woody")
+herb_subset <- joined_fire_data %>% filter(woody_or_herb == "herb")
+
+resprouting_taxa_woody_stack <-
+    make_taxa_proportion_plot(woody_subset, "resprouting_binomial", pixel_size = 2)
+resprouting_taxa_herb_stack <-
+    make_taxa_proportion_plot(herb_subset, "resprouting_binomial", pixel_size = 2)
+
+seeding_taxa_woody_stack <-
+    make_taxa_proportion_plot(woody_subset, "seeding_binomial", pixel_size = 2)
+seeding_taxa_herb_stack <-
+    make_taxa_proportion_plot(herb_subset, "seeding_binomial", pixel_size = 2)
+```
+
+
+
+```{r}
+# Convert raster objects to data frame before plotting as geom_raster takes a data frame
+resprouting_taxa_woody_stack_df <-
+    resprouting_taxa_woody_stack  %>%
+    as.data.frame(xy = TRUE) %>%
+    pivot_longer(cols = !c(x, y),
+                 names_to = "resprouting_binomial",
+                 values_to = "value")
+
+# Plot histogram of values to set threshold excluding outliers which distort the colour scale
+resprouting_taxa_woody_stack_df %>%
+  filter(resprouting_binomial == "TRUE.") %>%
+  ggplot(aes(x = value)) +
+  geom_histogram() +
+  #scale_x_continuous(breaks = seq(0.0, 1.0, by = 0.1)) +
+  theme_classic()
+
+# Plot
+
+resprouting_taxa_woody_stack_df$resprouting_binomial <-
+    resprouting_taxa_woody_stack_df$resprouting_binomial %>%
+    factor(ordered = TRUE, levels = c("TRUE.", "FALSE."))
+
+facet_labels1 <- c("TRUE." = "Woody")
+
+p1 <-
+    resprouting_taxa_woody_stack_df %>%
+    filter(value < 1, value > 0, resprouting_binomial == "TRUE.") %>%
+    ggplot(aes(x = x, y = y)) +
+    geom_raster(aes(fill = value), interpolate = FALSE) +
+    facet_wrap(~resprouting_binomial, labeller = as_labeller(facet_labels1)) +
+    geom_polygon(data = map_australia,
+                mapping = aes(x = long, y = lat, group = group),
+                fill = NA,
+                colour = "#1a1a1a",
+                size = 0.4) +
+    coord_fixed() +
+    scale_fill_viridis(name = "Proportion of Resprouting Taxa",
+                       limits = c(0.2, 0.9)) +
+    guides(fill = guide_colourbar(ticks.colour = "black",
+                                  ticks.linewidth = 1,
+                                  frame.colour = "black",
+                                  frame.linewidth = 1,
+                                  direction = "vertical",
+                                  title.position = "top",
+                                  barwidth = 0.7,
+                                  barheight = 6)) +
+    ggtitle("a) Proportion of Resprouting Taxa") +
+    theme_classic() +
+    theme(axis.line = element_blank(),
+          panel.background = element_rect(fill = NA, size = 0.5, colour = "black"),
+          axis.text = element_text(colour = "black", size = 9),
+          axis.title = element_blank(),
+          strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
+          strip.text = element_text(size = 11, face = "bold", margin = margin(3,0,4,0)),
+          panel.spacing = unit(0.2, "cm"),
+          legend.position = "none",
+          legend.title = element_blank(),
+          plot.title.position = "plot",
+          plot.title = element_text(size = 14, margin = margin(0,0,10,0)))
+
+p1
+```
+
+
+```{r}
+# Convert raster objects to data frame before plotting as geom_raster takes a data frame
+resprouting_taxa_herb_stack_df <-
+    resprouting_taxa_herb_stack %>%
+    as.data.frame(xy = TRUE) %>%
+    pivot_longer(cols = !c(x, y),
+                 names_to = "resprouting_binomial",
+                 values_to = "value")
+
+# Plot histogram of values to set threshold excluding outliers which distort the colour scale
+ggplot(resprouting_taxa_herb_stack_df, aes(x = value)) +
+  geom_histogram() +
+  #scale_x_continuous(breaks = seq(0.0, 1.0, by = 0.1)) +
+  theme_classic()
+
+# Plot with ggplot
+library(viridis)
+
+
+resprouting_taxa_herb_stack_df$resprouting_binomial <-
+    resprouting_taxa_herb_stack_df$resprouting_binomial %>%
+    factor(ordered = TRUE, levels = c("TRUE.", "FALSE."))
+
+facet_labels2 <- c("TRUE." = "Herbaceous")
+
+p2 <-
+  resprouting_taxa_herb_stack_df %>%
+  filter(value < 1, value > 0, resprouting_binomial == "TRUE.") %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_raster(aes(fill = value), interpolate = FALSE) +
+  facet_wrap(~resprouting_binomial, labeller = as_labeller(facet_labels2)) +
+  geom_polygon(data = map_australia,
+              mapping = aes(x = long, y = lat, group = group),
+              fill = NA,
+              colour = "#1a1a1a",
+              size = 0.4) +
+  coord_fixed() +
+  scale_fill_viridis(name = "Proportion of Resprouting Taxa",
+                     limits = c(0.2, 0.9)) +
+  guides(fill = guide_colourbar(ticks.colour = "black",
+                                ticks.linewidth = 1,
+                                frame.colour = "black",
+                                frame.linewidth = 1,
+                                direction = "vertical",
+                                title.position = "top",
+                                barwidth = 0.7,
+                                barheight = 6)) +
+  ggtitle("") +
+  theme_classic() +
+  theme(axis.line = element_blank(),
+        panel.background = element_rect(fill = NA, size = 0.5, colour = "black"),
+        axis.text = element_text(colour = "black", size = 9),
+        axis.title = element_blank(),
+        strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
+        strip.text = element_text(size = 11, face = "bold", margin = margin(3,0,4,0)),
+        legend.position = "right",
+        legend.title = element_blank(),
+        panel.spacing = unit(0.2, "cm"),
+        plot.title.position = "plot",
+        plot.title = element_text(size = 14))
+p2
+```
+
+
+
+
+## Calculate number of fires per pixel
+
+
+Get list of rasters from MODIS
+
+Win20 = Australia
+A list of geoTIFFs for each year and month
+See pg 15 of the documentation/user guide for MCD64:
+https://lpdaac.usgs.gov/documents/875/MCD64_User_Guide_V6.pdf
+
+Instructions for obtaining the data begins on pg 22.
+
+```{r}
+list_of_files <-
+  list.files("data/MODIS_burn_data_australia/Win20",
+             recursive = TRUE,
+             full.names = TRUE) %>%
+  str_subset("burndate") # Filter for the burndate layers not the QA layers
+```
+
+
+```{r}
+# Function to extract burn dates
+extract_burn_dates <- function(file_path) {
+
+    # file_path argument must be a string
+    raster <- raster(file_path)
+    # Extract year from file_path
+    year <- str_match(file_path, "(?<=.A)[0-9]{4}")
+    # Convert into a data.frame
+    df <-
+        raster %>%
+        as.data.frame(xy = TRUE) %>%
+        rename(burn_date = contains("burndate")) %>%
+        # Filter out -2 and 0 values
+        filter(burn_date > 0) %>%
+        # Convert Julian date to calendar date
+        mutate(burn_date = as.Date(burn_date - 1, origin = str_glue("{year}-01-01")))
+    # Remove raster and run garbage collection
+    remove(raster)
+    gc()
+    # Return the data.frame
+    return(df)
+
+}
+```
+
+
+Apply function to extract burn dates
+
+```{r}
+burn_dates_df <- map_dfr(list_of_files, extract_burn_dates)
+burn_dates_df <- burn_dates_df %>% arrange(x, y, burn_date)
+```
+
+
+Use group_by and summarise to count the number of burns per pixel
+
+```{r}
+num_of_fires_df <-
+    burn_dates_df %>%
+    group_by(x, y) %>%
+    summarise(num_of_fires = sum(burn_date != 0)) %>%
+    ungroup()
+```
+
+
+```{r}
+init_raster <- raster("data/MODIS_burn_data_australia/Win20/2000/MCD64monthly.A2000306.Win20.006.burndate.tif")
+# Resolution = 0.004
+# Extent: 112, 155.0005, 0.004394531, -10 (xmin, xmax, ymin, ymax)
+
+init_df <- init_raster %>% as.data.frame(xy = TRUE)
+init_df <-
+    init_df %>%
+    rename(burn_date = contains("burndate")) %>%
+    filter(burn_date >= 0) %>%
+    arrange(x, y) %>%
+    select(x, y)
+full_fires_df <- full_join(init_df, num_of_fires_df, by = c("x", "y"))
+
+nrow(full_fires_df)
+nrow(init_df)
+nrow(num_of_fires_df)
+# 18.6% of pixels burned (but this includes water pixels)
+
+full_fires_df <- full_fires_df %>% replace_na(list(num_of_fires = 0))
+
+# Filter out values outside of Australia
+full_fires_no_water <-
+    full_fires_df %>%
+    filter(x > 143 | y > -39) %>%
+    filter(x > 120 | y > -36) %>%
+    filter(x > 126 | y < -12) %>%
+    filter(x < 145 | y < -14)
+
+#saveRDS(full_fires_no_water, file = "processed_data/num_of_fires_df.rds")
+#full_fires_no_water <- readRDS("processed_data/num_of_fires_df.rds")
+
+num_fires_raster <- rasterFromXYZ(full_fires_no_water)
+
+plot(num_fires_raster)
+
+writeRaster(num_fires_raster, "data/num_fires_map", format = "GTiff", overwrite = TRUE)
+```
+
+
+```{r}
+num_fires <- raster("data/num_fires_map.tif")
+num_fires <-
+  num_fires %>%
+  as.data.frame(xy = TRUE)
+
+num_fires_plot <-
+  num_fires %>%
+  filter(!is.na(num_fires_map)) %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_raster(aes(fill = num_fires_map), interpolate = FALSE) +
+  geom_polygon(data = map_australia,
+               mapping = aes(x = long, y = lat, group = group),
+               fill = NA,
+               colour = "#1a1a1a",
+               size = 0.4) +
+  coord_fixed() +
+  scale_fill_distiller(palette = "YlOrRd", direction = 1, trans = "log") +
+  guides(fill = guide_colourbar(ticks.colour = "black",
+                                ticks.linewidth = 1,
+                                frame.colour = "black",
+                                frame.linewidth = 1,
+                                direction = "vertical",
+                                title.position = "top",
+                                barwidth = 0.7,
+                                barheight = 6)) +
+  ggtitle("b) Number of Fires") +
+  theme_classic() +
+  theme(axis.line = element_blank(),
+        panel.background = element_rect(fill = NA, size = 0.5, colour = "black"),
+        axis.text = element_text(colour = "black", size = 9),
+        axis.title = element_blank(),
+        strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
+        strip.text = element_text(size = 11, face = "bold", margin = margin(3,0,4,0)),
+        legend.position = "right",
+        legend.title = element_blank(),
+        panel.spacing = unit(0.2, "cm"),
+        plot.title.position = "plot",
+        plot.title = element_text(size = 14))
+
+num_fires_plot
+```
+
+```{r}
+library(grid)
+library(ggpubr)
+grid.newpage()
+grid.draw(cbind(ggplotGrob(p1), ggplotGrob(p2)))
+grid.draw(cbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(num_fires_plot)))
+ggarrange(cbind(ggplotGrob(p1), ggplotGrob(p2)), num_fires_plot, ncol = 2, nrow = 1)
+
+plot <- cbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(num_fires_plot))
+ggsave("maps.png", plot = plot, width = 8, height = 2.4)
+
+p3 <- cbind(ggplotGrob(p1), ggplotGrob(p2))
+ggarrange(p3, num_fires_plot, ncol = 2, nrow = 1, heights = c(2,1)) # Fiddle with heights argument or align argument
+# common.legend = TRUE
+# legend = "bottom"
+# labels = c("a)", "b)")
+# It's because you are plotting p3 as one plot and the other as another so they try make them the same size
+plot <- ggarrange(p1, p2, num_fires_plot, ncol = 3, nrow = 1)
+ggsave("maps.png", plot = plot, width = 10, height = 3)
+ggarrange(p1, p2, num_fires_plot, ncol = 3, nrow = 1, labels = c("a) Proportion of Resprouting Taxa", "", "b) Number of Fires"))
+ggarrange(ggarrange(p1, p2, ncol = 2, nrow = 1, common.legend = TRUE, legend = "right"), num_fires_plot,
+          ncol = 2, nrow = 1, labels = c("a) Proportion of Resprouting Taxa", "b) Number of Fires"))
+```
+
