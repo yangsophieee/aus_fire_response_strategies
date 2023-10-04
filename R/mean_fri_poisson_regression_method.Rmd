@@ -1,0 +1,256 @@
+---
+title: "mean_fri_with_glm"
+author: "Sophie"
+date: "22/11/2021"
+output: html_document
+editor_options:
+  chunk_output_type: console
+---
+
+
+Load libraries
+
+```{r}
+library(parallel)
+library(raster)
+library(tidyverse)
+library(performance)
+```
+
+
+Read in number of fires raster and gbif data
+
+```{r}
+num_of_fires <- terra::rast("processed_data/num_fires_map.tif")
+joined_fire_data_inner <- readRDS("processed_data/joined_fire_data_inner.rds")
+```
+
+
+Safely and quietly function combined to catch errors, warnings and messages
+https://github.com/tidyverse/purrr/issues/426
+
+```{r}
+safely_n_quietly <- function(.f, otherwise = NULL) {
+  retfun <- quietly(safely(.f, otherwise = otherwise, quiet = FALSE))
+    function(...) {
+    ret <- retfun(...)
+    list(result = ret$result$result,
+            output = ret$output,
+            messages = ret$messages,
+            warnings = ret$warnings,
+            error = ret$result$error)
+    }
+}
+```
+
+
+Function that returns a data frame with predicted FRI and other metrics
+
+```{r}
+calculate_mean_fri_with_glm <- function(
+  taxon,
+  gbif_data = joined_fire_data_inner,
+  num_of_fires_raster = num_of_fires,
+  sampling_period = 20.66){
+
+  ## CHANGE SAMPLING PERIOD
+
+  # Subset data to taxon
+  species_subset <-
+    gbif_data %>%
+    filter(taxon_name == taxon) %>%
+    select(decimalLongitude, decimalLatitude)
+
+  # Round species_subset to resolution of 0.005 decimal degrees so that any coordinates
+  # that are approximately within the same MODIS pixel can be removed
+  multiple <- 0.005
+  species_subset <-
+    species_subset %>%
+    mutate(decimalLongitude = multiple*round(decimalLongitude/multiple),
+            decimalLatitude = multiple*round(decimalLatitude/multiple)) %>%
+    distinct(.keep_all = TRUE) # Remove duplicates
+
+  # Convert to a SpatialPointsDataFrame
+  spdf <- SpatialPointsDataFrame(
+    coords = species_subset,
+    data = species_subset,
+    proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs"))
+
+  # Extract intersecting pixels
+  intersecting_pixels <-
+    num_of_fires_raster %>%
+    raster::extract(spdf, sp = TRUE)
+
+  # Convert to data frame
+  df <-
+    intersecting_pixels %>%
+    raster::as.data.frame() %>%
+    rename(num_of_fires = num_fires_map) %>%
+    select(decimalLongitude, decimalLatitude, num_of_fires) %>%
+    filter(!is.na(num_of_fires)) # Filter out NAs
+
+  # Run GLM model
+  safe_quiet_glm <- safely_n_quietly(glm)
+  model <- safe_quiet_glm(num_of_fires ~ 1, data = df, family = poisson(link = "identity"))
+
+  if (length(model$error) < 1) {
+
+    # Get summary
+    summary <- summary(model$result)
+
+    # Calculate mean number of fires in 20 years
+    mean_fires_in_sampling_period <- model$result$coefficients[[1]]
+
+    # Calculate predicted fire return interval
+    predicted_fri <- sampling_period / predict(model$result, type = "link")[[1]]
+
+    # Lower confidence interval bound
+    lwr <-
+        sampling_period /
+        (predict(model$result, type = "link")[[1]] + summary$coefficients[[2]]*1.96)
+
+    # Upper confidence interval bound
+    upr <-
+        sampling_period /
+        (predict(model$result, type = "link")[[1]] - summary$coefficients[[2]]*1.96)
+
+    # Dispersion test
+        dispersion_test <- check_overdispersion(model$result)
+
+    # Return outputs
+    output_df <- data.frame(taxon_name = taxon,
+                            mean_fires = mean_fires_in_sampling_period,
+                            mean_fri = predicted_fri,
+                            lwr_confint = lwr,
+                            upr_confint = upr,
+                            dispersion_ratio = dispersion_test$dispersion_ratio,
+                            dispersion_p_value = dispersion_test$p_value,
+                            num_unburnt_pixels = df %>%
+                                filter(num_of_fires == 0) %>%
+                                nrow(),
+                            num_pixels = nrow(df),
+                            warnings = ifelse(length(model$warnings) >= 1,
+                                              paste(model$warnings,
+                                                    collapse = ", "), NA),
+                            messages = ifelse(length(model$messages) >= 1,
+                                              paste(model$messages,
+                                                    collapse = ", "), NA),
+                            error = NA)
+
+  } else {
+
+    # Return outputs
+    output_df <- data.frame(
+      taxon_name = taxon,
+      mean_fires = NA,
+      mean_fri = NA,
+      lwr_confint = NA,
+      upr_confint = NA,
+      dispersion_ratio = NA,
+      dispersion_p_value = NA,
+      num_unburnt_pixels = df %>% filter(num_of_fires == 0) %>% nrow(),
+      num_pixels = nrow(df),
+      warnings = ifelse(
+        length(model$warnings) >= 1,
+        paste(model$warnings, collapse = ", "), NA),
+      messages = ifelse(
+        length(model$messages) >= 1,
+        paste(model$messages, collapse = ", "), NA),
+      error = paste(model$error, collapse = ", "))
+
+  }
+
+  return(output_df)
+
+}
+```
+
+
+
+Extract list of unique taxa
+
+```{r}
+list_of_taxa <- joined_fire_data_inner$taxon_name %>% unique()
+```
+
+
+Run for test species
+
+```{r}
+test_df <- calculate_mean_fri_with_glm(list_of_taxa[1])
+```
+
+
+Find number of cores
+
+```{r}
+num_cores <- detectCores()
+```
+
+
+Calculate mean FRI in parallel
+
+```{r}
+mean_fri_list <- mclapply(list_of_taxa, calculate_mean_fri_with_glm, mc.cores = num_cores)
+```
+
+
+
+Bind into data frame
+
+```{r}
+mean_fri_df <- mean_fri_list %>% bind_rows()
+```
+
+
+Write to a csv file
+
+```{r}
+write_csv(mean_fri_df, "processed_data/mean_fri_df_with_glm.csv")
+```
+
+---
+
+Out of 8009 taxa, 294 did not fit and they were all because all pixels were unburnt.
+Out of the 7715 with no errors, 419 had confidence intervals bounding zero, which
+were discarded, leaving us with 7296 taxa. There were 2 taxa with mean FRI greater
+than 5000 years. 5574 taxa had confidence intervals less than 100 years big.
+
+```{r}
+mean_fris <- read_csv("processed_data/mean_fri_df_with_glm.csv", guess_max = 8009)
+
+mean_fris %>% filter(mean_fri > 1000) %>% nrow()
+mean_fris_clean %>% filter(upr_confint - lwr_confint < 100) %>% nrow()
+
+y <- mean_fris_clean %>% mutate(confint_size = upr_confint - lwr_confint)
+hist(y$confint_size)
+```
+
+
+
+Comparatively, the survival analysis resulted in 1443 that did not fit (incl. unburnt
+pixels). The warning was "ran out of iterations and did not converge". This occurred
+because most or all pixels were unburnt. There were 7217 taxa with median FRI greater
+than 5000 years. 221 taxa had confidence intervals less than 100 years big.
+
+```{r}
+median_fris <- read_csv("processed_data/median_fris.csv", guess_max = 8009)
+median_fris <-
+  median_fris %>%
+  mutate(across(
+    c("med_w", "med_w_lwr", "med_w_upr", "med_wo", "med_wo_lwr", "med_wo_upr"),
+    ~ .x / 365.2422
+  ))
+
+median_fris %>% filter(med_w > 1000) %>% nrow()
+median_fris %>% filter(med_w_upr - med_w_lwr < 100) %>% nrow()
+x <- median_fris %>% mutate(confint_size = med_w_upr - med_w_lwr)
+hist(x$confint_size)
+
+median_fris %>% filter(!is.na(med_wo_warnings)) %>% nrow()
+median_fris %>% filter(med_wo > 5000) %>% nrow()
+```
+
+1282 that did not fit (when not including unburnt pixels). There were 6719 taxa with
+median FRI greater than 5000 years.
+

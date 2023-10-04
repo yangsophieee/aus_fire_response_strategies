@@ -9,7 +9,7 @@ editor_options:
 ```{r}
 library(tidyverse)
 
-austraits <- read_rds("data/austraits-a8118973-20230629.rds") # Updated version of austraits as of 29/06/2023
+austraits <- read_rds("data/austraits-4.2.0.rds")
 ```
 
 
@@ -19,7 +19,6 @@ austraits <- read_rds("data/austraits-a8118973-20230629.rds") # Updated version 
 resprouting_capacity <-
   austraits$traits %>%
   filter(trait_name == "resprouting_capacity") %>%
-  distinct() %>% # Currently needed because duplicate trait values are not being collapsed
   pivot_wider(values_from = value, names_from = trait_name)
 ```
 
@@ -45,9 +44,7 @@ resprouting_capacity <-
   resprouting_capacity %>%
   left_join(
     austraits$taxa %>%
-      select(
-        taxon_name, genus, family, taxon_rank, taxonomic_status, taxon_distribution
-        ),
+      select(taxon_name, genus, family, taxon_rank, taxonomic_status, taxon_distribution),
     by = "taxon_name")
 ```
 
@@ -78,7 +75,7 @@ col <- col[!col %in% c("taxon_name", "taxon_rank")]
 
 resprouting_capacity_summary <-
   resprouting_capacity_summary %>%
-  mutate(variation_in_strat = (rowSums(resprouting_capacity_summary[,col] > 0) > 1))
+  mutate(variation_in_strat = (rowSums(resprouting_capacity_summary[, col] > 0) > 1))
 ```
 
 
@@ -150,9 +147,9 @@ resprouting_capacity_summary <-
     resprouting = if_else(
       variation_in_strat == TRUE,
       case_when(
-        resprout_tally < 0.3 ~ "does not resprout",
-        (resprout_tally / (resprout_tally + does_not_resprout_tally) < 0.7) ~ "sometimes resprouts",
-        (resprout_tally / (resprout_tally + does_not_resprout_tally) >= 0.7) ~ "mostly resprouts"),
+        resprout_prop < 0.3 ~ "does not resprout",
+        resprout_prop < 0.7 ~ "sometimes resprouts",
+        resprout_prop >= 0.7 ~ "mostly resprouts"),
       resprouting
       )
     )
@@ -186,7 +183,6 @@ Subset traits to post_fire_recruitment records only
 post_fire_recruitment <-
   austraits$traits %>%
   filter(trait_name == "post_fire_recruitment") %>%
-  distinct() %>% # Currently needed because duplicate trait values are not being collapsed
   pivot_wider(values_from = value, names_from = trait_name)
 ```
 
@@ -210,9 +206,7 @@ post_fire_recruitment <-
   post_fire_recruitment %>%
   left_join(
     austraits$taxa %>%
-      select(
-        taxon_name, genus, family, taxon_rank, taxonomic_status, taxon_distribution
-        ),
+      select(taxon_name, genus, family, taxon_rank, taxonomic_status, taxon_distribution),
     by = "taxon_name")
 ```
 
@@ -224,8 +218,7 @@ post_fire_recruitment_summary <-
   post_fire_recruitment %>%
   group_by(taxon_name, post_fire_recruitment, taxon_rank) %>%
   summarise(count = n()) %>%
-  pivot_wider(names_from = post_fire_recruitment,
-              values_from = count) %>%
+  pivot_wider(names_from = post_fire_recruitment, values_from = count) %>%
   ungroup() %>%
   mutate(across(where(is.integer), ~ replace_na(., 0)))
 
@@ -243,7 +236,7 @@ col <- col[!col %in% c("taxon_name", "taxon_rank")]
 
 post_fire_recruitment_summary <-
   post_fire_recruitment_summary %>%
-  mutate(variation_in_seeding = (rowSums(post_fire_recruitment_summary[,col] > 0) > 1))
+  mutate(variation_in_seeding = (rowSums(post_fire_recruitment_summary[, col] > 0) > 1))
 ```
 
 
@@ -308,9 +301,9 @@ post_fire_recruitment_summary <-
     post_fire_seeding = if_else(
       variation_in_seeding == TRUE,
       case_when(
-        post_fire_recruitment_tally < 0.3 ~ "no post-fire seeding",
-        (post_fire_recruitment_tally / (post_fire_recruitment_tally + no_post_fire_recruitment_tally) < 0.7) ~ "some post-fire seeding",
-        (post_fire_recruitment_tally / (post_fire_recruitment_tally + no_post_fire_recruitment_tally) >= 0.7) ~ "robust post-fire seeding"),
+        seeding_prop < 0.3 ~ "no post-fire seeding",
+        seeding_prop < 0.7 ~ "some post-fire seeding",
+        seeding_prop >= 0.7 ~ "robust post-fire seeding"),
       post_fire_seeding)
     )
 ```
@@ -325,8 +318,7 @@ post_fire_recruitment_summary %>%
   ungroup()
 
 # Final tibble for seeding variable
-post_fire_seeding <- post_fire_recruitment_summary %>%
-  select(taxon_name, taxon_rank, post_fire_seeding)
+post_fire_seeding <- post_fire_recruitment_summary %>% select(taxon_name, taxon_rank, post_fire_seeding)
 ```
 
 
@@ -336,11 +328,11 @@ post_fire_seeding <- post_fire_recruitment_summary %>%
 # Join resprouting_capacity and post_fire_recruitment
 
 ```{r}
-resprouting_taxa <- resprouting$taxon_name %>% unique() # 10735 taxa
-seeding_taxa <- post_fire_seeding$taxon_name %>% unique() # 3594 taxa
+resprouting_taxa <- resprouting$taxon_name %>% unique() # 10991 taxa
+seeding_taxa <- post_fire_seeding$taxon_name %>% unique() # 3593 taxa
 
 intersecting_taxa <- intersect(resprouting_taxa, seeding_taxa)
-# 3448 taxa intersect between post_fire_recruitment and resprouting_capacity
+# 3450 taxa intersect between resprouting_capacity and post_fire_recruitment
 ```
 
 
@@ -397,21 +389,21 @@ resprouting_seeding$resprouting <-
     resprouting_seeding$resprouting,
     ordered = TRUE,
     levels = c("does not resprout", "sometimes resprouts", "mostly resprouts")
-    )
+  )
 
 resprouting_seeding$post_fire_seeding <-
   factor(
     resprouting_seeding$post_fire_seeding,
     ordered = TRUE,
     levels = c("no post-fire seeding", "some post-fire seeding", "robust post-fire seeding")
-    )
+  )
 
 resprouting_seeding$resprouter_or_seeder <-
   factor(
     resprouting_seeding$resprouter_or_seeder,
     ordered = TRUE,
     levels = c("resprouter", "seeder", "facultative", "neither")
-    )
+  )
 ```
 
 
@@ -440,7 +432,6 @@ resprouting_seeding %>%
 woodiness <-
   austraits$traits %>%
   filter(dataset_id == "Wenk_2022", trait_name == "woodiness_detailed") %>%
-  distinct(.keep_all = TRUE) %>%
   pivot_wider(values_from = value, names_from = trait_name) %>%
   select(taxon_name, woodiness_detailed)
 ```
@@ -454,7 +445,7 @@ resprouting_seeding_woodiness <-
 woody <- c("woody", "semi_woody woody", "woody woody_base")
 herbaceous <- c("herbaceous", "herbaceous woody", "herbaceous woody_base", "herbaceous woody_root",
                 "herbaceous semi_woody", "herbaceous semi_woody woody")
-semi_woody <- "semi_woody"
+semi_woody <- c("semi_woody", "semi_woody woody_base")
 unclear <- c("woody_like_stem", "woody_base")
 
 resprouting_seeding_woodiness <-
@@ -472,7 +463,7 @@ resprouting_seeding_woodiness %>%
   summarise(count = n()) %>%
   ungroup()
 
-# 4503 herbs, 6229 woody, 63 semi-woody, 45 unclear, 11 NA
+# 4611 herbs, 6366 woody, 67 semi-woody, 47 unclear, 11 NA
 ```
 
 
@@ -525,18 +516,13 @@ fire_response_woody_herb_only <-
 The GBIF download and cleaning process is in R/gbif_process.R
 
 ```{r}
-#gbif <- read_csv("data/filtered_aus_obs.csv", guess_max = 13607514)
-#gbif <- read.csv("data/filtered_aus_obs.csv", fileEncoding = "ISO-8859-1", skipNul = TRUE)
 gbif <- read.csv("data/filtered_aus_obs.csv", skipNul = TRUE)
-#gbif <- fread("data/filtered_aus_obs.csv", quote = "")
 ```
 
 ## Try use ausflora to align GBIF names with APC names
 
 ```{r}
-#remotes::install_github("yangsophieee/ausflora", ref = "sophie_debugging") # Version with fixed bug
-remotes::install_github("traitecoevo/APCalign")
-detach("package:APCalign", unload = TRUE)
+#remotes::install_github("traitecoevo/APCalign")
 library(APCalign)
 ```
 
@@ -546,7 +532,7 @@ gbif_taxa <- gbif$verbatimscientificname %>% unique()
 
 resources <- load_taxonomic_resources()
 
-create_taxonomic_update_lookup(
+lookup_table <- create_taxonomic_update_lookup(
   taxa = gbif_taxa,
   resources = resources
 )
@@ -556,7 +542,7 @@ create_taxonomic_update_lookup(
 ```{r}
 gbif <-
   gbif %>%
-  left_join(taxonomic_updates, by = c("verbatimscientificname" = "original_name"))
+  left_join(lookup_table, by = c("verbatimscientificname" = "original_name"))
 ```
 
 
@@ -752,29 +738,26 @@ map_australia <-
 This accounts for spatial sampling bias for different taxa
 
 ```{r}
-calc_taxa_proportions <-
+calc_taxa_proportions <- function(data, value, na.rm = TRUE) {
 
-  function(data, value, na.rm = TRUE) {
-    browser()
     n_taxa_in_value <- data %>% unique() %>% str_detect(value) %>% sum()
     n_taxa <- data %>% unique %>% length()
     prop_taxa_in_value <- n_taxa_in_value / n_taxa
     return(prop_taxa_in_value)
 
-    }
+  }
 
 
 make_taxa_proportion_plot <- function(df, variable, pixel_size = 1) {
 
-  # variable must be a string
-  browser()
+  # `variable` must be a string
+
   # Make SpatialPointsDataFrame and base raster
   fire_data <- df
-  values_in_var <-
-    fire_data[,variable] %>% pull() %>% unique() %>% discard(is.na)
+  values_in_var <- fire_data[, variable] %>% pull() %>% unique() %>% discard(is.na)
   fire_data <- fire_data %>% unite(new_variable, c(all_of(variable), "taxon_name"))
   fire_data <- fire_data %>% terra::vect(geom = c("decimalLongitude", "decimalLatitude"))
-  fire_data <- fire_data[,"new_variable"]
+  fire_data <- fire_data[, "new_variable"]
   base_raster <- fire_data %>% terra::ext() %>% terra::rast()
   terra::res(base_raster) <- pixel_size
 
@@ -836,14 +819,14 @@ woody_subset <- joined_fire_data %>% filter(woody_or_herb == "woody")
 herb_subset <- joined_fire_data %>% filter(woody_or_herb == "herb")
 
 resprouting_taxa_woody_stack <-
-    make_taxa_proportion_plot(woody_subset, "resprouting_binomial", pixel_size = 2)
+  make_taxa_proportion_plot(woody_subset, "resprouting_binomial", pixel_size = 2)
 resprouting_taxa_herb_stack <-
-    make_taxa_proportion_plot(herb_subset, "resprouting_binomial", pixel_size = 2)
+  make_taxa_proportion_plot(herb_subset, "resprouting_binomial", pixel_size = 2)
 
 seeding_taxa_woody_stack <-
-    make_taxa_proportion_plot(woody_subset, "seeding_binomial", pixel_size = 2)
+  make_taxa_proportion_plot(woody_subset, "seeding_binomial", pixel_size = 2)
 seeding_taxa_herb_stack <-
-    make_taxa_proportion_plot(herb_subset, "seeding_binomial", pixel_size = 2)
+  make_taxa_proportion_plot(herb_subset, "seeding_binomial", pixel_size = 2)
 ```
 
 
@@ -851,11 +834,11 @@ seeding_taxa_herb_stack <-
 ```{r}
 # Convert raster objects to data frame before plotting as geom_raster takes a data frame
 resprouting_taxa_woody_stack_df <-
-    resprouting_taxa_woody_stack  %>%
-    as.data.frame(xy = TRUE) %>%
-    pivot_longer(cols = !c(x, y),
-                 names_to = "resprouting_binomial",
-                 values_to = "value")
+  resprouting_taxa_woody_stack  %>%
+  as.data.frame(xy = TRUE) %>%
+  pivot_longer(cols = !c(x, y),
+                names_to = "resprouting_binomial",
+                values_to = "value")
 
 # Plot histogram of values to set threshold excluding outliers which distort the colour scale
 resprouting_taxa_woody_stack_df %>%
@@ -868,46 +851,46 @@ resprouting_taxa_woody_stack_df %>%
 # Plot
 
 resprouting_taxa_woody_stack_df$resprouting_binomial <-
-    resprouting_taxa_woody_stack_df$resprouting_binomial %>%
-    factor(ordered = TRUE, levels = c("TRUE.", "FALSE."))
+  resprouting_taxa_woody_stack_df$resprouting_binomial %>%
+  factor(ordered = TRUE, levels = c("TRUE.", "FALSE."))
 
 facet_labels1 <- c("TRUE." = "Woody")
 
 p1 <-
-    resprouting_taxa_woody_stack_df %>%
-    filter(value < 1, value > 0, resprouting_binomial == "TRUE.") %>%
-    ggplot(aes(x = x, y = y)) +
-    geom_raster(aes(fill = value), interpolate = FALSE) +
-    facet_wrap(~resprouting_binomial, labeller = as_labeller(facet_labels1)) +
-    geom_polygon(data = map_australia,
-                mapping = aes(x = long, y = lat, group = group),
-                fill = NA,
-                colour = "#1a1a1a",
-                size = 0.4) +
-    coord_fixed() +
-    scale_fill_viridis(name = "Proportion of Resprouting Taxa",
-                       limits = c(0.2, 0.9)) +
-    guides(fill = guide_colourbar(ticks.colour = "black",
-                                  ticks.linewidth = 1,
-                                  frame.colour = "black",
-                                  frame.linewidth = 1,
-                                  direction = "vertical",
-                                  title.position = "top",
-                                  barwidth = 0.7,
-                                  barheight = 6)) +
-    ggtitle("a) Proportion of Resprouting Taxa") +
-    theme_classic() +
-    theme(axis.line = element_blank(),
-          panel.background = element_rect(fill = NA, size = 0.5, colour = "black"),
-          axis.text = element_text(colour = "black", size = 9),
-          axis.title = element_blank(),
-          strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
-          strip.text = element_text(size = 11, face = "bold", margin = margin(3,0,4,0)),
-          panel.spacing = unit(0.2, "cm"),
-          legend.position = "none",
-          legend.title = element_blank(),
-          plot.title.position = "plot",
-          plot.title = element_text(size = 14, margin = margin(0,0,10,0)))
+  resprouting_taxa_woody_stack_df %>%
+  filter(value < 1, value > 0, resprouting_binomial == "TRUE.") %>%
+  ggplot(aes(x = x, y = y)) +
+  geom_raster(aes(fill = value), interpolate = FALSE) +
+  facet_wrap(~resprouting_binomial, labeller = as_labeller(facet_labels1)) +
+  geom_polygon(data = map_australia,
+              mapping = aes(x = long, y = lat, group = group),
+              fill = NA,
+              colour = "#1a1a1a",
+              size = 0.4) +
+  coord_fixed() +
+  scale_fill_viridis(name = "Proportion of Resprouting Taxa",
+                      limits = c(0.2, 0.9)) +
+  guides(fill = guide_colourbar(ticks.colour = "black",
+                                ticks.linewidth = 1,
+                                frame.colour = "black",
+                                frame.linewidth = 1,
+                                direction = "vertical",
+                                title.position = "top",
+                                barwidth = 0.7,
+                                barheight = 6)) +
+  ggtitle("a) Proportion of Resprouting Taxa") +
+  theme_classic() +
+  theme(axis.line = element_blank(),
+        panel.background = element_rect(fill = NA, size = 0.5, colour = "black"),
+        axis.text = element_text(colour = "black", size = 9),
+        axis.title = element_blank(),
+        strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
+        strip.text = element_text(size = 11, face = "bold", margin = margin(3,0,4,0)),
+        panel.spacing = unit(0.2, "cm"),
+        legend.position = "none",
+        legend.title = element_blank(),
+        plot.title.position = "plot",
+        plot.title = element_text(size = 14, margin = margin(0,0,10,0)))
 
 p1
 ```
@@ -916,11 +899,11 @@ p1
 ```{r}
 # Convert raster objects to data frame before plotting as geom_raster takes a data frame
 resprouting_taxa_herb_stack_df <-
-    resprouting_taxa_herb_stack %>%
-    as.data.frame(xy = TRUE) %>%
-    pivot_longer(cols = !c(x, y),
-                 names_to = "resprouting_binomial",
-                 values_to = "value")
+  resprouting_taxa_herb_stack %>%
+  as.data.frame(xy = TRUE) %>%
+  pivot_longer(cols = !c(x, y),
+                names_to = "resprouting_binomial",
+                values_to = "value")
 
 # Plot histogram of values to set threshold excluding outliers which distort the colour scale
 ggplot(resprouting_taxa_herb_stack_df, aes(x = value)) +
@@ -933,8 +916,8 @@ library(viridis)
 
 
 resprouting_taxa_herb_stack_df$resprouting_binomial <-
-    resprouting_taxa_herb_stack_df$resprouting_binomial %>%
-    factor(ordered = TRUE, levels = c("TRUE.", "FALSE."))
+  resprouting_taxa_herb_stack_df$resprouting_binomial %>%
+  factor(ordered = TRUE, levels = c("TRUE.", "FALSE."))
 
 facet_labels2 <- c("TRUE." = "Herbaceous")
 
@@ -993,9 +976,7 @@ Instructions for obtaining the data begins on pg 22.
 
 ```{r}
 list_of_files <-
-  list.files("data/MODIS_burn_data_australia/Win20",
-             recursive = TRUE,
-             full.names = TRUE) %>%
+  list.files("data/MODIS_burn_data_australia/Win20", recursive = TRUE, full.names = TRUE) %>%
   str_subset("burndate") # Filter for the burndate layers not the QA layers
 ```
 
@@ -1004,24 +985,24 @@ list_of_files <-
 # Function to extract burn dates
 extract_burn_dates <- function(file_path) {
 
-    # file_path argument must be a string
-    raster <- raster(file_path)
-    # Extract year from file_path
-    year <- str_match(file_path, "(?<=.A)[0-9]{4}")
-    # Convert into a data.frame
-    df <-
-        raster %>%
-        as.data.frame(xy = TRUE) %>%
-        rename(burn_date = contains("burndate")) %>%
-        # Filter out -2 and 0 values
-        filter(burn_date > 0) %>%
-        # Convert Julian date to calendar date
-        mutate(burn_date = as.Date(burn_date - 1, origin = str_glue("{year}-01-01")))
-    # Remove raster and run garbage collection
-    remove(raster)
-    gc()
-    # Return the data.frame
-    return(df)
+  # `file_path` argument must be a string
+  raster <- terra::rast(file_path)
+  # Extract year from file_path
+  year <- str_match(file_path, "(?<=.A)[0-9]{4}")
+  # Convert into a data.frame
+  df <-
+    raster %>%
+    as.data.frame(xy = TRUE) %>%
+    rename(burn_date = contains("burndate")) %>%
+    # Filter out -2 and 0 values
+    filter(burn_date > 0) %>%
+    # Convert Julian date to calendar date
+    mutate(burn_date = as.Date(burn_date - 1, origin = str_glue("{year}-01-01")))
+  # Remove raster and run garbage collection
+  remove(raster)
+  gc()
+  # Return the data.frame
+  return(df)
 
 }
 ```
@@ -1039,25 +1020,25 @@ Use group_by and summarise to count the number of burns per pixel
 
 ```{r}
 num_of_fires_df <-
-    burn_dates_df %>%
-    group_by(x, y) %>%
-    summarise(num_of_fires = sum(burn_date != 0)) %>%
-    ungroup()
+  burn_dates_df %>%
+  group_by(x, y) %>%
+  summarise(num_of_fires = sum(burn_date != 0)) %>%
+  ungroup()
 ```
 
 
 ```{r}
-init_raster <- raster("data/MODIS_burn_data_australia/Win20/2000/MCD64monthly.A2000306.Win20.006.burndate.tif")
+init_raster <- terra::rast("data/MODIS_burn_data_australia/Win20/2000/MCD64monthly.A2000306.Win20.006.burndate.tif")
 # Resolution = 0.004
 # Extent: 112, 155.0005, 0.004394531, -10 (xmin, xmax, ymin, ymax)
 
 init_df <- init_raster %>% as.data.frame(xy = TRUE)
 init_df <-
-    init_df %>%
-    rename(burn_date = contains("burndate")) %>%
-    filter(burn_date >= 0) %>%
-    arrange(x, y) %>%
-    select(x, y)
+  init_df %>%
+  rename(burn_date = contains("burndate")) %>%
+  filter(burn_date >= 0) %>%
+  arrange(x, y) %>%
+  select(x, y)
 full_fires_df <- full_join(init_df, num_of_fires_df, by = c("x", "y"))
 
 nrow(full_fires_df)
@@ -1069,20 +1050,15 @@ full_fires_df <- full_fires_df %>% replace_na(list(num_of_fires = 0))
 
 # Filter out values outside of Australia
 full_fires_no_water <-
-    full_fires_df %>%
-    filter(x > 143 | y > -39) %>%
-    filter(x > 120 | y > -36) %>%
-    filter(x > 126 | y < -12) %>%
-    filter(x < 145 | y < -14)
+  full_fires_df %>%
+  filter(x > 143 | y > -39) %>%
+  filter(x > 120 | y > -36) %>%
+  filter(x > 126 | y < -12) %>%
+  filter(x < 145 | y < -14)
 
-#saveRDS(full_fires_no_water, file = "processed_data/num_of_fires_df.rds")
-#full_fires_no_water <- readRDS("processed_data/num_of_fires_df.rds")
+num_fires_raster <- terra::rast(full_fires_no_water, type = "xyz")
 
-num_fires_raster <- rasterFromXYZ(full_fires_no_water)
-
-plot(num_fires_raster)
-
-writeRaster(num_fires_raster, "data/num_fires_map", format = "GTiff", overwrite = TRUE)
+terra::writeRaster(num_fires_raster, "data/num_fires_map.tif", overwrite = TRUE)
 ```
 
 

@@ -1,0 +1,544 @@
+---
+title: "methods-figure"
+author: "Sophie"
+date: '2022-02-25'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r}
+library(tidyverse)
+library(survival)
+library(ggfortify)
+library(ggbreak)
+library(performance)
+library(maps)
+library(future)
+library(raster)
+plan(multisession)
+```
+
+
+```{r}
+joined_fire_data_inner <- readRDS("processed_data/joined_fire_data_inner.rds")
+
+map_australia <- 
+  map_data("world") %>% 
+  filter(region == "Australia") %>% 
+  filter(lat > -45 | long < 155)
+```
+
+
+```{r}
+species_subset <-
+    joined_fire_data_inner %>% 
+    filter(taxon_name == "Acacia longifolia") %>% 
+    dplyr::select(decimalLongitude, decimalLatitude)
+
+distribution <-
+    species_subset %>% 
+    ggplot(aes(x = decimalLongitude,
+               y = decimalLatitude)) + 
+    geom_point(col = "#fac928",
+               alpha = 1,
+               size = 0.8) + 
+    coord_fixed() + 
+    geom_polygon(data = map_australia,
+                 mapping = aes(x = long, y = lat, group = group), 
+                 fill = NA, colour = "#1a1a1a", size = 0.4) + 
+    theme_classic() +
+    theme(axis.line = element_blank(),
+          panel.background = element_rect(fill = NA, size = 0.5, colour = "black"),
+          axis.text = element_text(colour = "black", size = 8),
+          axis.title = element_blank(),
+          legend.position = "right",
+          legend.title = element_blank(),
+          strip.background = element_rect(colour = "white", size = 0.5, fill = "white"),
+          strip.text = element_blank())
+distribution
+
+#ggsave("A_aneura_distribution.png", plot = distribution, width = 2, height = 1.8)
+```
+
+
+## Poisson Regression method
+
+```{r}
+num_of_fires <- raster("processed_data/num_fires_map.tif")
+```
+
+
+Safely and quietly function combined to catch errors, warnings and messages
+
+```{r}
+safely_n_quietly <- function(.f, otherwise = NULL) {
+    retfun <- quietly(safely(.f, otherwise = otherwise, quiet = FALSE))
+    function(...) {
+        ret <- retfun(...)
+        list(result = ret$result$result,
+             output = ret$output,
+             messages = ret$messages,
+             warnings = ret$warnings,
+             error = ret$result$error)
+    }
+}
+```
+
+
+
+
+```{r}
+# Round species_subset to resolution of 0.005 decimal degrees so that any coordinates
+# that are approximately within the same MODIS pixel can be removed
+multiple <- 0.005
+species_subset <-
+    species_subset %>% 
+    mutate(decimalLongitude = multiple*round(decimalLongitude/multiple),
+           decimalLatitude = multiple*round(decimalLatitude/multiple)) %>% 
+    distinct(.keep_all = TRUE) # Remove duplicates
+
+# Convert to a SpatialPointsDataFrame
+spdf <- SpatialPointsDataFrame(coords = species_subset,
+                               data = species_subset, 
+                               proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs"))
+
+# Extract intersecting pixels
+intersecting_pixels <- 
+    num_of_fires %>% 
+    raster::extract(spdf, sp = TRUE) 
+
+# Convert to data frame
+df <-
+    intersecting_pixels %>% 
+    raster::as.data.frame() %>% 
+    rename(num_of_fires = num_fires_map) %>% 
+    dplyr::select(decimalLongitude, decimalLatitude, num_of_fires) %>% 
+    filter(!is.na(num_of_fires)) # Filter out NAs
+
+num_fires_hist <-
+    df %>% 
+    ggplot(aes(x = num_of_fires)) +
+    geom_histogram(#breaks = c(-0.5,0.5,1.5,2.5,3.5,4.5),
+                   binwidth = 0.5,
+                   fill = "#b8b8b8",
+                   col = "black",
+                   size = 0.7) +
+    scale_y_continuous(expand = c(0,0),
+                       limits = c(0,4000)) +
+    xlab("Number of Fires") +
+    ylab("Count") +
+    theme_classic() +
+    theme(axis.line = element_line(size = 0.5, colour = "black"),
+          axis.text = element_text(colour = "black", size = 9),
+          axis.title.y = element_text(size = 11, margin = margin(0,8,0,0)),
+          axis.title.x = element_text(size = 11, margin = margin(8,0,0,0)))
+
+num_fires_hist
+
+#ggsave("num_fires_hist2.png", plot = num_fires_hist, width = 2.7, height = 2.1)
+```
+
+
+```{r}
+safe_quiet_glm <- safely_n_quietly(glm)
+model <- safe_quiet_glm(num_of_fires ~ 1, data = df, family = poisson(link = "identity"))
+summary(model$result)
+```
+
+
+```{r}
+# Get summary
+summary <- summary(model$result)
+        
+# Calculate mean number of fires in 20 years
+mean_fires_in_sampling_period <- model$result$coefficients[[1]]
+median_fires_in_sampling_period <- 
+    mean_fires_in_sampling_period + 1/3 - 0.02/mean_fires_in_sampling_period
+
+sampling_period <- 20.66
+# Calculate predicted fire return interval
+predicted_fri <- sampling_period / predict(model$result, type = "link")[[1]]
+
+# Dispersion test
+check_overdispersion(model$result)
+```
+
+
+```{r}
+fires <- 0:4
+plot(fires, dpois(fires, lambda = mean_fires_in_sampling_period), type = "h")
+abline(v = mean_fires_in_sampling_period, col = "blue")
+abline(v = median_fires_in_sampling_period, col = "red")
+
+poisson_dist <- data.frame(x = seq(0,4), y = dpois(fires, lambda = mean_fires_in_sampling_period))
+poisson_dist <-
+    poisson_dist %>% 
+    mutate(trans_y = y*5201.704)
+
+poisson_dist_plot <-
+    poisson_dist %>% 
+    ggplot(aes(x = x, y = y)) +
+    geom_bar(stat = "identity",
+             width = 0.5,
+             fill = "#b8b8b8",
+             col = "black",
+             size = 0.7) +
+    scale_y_continuous(expand = c(0,0),
+                       limits = c(0,1.0)) +
+    xlab("Number of Fires") +
+    ylab("Probability") +
+    theme_classic() +
+    theme(axis.line = element_line(size = 0.5, colour = "black"),
+          axis.text = element_text(colour = "black"))
+poisson_dist_plot
+
+poisson_dist_plot <-
+    poisson_dist %>% 
+    ggplot(aes(x = x, y = y)) +
+    geom_point() +
+    geom_line() +
+    scale_y_continuous(expand = c(0,0),
+                       limits = c(0,1.0)) +
+    xlab("Number of Fires") +
+    ylab("Probability") +
+    theme_classic() +
+    theme(axis.line = element_line(size = 0.5, colour = "black"),
+          axis.text = element_text(colour = "black"))
+poisson_dist_plot
+
+combined_plot <-
+    df %>% 
+    ggplot() +
+    geom_histogram(aes(x = num_of_fires),
+                   binwidth = 0.5,
+                   fill = "#b8b8b8",
+                   col = "black",
+                   size = 0.7) +
+    geom_point(data = poisson_dist, 
+               aes(x = x, y = trans_y),
+               size = 1.5) + 
+    geom_line(data = poisson_dist, 
+              aes(x = x, y = trans_y),
+              size = 0.8) +
+    geom_vline(xintercept = mean_fires_in_sampling_period,
+               col = "red",
+               size = 1) +
+    scale_y_continuous(expand = c(0,0),
+                       limits = c(0,4000),
+                       sec.axis = sec_axis(~ ./5201.704, 
+                                           name = "Probability")) +
+    xlab("Number of Fires") +
+    ylab("Count") +
+    theme_classic() +
+    theme(axis.line = element_blank(),
+          panel.border = element_rect(colour = "black", fill = NA, size = 0.5),
+          axis.text = element_text(colour = "black", size = 9),
+          axis.title.y.left = element_text(size = 11, margin = margin(0,8,0,0)),
+          axis.title.y.right = element_text(size = 11, margin = margin(0,0,0,8)),
+          axis.title.x = element_text(size = 11, margin = margin(8,0,0,0)))
+
+combined_plot
+
+#ggsave("a_aneura_fitted_poisson_dist.png", plot = combined_plot, width = 2.7, height = 1.9)
+```
+
+
+## Survival Analysis Method
+
+
+```{r}
+# Get list of raster file names
+list_of_files <- 
+    list.files("raw_data/Win20", recursive = TRUE, full.names = TRUE) %>% 
+    str_subset("burndate") # Filter for the burndate layers not the QA layers 
+```
+
+
+```{r}
+# Function to find intersecting pixels and extract burn dates
+extract_burn_dates <- function(file_path, gbif_coordinates){
+    
+    # file_path argument must be a string
+    raster <- raster(file_path)
+    
+    # Extract year from file_path
+    year <- str_match(file_path, "(?<=.A)[0-9]{4}")
+    
+    # Extract intersecting pixels
+    intersecting_pixels <- raster %>% 
+        raster::extract(gbif_coordinates, sp = TRUE)
+    
+    # Convert to data frame
+    df <- 
+        intersecting_pixels %>% 
+        raster::as.data.frame() %>% 
+        rename(burn_date = contains("burndate")) %>% 
+        dplyr::select(decimalLongitude, decimalLatitude, burn_date) %>% 
+        # Filter out -2 and 0 values
+        filter(burn_date > 0) %>% 
+        # Convert Julian date to calendar date
+        mutate(burn_date = as.Date(burn_date - 1, origin = str_glue("{year}-01-01"))) 
+    
+    return(df)
+}
+
+
+# Function for extracting fire return intervals for each coordinate 
+calc_fri <- function(burn_dates){
+    
+    # Add the start and end of the study period as dates
+    start_data <- as.Date("2000-10-31")
+    end_data <- as.Date("2021-07-01")
+    fire_dates <- c(start_data, burn_dates, end_data)
+    
+    # Calculate fire return intervals
+    fire_intervals <- fire_dates - lag(fire_dates)
+    
+    # Convert to data frame
+    fire_intervals <- data.frame(fire_intervals) %>% drop_na()
+    
+    # Annotate first and last intervals as open with another column
+    fire_intervals <-
+        fire_intervals %>% 
+        mutate(uncensored = case_when(row_number() == 1 | row_number() == n() ~ 0,
+                                      TRUE ~ 1))
+    
+    # Calculate mean fire return interval
+    return(fire_intervals)
+    
+}
+```
+
+
+```{r}
+# Extract burn dates for each gbif coordinate
+df2 <- 
+    map_dfr(list_of_files, extract_burn_dates, spdf) %>% 
+    arrange(decimalLongitude, decimalLatitude, burn_date)
+    
+# Find fire return intervals
+fri_df <- 
+    df2 %>% 
+    group_by(decimalLongitude, decimalLatitude) %>% 
+    summarise(fri = calc_fri(burn_date), .groups = "keep") %>% 
+    unpack(cols = fri)
+
+# Join to original gbif coordinates to keep coordinates with no burns
+full_fri_df <-
+    species_subset %>% 
+    left_join(fri_df, by = c("decimalLongitude", "decimalLatitude"))
+
+# Calculate time interval of the whole MODIS period
+start_data <- as.Date("2000-11-01")
+end_data <- as.Date("2021-07-01")
+modis_period <- end_data - start_data # 7547 days
+    
+# Add open intervals for pixels that did not burn in MODIS period
+full_fri_df <-
+    full_fri_df %>% 
+    replace_na(list(fire_intervals = modis_period, uncensored = 0)) %>% 
+    mutate(fire_intervals = fire_intervals/365.2422) # Convert to units of years
+```
+
+
+```{r}
+# Run survival analysis on interval data including unburnt pixels
+survreg_with_unburnt <- 
+    survreg(Surv(fire_intervals, uncensored) ~ 1, 
+            data = full_fri_df, dist = "weibull")
+
+Surv(full_fri_df$fire_intervals, full_fri_df$uncensored) %>% plot()
+
+m1 <- survfit(Surv(fire_intervals, uncensored) ~ 1, 
+              data = full_fri_df)
+
+kaplan_meier_plot <-
+    autoplot(m1) +
+    scale_y_continuous(expand = c(0,0),
+                       limits = c(0.8,1)) +
+    xlab("Time (yrs)") +
+    ylab("Survival probability") +
+    theme_classic() +
+    theme(axis.line = element_line(size = 0.5, colour = "black"),
+          axis.text = element_text(colour = "black"),
+          axis.title.y = element_text(size = 11, margin = margin(0,8,0,0)),
+          axis.title.x = element_text(size = 11, margin = margin(8,0,0,0)))
+
+kaplan_meier_plot
+
+#ggsave("kaplan_meier_curve.png", plot = kaplan_meier_plot, width = 4, height = 3.2)
+```
+
+
+```{r}
+preds <- predict(survreg_with_unburnt, newdata = data.frame(1), type = "quantile", p = seq(.80,.99, by = 0.01))
+df3 <- data.frame(y = seq(.99,.80, by = -0.01), preds = preds)
+
+weibull_survival_curve <-
+    df3 %>% 
+    ggplot(aes(x = preds, y = y)) +
+    geom_line(size = 1.2) +
+    scale_y_continuous(expand = c(0,0),
+                       limits = c(0.5, 1)) +
+    xlab("Time (yrs)") +
+    ylab("Survival probability") +
+    theme_classic() +
+    theme(axis.line = element_line(size = 0.5, colour = "black"),
+          axis.text = element_text(colour = "black"),
+          axis.title.y = element_text(size = 11, margin = margin(0,8,0,0)),
+          axis.title.x = element_text(size = 11, margin = margin(8,0,0,0)))
+weibull_survival_curve
+#ggsave("weibull_survival_curve.png", plot = weibull_survival_curve, width = 4, height = 3.2)
+```
+
+
+
+```{r}
+# Calculate median fire return interval
+med_with_unburnt <-
+    (exp(survreg_with_unburnt$coefficients)*log(2)^(survreg_with_unburnt$scale)) %>% 
+    unname()
+
+shape = 1/(unlist(survreg_with_unburnt$scale)) 
+scale = exp(unlist(survreg_with_unburnt$coef)) 
+
+# Plot weibull distribution
+curve(dweibull(x, shape, scale), from = 0, to = 1000)
+#curve(dweibull(x, 1, scale), from = 0, to = 1500)
+# Calculate 50% quantile
+median <- qweibull(0.5, shape, scale)
+median
+abline(v = median)
+#abline(v = exp(unlist(survreg_object$coef))*log(2)^(1/unlist(survreg_object$scale)))
+#abline(v = 4.440)
+# Confidence intervals
+summary(survreg_with_unburnt)
+confint(survreg_with_unburnt)
+
+
+x_lower_wei <- 0
+x_upper_wei <- 1000
+
+ggplot(data.frame(x = c(x_lower_wei, x_upper_wei)), aes(x = x)) +
+    xlim(c(x_lower_wei, x_upper_wei)) +
+    xlab("Fire return interval (yrs)") +
+    ylab("Probability") +
+    scale_y_continuous(expand = c(0,0), limits = c(0,0.004)) +
+    scale_x_continuous(limits = c(0,1000)) +
+    stat_function(fun = dweibull, args = list(shape = shape, scale = scale), 
+                  size = 1) +
+    theme_classic() +
+    theme(axis.line = element_line(size = 0.5, colour = "black"),
+          axis.text = element_text(colour = "black"),
+          axis.title.y = element_text(size = 11, margin = margin(0,8,0,0)),
+          axis.title.x = element_text(size = 11, margin = margin(8,0,0,0)))
+
+
+library(ciTools)
+median_conf_int <- add_quantile(data, survreg_object, p = 0.5, confint = TRUE, alpha = 0.05)
+```
+
+
+```{r}
+# Simulate time interval data from weibull distribution
+random_sample <- data.frame(x = rweibull(5176, shape = shape, scale = scale)) 
+
+
+simulated_interval_data <-
+    random_sample %>% 
+    ggplot(aes(x = x)) +
+    geom_histogram(#breaks = c(-0.5,0.5,1.5,2.5,3.5,4.5),
+                   binwidth = 50,
+                   fill = "#b8b8b8",
+                   col = "black",
+                   size = 0.7) +
+    scale_y_continuous(expand = c(0,0),
+                       limits = c(0,1000)) +
+    scale_x_continuous(limits = c(-25,1025)) +
+    xlab("Fire Return Interval (Yrs)") +
+    ylab("Count") +
+    theme_classic() +
+    theme(axis.line = element_line(size = 0.5, colour = "black"),
+          axis.text = element_text(colour = "black", size = 9),
+          axis.title.y = element_text(size = 11, margin = margin(0,8,0,0)),
+          axis.title.x = element_text(size = 11, margin = margin(8,0,0,0)))
+simulated_interval_data
+#ggsave("simulated_interval_data2.png", plot = simulated_interval_data, width = 2.8, height = 2.2)
+
+
+weibull_dist <- data.frame(x = seq(0,1000, by = 50), 
+                           y = dweibull(seq(0,1000, by = 50), 
+                                        shape = shape,
+                                        scale = scale))
+weibull_dist <-
+    weibull_dist %>% 
+    mutate(trans_y = y*250000)
+
+weibull_dist_splined <-
+    as.data.frame(spline(weibull_dist$x, weibull_dist$trans_y))
+
+combined_weibull_plot <-
+    random_sample %>% 
+    ggplot() +
+    geom_histogram(aes(x = x),
+                   binwidth = 50,
+                   fill = "#b8b8b8",
+                   col = "black",
+                   size = 0.7) +
+    geom_line(data = weibull_dist_splined,
+              aes(x = x, y = y),
+              size = 0.8) +
+    geom_vline(xintercept = med_with_unburnt,
+               col = "red",
+               size = 1) +
+    scale_y_continuous(expand = c(0,0),
+                       limits = c(0,1000)) +
+    scale_x_continuous(limits = c(-25,1025)) +
+    xlab("Fire Return Interval (Yrs)") +
+    ylab("Count") +
+    theme_classic() +
+    theme(axis.line = element_blank(),
+          panel.border = element_rect(colour = "black", fill = NA, size = 0.5),
+          axis.text = element_text(colour = "black", size = 9),
+          axis.title.y = element_text(size = 11, margin = margin(0,8,0,0)),
+          axis.title.x = element_text(size = 11, margin = margin(8,0,0,0)))
+combined_weibull_plot
+#ggsave("combined_weibull_plot2.png", plot = combined_weibull_plot, width = 2.8, height = 2.2)
+```
+
+
+
+
+```{r}
+library(grid)
+
+grid.newpage()
+grid.draw(cbind(ggplotGrob(num_fires_hist), ggplotGrob(simulated_interval_data)))
+
+plot1 <- cbind(ggplotGrob(num_fires_hist), ggplotGrob(simulated_interval_data))
+ggsave("poisson_vs_weibull_hists.png", plot = plot1, width = 5.1, height = 2.15)
+
+grid.newpage()
+grid.draw(cbind(ggplotGrob(combined_plot), ggplotGrob(combined_weibull_plot)))
+
+plot2 <- cbind(ggplotGrob(combined_plot), ggplotGrob(combined_weibull_plot))
+ggsave("poisson_vs_weibull_hists_fitted.png", plot = plot2, width = 5.7, height = 2.15)
+```
+
+
+
+---
+
+
+# Second Methods Figure
+
+Compare *Eucalyptus miniata* and *Acacia aneura* and *Allocasuarina littoralis*
+
+Rerun code for making distribution, mean FRI and median FRI
+
+
+
+
+

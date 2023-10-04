@@ -1,0 +1,492 @@
+---
+title: "Phylogeny Figure"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+Load libraries
+
+```{r}
+library(tidyverse)
+library(tidytree)
+library(ggtreeExtra)
+library(ggtree)
+library(ggnewscale)
+library(taxonlookup)
+library(ape)
+library(RColorBrewer)
+library(phytools)
+```
+
+
+
+## Full tree (not pruned)
+
+```{r}
+make_phy_f <- function() {
+    tt <- read.tree("raw_data/v0.1-big-seed-plant-trees/ALLMB.tre")
+    a <- taxonlookup::lookup_table(tt$tip.label, by_species = TRUE)
+    a <- rownames_to_column(a, "species")
+    take_first <- function(x) 
+        x[1]
+    one_tip <- group_by(a, family) %>% summarise(species = take_first(species)) 
+    out <- drop.tip(tt, tt$tip.label[!tt$tip.label %in% one_tip$species])
+    out$tip.label <-
+        one_tip$family[match(out$tip.label, one_tip$species)]
+    plot(out, type = "r")
+    saveRDS(out, "processed_data/phy_plot.rds")
+}
+```
+
+
+```{r}
+ggtree(out, layout = "circular")
+ggtree(out, layout = "fan", size = 0.5)
+```
+
+
+
+## Make data frame with summarised fire response, mean FRI and leaf traits for each family
+    - Also maybe woody or herb?
+
+**Start with resprouting and seeding data and only families with > N species/taxa with data**
+
+### Resprouting data
+
+Join to lookup table
+
+```{r}
+resprouting_seeding <- readRDS("processed_data/resprouting_seeding.rds")
+
+lookup_table <- 
+  resprouting_seeding$taxon_name %>% 
+  lookup_table(by_species = TRUE,
+               missing_action = "NA") %>% 
+  rownames_to_column("taxon_name")
+
+resprouting_seeding_new <-
+  resprouting_seeding %>% 
+  left_join(lookup_table, by = "taxon_name") 
+
+#resprouting_seeding_new$family %>% unique() %>% length()
+# 206 unique families
+#resprouting_seeding_new %>% group_by(family) %>% summarise(count = n()) -> x
+#hist(x$count, breaks = 100)
+```
+
+
+Summarise resprouting by family
+
+```{r}
+resprouting_summary <-
+    resprouting_seeding_new %>% 
+    drop_na(resprouting_binomial, family) %>% 
+    group_by(family) %>% 
+    filter(n() > 72, family != "Amaranthaceae") %>% 
+    summarise(prop_resprouting = sum(resprouting_binomial) / n()) %>% 
+    ungroup()
+```
+
+
+Seeding data
+
+```{r}
+seeding_summary <-
+    resprouting_seeding_new %>% 
+    drop_na(seeding_binomial, family) %>% 
+    group_by(family) %>% 
+#    filter(n() > 50) %>% 
+    summarise(prop_seeding = sum(seeding_binomial) / n()) %>% 
+    ungroup()
+```
+
+
+Mean FRI data
+
+```{r}
+#mean_fris <- read_csv("processed_data/mean_fri_df_with_glm.csv", guess_max = 8009)
+#mean_fris_no_errors <- 
+#    mean_fris %>% 
+#    filter(is.na(warnings), is.na(error), is.na(messages), upr_confint > 0) %>%
+#    select(-warnings, -messages, -error)
+
+#write_csv(mean_fris_no_errors, "processed_data/mean_fri_df_with_glm_no_errors_clean.csv")
+
+mean_fris <- read_csv("processed_data/mean_fri_df_with_glm_no_errors_clean.csv")
+
+# Might need to filter out taxa with high dispersion ratios (with signif. disperson P-values)
+```
+
+
+```{r}
+lookup_table <- 
+  mean_fris$taxon_name %>% 
+  lookup_table(by_species = TRUE,
+               missing_action = "NA") %>% 
+  rownames_to_column("taxon_name")
+
+mean_fris_new <-
+  mean_fris %>% 
+  left_join(lookup_table, by = "taxon_name") 
+
+mean_fris_summary <-
+    mean_fris_new %>% 
+    drop_na(mean_fri, family) %>% 
+    group_by(family) %>% 
+#    filter(n() > 50) %>% 
+    summarise(mean_fri = mean(mean_fri)) %>% 
+    ungroup()
+```
+
+
+SLA data
+
+```{r}
+austraits <- read_rds("raw_data/austraits-sophie-branch.rds") # This is an updated rds file
+
+sla <- 
+  austraits$traits %>% 
+  filter(trait_name == "specific_leaf_area") %>% 
+  select(-trait_name) %>% 
+  rename(specific_leaf_area = value)
+
+sla$specific_leaf_area <- as.numeric(sla$specific_leaf_area)
+
+mean_sla <- 
+    sla %>% 
+    group_by(taxon_name) %>% 
+    summarise(mean_sla = mean(specific_leaf_area)) %>% 
+    ungroup()
+
+lookup_table <- 
+  mean_sla$taxon_name %>% 
+  lookup_table(by_species = TRUE,
+               missing_action = "NA") %>% 
+  rownames_to_column("taxon_name")
+
+mean_sla_new <-
+  mean_sla %>% 
+  left_join(lookup_table, by = "taxon_name") 
+
+mean_sla_new$family %>% unique() %>% length()
+mean_sla_new %>% group_by(family) %>% summarise(count = n()) -> x
+hist(x$count, breaks = 100)
+
+mean_sla_summary <-
+    mean_sla_new %>% 
+    drop_na(mean_sla, family) %>% 
+    group_by(family) %>% 
+#    filter(n() > 70) %>% 
+    summarise(mean_sla = mean(mean_sla)) %>% 
+    ungroup()
+```
+
+
+Leaf N per dry mass data
+
+```{r}
+leaf_n <- 
+  austraits$traits %>% 
+  filter(trait_name == "leaf_N_per_dry_mass") %>% 
+  select(-trait_name) %>% 
+  rename(leaf_N_per_dry_mass = value)
+
+leaf_n$leaf_N_per_dry_mass <- as.numeric(leaf_n$leaf_N_per_dry_mass)
+
+mean_leaf_n <- 
+    leaf_n %>% 
+    group_by(taxon_name) %>% 
+    summarise(mean_leaf_n = mean(leaf_N_per_dry_mass)) %>% 
+    ungroup()
+
+
+lookup_table <- 
+  mean_leaf_n$taxon_name %>% 
+  lookup_table(by_species = TRUE,
+               missing_action = "NA") %>% 
+  rownames_to_column("taxon_name")
+
+mean_leaf_n_new <-
+    mean_leaf_n %>% 
+    left_join(lookup_table, by = "taxon_name") 
+
+mean_leaf_n_new$family %>% unique() %>% length()
+mean_leaf_n_new %>% group_by(family) %>% summarise(count = n()) -> x
+hist(x$count, breaks = 100)
+
+mean_leaf_n_summary <-
+    mean_leaf_n_new %>% 
+    drop_na(mean_leaf_n, family) %>% 
+    group_by(family) %>% 
+#    filter(n() > 70) %>% 
+    summarise(mean_leaf_n = mean(mean_leaf_n)) %>% 
+    ungroup()
+```
+
+
+
+---
+
+## Pruned tree with only families with resprouting and/or seeding data
+
+```{r}
+tt <- read.tree("raw_data/v0.1-big-seed-plant-trees/ALLMB.tre")
+a <- taxonlookup::lookup_table(tt$tip.label, by_species = TRUE)
+a <- rownames_to_column(a, "species")
+take_tenth <- function(x) 
+    x[10] # Not [1] because the first species of some families is taxonomically ambiguous
+one_tip <- group_by(a, family) %>% summarise(species = take_tenth(species)) 
+out <- drop.tip(tt, tt$tip.label[!tt$tip.label %in% one_tip$species])
+out$tip.label <-
+    one_tip$family[match(out$tip.label, one_tip$species)]
+
+out_pruned <- drop.tip(out, out$tip.label[!out$tip.label %in% resprouting_summary$family])
+
+plot(out_pruned)
+ggtree(out_pruned, ladderize = FALSE) +
+    geom_tiplab()
+```
+
+
+Number of native Australian taxa 
+
+```{r}
+library(austraits)
+apc <- read_csv("raw_data/APC-taxon-2021-06-08-0734.csv")
+native_lookup <- read_csv("processed_data/aus_native_lookup.csv")
+
+apc_native <-
+    apc %>% 
+    left_join(native_lookup, by = c("canonicalName" = "taxon_name"))
+
+species_diversity <-
+    apc_native %>% 
+    filter(taxonRank == "Species", 
+           taxonomicStatus == "accepted",
+           aus_native == TRUE) %>% # Filter for species only
+    group_by(family) %>% 
+    summarise(nspecies = n_distinct(scientificName)) %>% 
+    ungroup()
+```
+
+
+Number of woody species
+
+```{r}
+
+```
+
+
+
+New data frame to label and colour key families
+
+```{r}
+extra_data <- tibble(label = out_pruned$tip.label)
+
+extra_data <-
+    extra_data %>% 
+    left_join(species_diversity, by = c("label" = "family"))
+
+new_tree <- full_join(out_pruned, extra_data, by = "label")
+```
+
+
+
+```{r}
+ggtree(new_tree, layout = "rectangular", size = 0.7) +
+    geom_tiplab(aes(subset = (!node %in% c(3,7,10,15,14))), 
+                offset = 3, size = 4, 
+                show.legend = FALSE) +
+    geom_tiplab(aes(subset = (node %in% c(3,7,10,15,14)), fontface = "bold"),
+                offset = 3, size = 4,
+                show.legend = FALSE) +
+    geom_text(aes(label = nspecies), hjust = 1, nudge_x = 0, nudge_y = -0.25, size = 3.5) +
+    scale_colour_manual(values = c("#ECC119", "#F767C3", "#EA3138", "#B2CE6E", "#FF932C")) +
+    theme(plot.margin = unit(c(5,5,5,5), "mm"),
+          legend.margin = margin(-0,0,0,0, unit = "cm"),
+          legend.text = element_text(size = 8.5),
+          legend.justification = c("right"),
+          legend.box.margin = margin(0,0,0,-20)) +
+    geom_fruit(data = mean_fris_summary,
+               geom = geom_tile,
+               mapping = aes(x = mean_fri, y = family, fill = mean_fri),
+               offset = 0.7,
+               pwidth = 0,
+               width = 8, 
+               height = 1) +
+    scale_fill_distiller(palette = "YlOrRd", direction = -1, trans = "log10",
+                         name = "Mean FRI",
+                         guide = guide_colourbar(ticks.colour = "black", 
+                                                 ticks.linewidth = 1,
+                                                 frame.colour = "black",
+                                                 frame.linewidth = 1,
+                                                 direction = "horizontal",
+                                                 title.position = "top",
+                                                 title.vjust = 1,
+                                                 title.theme = element_text(size = 9),
+                                                 barwidth = 5,
+                                                 barheight = 0.7,
+                                                 order = 1)) +
+    new_scale_fill() +
+    geom_fruit(data = resprouting_summary,
+               geom = geom_tile,
+               mapping = aes(x = prop_resprouting, y = family, fill = prop_resprouting),
+               offset = 0.058,
+               pwidth = 0,
+               width = 8,
+               height = 1) +
+    scale_fill_distiller(palette = "RdPu", direction = 1,
+                         guide = guide_colourbar(ticks.colour = "black", 
+                                                 ticks.linewidth = 1,
+                                                 frame.colour = "black",
+                                                 frame.linewidth = 1,
+                                                 direction = "horizontal",
+                                                 title.position = "top",
+                                                 title.vjust = 1,
+                                                 title.theme = element_text(size = 9),
+                                                 barwidth = 5,
+                                                 barheight = 0.7,
+                                                 order = 2),
+                         name = "Proportion resprouting") +
+    new_scale_fill() +
+    geom_fruit(data = seeding_summary,
+               geom = geom_tile,
+               mapping = aes(x = prop_seeding, y = family, fill = prop_seeding),
+               offset = 0.058,
+               pwidth = 0, 
+               width = 8,
+               height = 1) +
+    scale_fill_distiller(palette = "YlOrBr", direction = 1, breaks = c(0.4,0.6,0.8),
+                         guide = guide_colourbar(ticks.colour = "black", 
+                                                 ticks.linewidth = 1,
+                                                 frame.colour = "black",
+                                                 frame.linewidth = 1,
+                                                 direction = "horizontal",
+                                                 title.position = "top",
+                                                 title.vjust = 1,
+                                                 title.theme = element_text(size = 9),
+                                                 barwidth = 5,
+                                                 barheight = 0.7,
+                                                 order = 3),
+                         name = "Proportion seeding") +
+    new_scale_fill() +
+    geom_fruit(data = mean_sla_summary,
+               geom = geom_tile,
+               mapping = aes(x = mean_sla, y = family, fill = mean_sla),
+               offset = 0.058,
+               pwidth = 0,
+               width = 8,
+               height = 1) +
+    scale_fill_distiller(palette = "Greens", direction = 1,
+                         guide = guide_colourbar(ticks.colour = "black", 
+                                                 ticks.linewidth = 1,
+                                                 frame.colour = "black",
+                                                 frame.linewidth = 1,
+                                                 direction = "horizontal",
+                                                 title.position = "top",
+                                                 title.vjust = 1,
+                                                 title.theme = element_text(size = 9),
+                                                 barwidth = 5,
+                                                 barheight = 0.7,
+                                                 order = 4),
+                         name = "Mean SLA") +
+    new_scale_fill() +
+    geom_fruit(data = mean_leaf_n_summary,
+               geom = geom_tile,
+               mapping = aes(x = mean_leaf_n, y = family, fill = mean_leaf_n),
+               offset = 0.058, pwidth = 0,
+               width = 8, height = 1) +
+    scale_fill_distiller(palette = "PuBu", direction = 1,
+                         guide = guide_colourbar(ticks.colour = "black", 
+                                                 ticks.linewidth = 1,
+                                                 frame.colour = "black",
+                                                 frame.linewidth = 1,
+                                                 direction = "horizontal",
+                                                 title.position = "top",
+                                                 title.vjust = 1,
+                                                 title.theme = element_text(size = 9),
+                                                 barwidth = 5,
+                                                 barheight = 0.7,
+                                                 order = 5),
+                         name = "Mean leaf N")
+
+# Myrtaceae = 7, Fabaceae = 3, Asteraceae = 10, Poaceae = 15, Proteaceae = 14
+#ggsave("phylogeny-figure.png", width = 7.5, height = 6.75)
+```
+
+
+```{r}
+
+```
+
+
+Add leaf trait bands
+Highlight significant families and label them
+Can use scaleClade() to focus on important clades
+
+
+---
+
+# Make a figure for only significant families
+
+    - Proteaceae
+    - Myrtaceae
+    - Fabaceae
+    - Asteraceae 
+    - Poaceae
+
+Subset tree into only these families
+
+```{r}
+tt <- read.tree("raw_data/v0.1-big-seed-plant-trees/ALLMB.tre")
+a <- taxonlookup::lookup_table(tt$tip.label, by_species = TRUE)
+a <- rownames_to_column(a, "species")
+take_first <- function(x) 
+    x[1]
+one_tip <- group_by(a, family) %>% summarise(species = take_first(species)) 
+out <- drop.tip(tt, tt$tip.label[!tt$tip.label %in% one_tip$species])
+out$tip.label <-
+    one_tip$family[match(out$tip.label, one_tip$species)]
+
+key_aus_families <- c("Proteaceae", "Myrtaceae", "Fabaceae", "Asteraceae", "Poaceae")
+out_pruned <- drop.tip(out, out$tip.label[!out$tip.label %in% key_aus_families])
+```
+
+
+
+```{r}
+ggtree(out_pruned, layout = "rectangular", size = 0.6) +
+    geom_fruit(data = resprouting_summary,
+               geom = geom_tile,
+               mapping = aes(x = prop_resprouting, y = family, fill = prop_resprouting),
+               pwidth = 0,
+               offset = 0.5,
+               width = 15,
+               height = 1) +
+    scale_fill_distiller(palette = "Blues", direction = 1) +
+    new_scale_fill() +
+    geom_fruit(data = seeding_summary,
+               geom = geom_tile,
+               mapping = aes(x = prop_seeding, y = family, fill = prop_seeding),
+               pwidth = 0, 
+               offset = 0.045,
+               width = 15,
+               height = 1) +
+    scale_fill_distiller(palette = "Reds", direction = 1) +
+    new_scale_fill() +
+    geom_fruit(data = mean_fris_summary,
+               geom = geom_tile,
+               mapping = aes(x = mean_fri, y = family, fill = mean_fri),
+               pwidth = 0,
+               offset = 0.045,
+               width = 15, 
+               height = 1) +
+    scale_fill_distiller(palette = "Purples", direction = -1)
+```
+
+
+
+
