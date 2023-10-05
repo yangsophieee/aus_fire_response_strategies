@@ -21,8 +21,8 @@ library(performance)
 Read in number of fires raster and gbif data
 
 ```{r}
-num_of_fires <- terra::rast("processed_data/num_fires_map.tif")
-joined_fire_data_inner <- readRDS("processed_data/joined_fire_data_inner.rds")
+num_of_fires <- terra::rast("data/num_fires_map.tif")
+joined_fire_data_inner <- readRDS("data/joined_fire_data_inner.rds")
 ```
 
 
@@ -33,12 +33,14 @@ https://github.com/tidyverse/purrr/issues/426
 safely_n_quietly <- function(.f, otherwise = NULL) {
   retfun <- quietly(safely(.f, otherwise = otherwise, quiet = FALSE))
     function(...) {
-    ret <- retfun(...)
-    list(result = ret$result$result,
-            output = ret$output,
-            messages = ret$messages,
-            warnings = ret$warnings,
-            error = ret$result$error)
+      ret <- retfun(...)
+      list(
+        result = ret$result$result,
+        output = ret$output,
+        messages = ret$messages,
+        warnings = ret$warnings,
+        error = ret$result$error
+      )
     }
 }
 ```
@@ -51,9 +53,7 @@ calculate_mean_fri_with_glm <- function(
   taxon,
   gbif_data = joined_fire_data_inner,
   num_of_fires_raster = num_of_fires,
-  sampling_period = 20.66){
-
-  ## CHANGE SAMPLING PERIOD
+  sampling_period = 22.17) {
 
   # Subset data to taxon
   species_subset <-
@@ -64,29 +64,24 @@ calculate_mean_fri_with_glm <- function(
   # Round species_subset to resolution of 0.005 decimal degrees so that any coordinates
   # that are approximately within the same MODIS pixel can be removed
   multiple <- 0.005
-  species_subset <-
-    species_subset %>%
-    mutate(decimalLongitude = multiple*round(decimalLongitude/multiple),
-            decimalLatitude = multiple*round(decimalLatitude/multiple)) %>%
+  species_subset <- species_subset %>%
+    mutate(
+      decimalLongitude = multiple * round(decimalLongitude / multiple),
+      decimalLatitude = multiple * round(decimalLatitude / multiple)) %>%
     distinct(.keep_all = TRUE) # Remove duplicates
 
-  # Convert to a SpatialPointsDataFrame
-  spdf <- SpatialPointsDataFrame(
-    coords = species_subset,
-    data = species_subset,
-    proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs"))
+  # Convert to an sf object
+  sf <- species_subset %>% sf::st_as_sf(coords = c("decimalLongitude", "decimalLatitude"))
 
   # Extract intersecting pixels
   intersecting_pixels <-
     num_of_fires_raster %>%
-    raster::extract(spdf, sp = TRUE)
+    terra::extract(sf, bind = TRUE)
 
   # Convert to data frame
   df <-
     intersecting_pixels %>%
-    raster::as.data.frame() %>%
-    rename(num_of_fires = num_fires_map) %>%
-    select(decimalLongitude, decimalLatitude, num_of_fires) %>%
+    terra::as.data.frame() %>%
     filter(!is.na(num_of_fires)) # Filter out NAs
 
   # Run GLM model
@@ -106,36 +101,35 @@ calculate_mean_fri_with_glm <- function(
 
     # Lower confidence interval bound
     lwr <-
-        sampling_period /
-        (predict(model$result, type = "link")[[1]] + summary$coefficients[[2]]*1.96)
+      sampling_period / (predict(model$result, type = "link")[[1]] + summary$coefficients[[2]] * 1.96)
 
     # Upper confidence interval bound
     upr <-
-        sampling_period /
-        (predict(model$result, type = "link")[[1]] - summary$coefficients[[2]]*1.96)
+      sampling_period / (predict(model$result, type = "link")[[1]] - summary$coefficients[[2]] * 1.96)
 
     # Dispersion test
-        dispersion_test <- check_overdispersion(model$result)
+    dispersion_test <- check_overdispersion(model$result)
 
     # Return outputs
-    output_df <- data.frame(taxon_name = taxon,
-                            mean_fires = mean_fires_in_sampling_period,
-                            mean_fri = predicted_fri,
-                            lwr_confint = lwr,
-                            upr_confint = upr,
-                            dispersion_ratio = dispersion_test$dispersion_ratio,
-                            dispersion_p_value = dispersion_test$p_value,
-                            num_unburnt_pixels = df %>%
-                                filter(num_of_fires == 0) %>%
-                                nrow(),
-                            num_pixels = nrow(df),
-                            warnings = ifelse(length(model$warnings) >= 1,
-                                              paste(model$warnings,
-                                                    collapse = ", "), NA),
-                            messages = ifelse(length(model$messages) >= 1,
-                                              paste(model$messages,
-                                                    collapse = ", "), NA),
-                            error = NA)
+    output_df <- data.frame(
+      taxon_name = taxon,
+      mean_fires = mean_fires_in_sampling_period,
+      mean_fri = predicted_fri,
+      lwr_confint = lwr,
+      upr_confint = upr,
+      dispersion_ratio = dispersion_test$dispersion_ratio,
+      dispersion_p_value = dispersion_test$p_value,
+      num_unburnt_pixels = df %>% filter(num_of_fires == 0) %>% nrow(),
+      num_pixels = nrow(df),
+      warnings = ifelse(
+        length(model$warnings) >= 1,
+        paste(model$warnings, collapse = ", "), NA
+      ),
+      messages = ifelse(
+        length(model$messages) >= 1,
+        paste(model$messages, collapse = ", "), NA),
+      error = NA
+    )
 
   } else {
 
@@ -195,6 +189,13 @@ mean_fri_list <- mclapply(list_of_taxa, calculate_mean_fri_with_glm, mc.cores = 
 ```
 
 
+Another method with furrr
+```{r}
+library(furrr)
+num_cores <- detectCores()
+plan(multisession, workers = num_cores)
+mean_fri_list <- future_map(list_of_taxa, calculate_mean_fri_with_glm, .progress = TRUE)
+```
 
 Bind into data frame
 

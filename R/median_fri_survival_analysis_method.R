@@ -36,12 +36,12 @@ extract_burn_dates <- function(file_path, gbif_coordinates) {
 
   # Extract intersecting pixels
   intersecting_pixels <- raster %>%
-    raster::extract(gbif_coordinates, sp = TRUE)
+    terra::extract(gbif_coordinates, bind = TRUE)
 
   # Convert to data frame
   df <-
     intersecting_pixels %>%
-    raster::as.data.frame() %>%
+    terra::as.data.frame() %>%
     rename(burn_date = contains("burndate")) %>%
     select(decimalLongitude, decimalLatitude, burn_date) %>%
     # Filter out -2 and 0 values
@@ -55,11 +55,11 @@ extract_burn_dates <- function(file_path, gbif_coordinates) {
 
 
 # Function for extracting fire return intervals for each coordinate
-calc_fri <- function(burn_dates) {
+calc_fri <- function(burn_dates, start_date = "2000-10-31", end_date = "2022-10-01") {
 
   # Add the start and end of the study period as dates
-  start_data <- as.Date("2000-10-31")
-  end_data <- as.Date("2021-07-01")
+  start_data <- as.Date(start_date)
+  end_data <- as.Date(end_date)
   fire_dates <- c(start_data, burn_dates, end_data)
 
   # Calculate fire return intervals
@@ -74,7 +74,8 @@ calc_fri <- function(burn_dates) {
     mutate(
       uncensored = case_when(
         row_number() == 1 | row_number() == n() ~ 0,
-        TRUE ~ 1)
+        TRUE ~ 1
+      )
     )
 
   # Calculate mean fire return interval
@@ -84,7 +85,13 @@ calc_fri <- function(burn_dates) {
 
 
 # Function for calculating median FRI for a taxon
-calculate_median_fri <- function(taxon, data = joined_fire_data_inner, list_of_rasters = list_of_files) {
+calculate_median_fri <- function(
+  taxon,
+  data = joined_fire_data_inner,
+  list_of_rasters = list_of_files,
+  start_date = "2000-10-31",
+  end_date = "2022-10-01"
+) {
 
   # Subset data to taxon
   species_subset <-
@@ -97,8 +104,10 @@ calculate_median_fri <- function(taxon, data = joined_fire_data_inner, list_of_r
   multiple <- 0.005
   species_subset <-
     species_subset %>%
-    mutate(decimalLongitude = multiple * round(decimalLongitude / multiple),
-           decimalLatitude = multiple * round(decimalLatitude / multiple)) %>%
+    mutate(
+      decimalLongitude = multiple * round(decimalLongitude / multiple),
+      decimalLatitude = multiple * round(decimalLatitude / multiple)
+    ) %>%
     distinct(.keep_all = TRUE) # Remove duplicates
 
   # Convert to a SpatialPointsDataFrame
@@ -125,10 +134,10 @@ calculate_median_fri <- function(taxon, data = joined_fire_data_inner, list_of_r
     species_subset %>%
     left_join(fri_df, by = c("decimalLongitude", "decimalLatitude"))
 
-  # Calculate time interval of the whole MODIS period ## CHANGE
-  start_data <- as.Date("2000-11-01")
-  end_data <- as.Date("2021-07-01")
-  modis_period <- end_data - start_data # 7547 days
+  # Calculate time interval of the whole MODIS period
+  start_data <- as.Date(start_date)
+  end_data <- as.Date(end_date)
+  modis_period <- end_data - start_data # 8005 days
 
   # Add open intervals for pixels that did not burn in MODIS period
   full_fri_df <-
@@ -202,12 +211,11 @@ list_of_taxa <- joined_fire_data_inner$taxon_name %>% unique()
 list_of_taxa_1600 <- list_of_taxa[1:1600]
 
 
-# Find number of cores
+# Run in parallel
+library(furrr)
 num_cores <- detectCores()
-
-
-# Calculate median FRI for each
-median_fri_list <- mclapply(list_of_taxa_1600, calculate_median_fri, mc.cores = num_cores)
+plan(multisession, workers = num_cores)
+median_fri_list <- future_map(list_of_taxa_1600, calculate_median_fri, .progress = TRUE)
 
 
 # Bind into data frame

@@ -358,7 +358,7 @@ resprouting_seeding <-
       (post_fire_seeding == "some post-fire seeding" | post_fire_seeding == "robust post-fire seeding") & resprouting == "does not resprout" ~ "seeder",
       (resprouting == "mostly resprouts" | resprouting == "sometimes resprouts") & (post_fire_seeding == "some post-fire seeding" | post_fire_seeding == "robust post-fire seeding") ~ "facultative",
       (resprouting == "does not resprout" | is.na(resprouting)) & post_fire_seeding == "no post-fire seeding" ~ "neither")
-    )
+  )
 ```
 
 
@@ -529,6 +529,7 @@ library(APCalign)
 
 ```{r}
 gbif_taxa <- gbif$verbatimscientificname %>% unique()
+gbif_taxa <- gbif_taxa[gbif_taxa != "Microcarpaea  R.Br."]
 
 resources <- load_taxonomic_resources()
 
@@ -1063,16 +1064,19 @@ terra::writeRaster(num_fires_raster, "data/num_fires_map.tif", overwrite = TRUE)
 
 
 ```{r}
-num_fires <- raster("data/num_fires_map.tif")
-num_fires <-
-  num_fires %>%
-  as.data.frame(xy = TRUE)
+num_fires <- terra::rast("data/num_fires_map.tif")
+num_fires <- num_fires %>% as.data.frame(xy = TRUE)
+
+map_australia <-
+  map_data("world") %>%
+  filter(region == "Australia") %>%
+  filter(lat > -45 | long < 155)
 
 num_fires_plot <-
   num_fires %>%
-  filter(!is.na(num_fires_map)) %>%
+  filter(!is.na(num_of_fires)) %>%
   ggplot(aes(x = x, y = y)) +
-  geom_raster(aes(fill = num_fires_map), interpolate = FALSE) +
+  geom_raster(aes(fill = num_of_fires), interpolate = FALSE) +
   geom_polygon(data = map_australia,
                mapping = aes(x = long, y = lat, group = group),
                fill = NA,
