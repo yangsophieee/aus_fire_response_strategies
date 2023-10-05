@@ -11,10 +11,7 @@ editor_options:
 Load libraries
 
 ```{r}
-library(parallel)
-library(raster)
 library(tidyverse)
-library(performance)
 ```
 
 
@@ -22,7 +19,7 @@ Read in number of fires raster and gbif data
 
 ```{r}
 num_of_fires <- terra::rast("data/num_fires_map.tif")
-joined_fire_data_inner <- readRDS("data/joined_fire_data_inner.rds")
+joined_fire_data <- readRDS("data/joined_fire_data.rds")
 ```
 
 
@@ -51,7 +48,7 @@ Function that returns a data frame with predicted FRI and other metrics
 ```{r}
 calculate_mean_fri_with_glm <- function(
   taxon,
-  gbif_data = joined_fire_data_inner,
+  gbif_data = joined_fire_data,
   num_of_fires_raster = num_of_fires,
   sampling_period = 22.17) {
 
@@ -70,6 +67,8 @@ calculate_mean_fri_with_glm <- function(
       decimalLatitude = multiple * round(decimalLatitude / multiple)) %>%
     distinct(.keep_all = TRUE) # Remove duplicates
 
+  num_of_fires_raster <- terra::unwrap(num_of_fires_raster)
+
   # Convert to an sf object
   sf <- species_subset %>% sf::st_as_sf(coords = c("decimalLongitude", "decimalLatitude"))
 
@@ -82,7 +81,7 @@ calculate_mean_fri_with_glm <- function(
   df <-
     intersecting_pixels %>%
     terra::as.data.frame() %>%
-    filter(!is.na(num_of_fires)) # Filter out NAs
+    filter(!is.na(.data$num_of_fires)) # Filter out NAs
 
   # Run GLM model
   safe_quiet_glm <- safely_n_quietly(glm)
@@ -106,7 +105,7 @@ calculate_mean_fri_with_glm <- function(
     upr <- predict(model$result, type = "link")[[1]] - summary$coefficients[[2]] * 1.96
 
     # Dispersion test
-    dispersion_test <- check_overdispersion(model$result)
+    dispersion_test <- performance::check_overdispersion(model$result)
 
     # Return outputs
     output_df <- data.frame(
@@ -117,7 +116,7 @@ calculate_mean_fri_with_glm <- function(
       upr_confint = upr,
       dispersion_ratio = dispersion_test$dispersion_ratio,
       dispersion_p_value = dispersion_test$p_value,
-      num_unburnt_pixels = df %>% filter(num_of_fires == 0) %>% nrow(),
+      num_unburnt_pixels = df %>% filter(.data$num_of_fires == 0) %>% nrow(),
       num_pixels = nrow(df),
       warnings = ifelse(
         length(model$warnings) >= 1,
@@ -140,7 +139,7 @@ calculate_mean_fri_with_glm <- function(
       upr_confint = NA,
       dispersion_ratio = NA,
       dispersion_p_value = NA,
-      num_unburnt_pixels = df %>% filter(num_of_fires == 0) %>% nrow(),
+      num_unburnt_pixels = df %>% filter(.data$num_of_fires == 0) %>% nrow(),
       num_pixels = nrow(df),
       warnings = ifelse(
         length(model$warnings) >= 1,
@@ -162,7 +161,7 @@ calculate_mean_fri_with_glm <- function(
 Extract list of unique taxa
 
 ```{r}
-list_of_taxa <- joined_fire_data_inner$taxon_name %>% unique()
+list_of_taxa <- joined_fire_data$taxon_name %>% unique()
 ```
 
 
@@ -170,20 +169,7 @@ Run for test species
 
 ```{r}
 test_df <- calculate_mean_fri_with_glm(list_of_taxa[1])
-```
-
-
-Find number of cores
-
-```{r}
-num_cores <- detectCores()
-```
-
-
-Calculate mean FRI in parallel
-
-```{r}
-mean_fri_list <- mclapply(list_of_taxa, calculate_mean_fri_with_glm, mc.cores = num_cores)
+test_df %>% View()
 ```
 
 
@@ -191,10 +177,18 @@ Calculate mean FRI with furrr
 
 ```{r}
 library(furrr)
-num_cores <- detectCores()
-plan(multisession, workers = num_cores)
-mean_fri_list <- future_map(list_of_taxa, calculate_mean_fri_with_glm, .progress = TRUE)
+num_cores <- parallel::detectCores()
+plan(multisession, workers = 10)
+options(future.globals.maxSize = 3000 * 1024^2)
 ```
+
+```{r}
+num_of_fires <- terra::wrap(num_of_fires)
+
+mean_fri_list <- future_map(list_of_taxa, calculate_mean_fri_with_glm, .progress = TRUE)
+mean_fri_list1 <- future_map(list_of_taxa[1:2], calculate_mean_fri_with_glm, .progress = TRUE, seed = NULL)
+```
+
 
 Bind into data frame
 

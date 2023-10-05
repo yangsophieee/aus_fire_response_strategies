@@ -560,7 +560,7 @@ joined_fire_data <- read_rds("data/joined_fire_data.rds")
 
 resprouting_seeding_taxa <- resprouting_seeding$taxon_name %>% unique()
 joined_fire_data_taxa <- joined_fire_data$taxon_name %>% unique()
-# Lost 294 taxa
+# Lost 262 taxa
 ```
 
 
@@ -570,8 +570,7 @@ joined_fire_data_taxa <- joined_fire_data$taxon_name %>% unique()
 Try new method like with Australian annuals project
 
 ```{r}
-joined_fire_data_vect <- joined_fire_data %>%
-  terra::vect(geom = c("decimalLongitude", "decimalLatitude"))
+joined_fire_data_vect <- joined_fire_data %>% terra::vect(geom = c("decimalLongitude", "decimalLatitude"))
 base_raster <- joined_fire_data_vect %>% terra::ext() %>% terra::rast()
 terra::res(base_raster) <- 1.5
 
