@@ -93,19 +93,17 @@ calculate_mean_fri_with_glm <- function(
     # Get summary
     summary <- summary(model$result)
 
-    # Calculate mean number of fires in 20 years
-    mean_fires_in_sampling_period <- model$result$coefficients[[1]]
-
     # Calculate predicted fire return interval
     predicted_fri <- sampling_period / predict(model$result, type = "link")[[1]]
 
+    # Calculate mean number of fires in 20 years
+    mean_fires_in_sampling_period <- model$result$coefficients[[1]]
+
     # Lower confidence interval bound
-    lwr <-
-      sampling_period / (predict(model$result, type = "link")[[1]] + summary$coefficients[[2]] * 1.96)
+    lwr <- predict(model$result, type = "link")[[1]] + summary$coefficients[[2]] * 1.96
 
     # Upper confidence interval bound
-    upr <-
-      sampling_period / (predict(model$result, type = "link")[[1]] - summary$coefficients[[2]] * 1.96)
+    upr <- predict(model$result, type = "link")[[1]] - summary$coefficients[[2]] * 1.96
 
     # Dispersion test
     dispersion_test <- check_overdispersion(model$result)
@@ -113,8 +111,8 @@ calculate_mean_fri_with_glm <- function(
     # Return outputs
     output_df <- data.frame(
       taxon_name = taxon,
-      mean_fires = mean_fires_in_sampling_period,
       mean_fri = predicted_fri,
+      mean_fires = mean_fires_in_sampling_period,
       lwr_confint = lwr,
       upr_confint = upr,
       dispersion_ratio = dispersion_test$dispersion_ratio,
@@ -136,8 +134,8 @@ calculate_mean_fri_with_glm <- function(
     # Return outputs
     output_df <- data.frame(
       taxon_name = taxon,
-      mean_fires = NA,
       mean_fri = NA,
+      mean_fires = NA,
       lwr_confint = NA,
       upr_confint = NA,
       dispersion_ratio = NA,
@@ -189,7 +187,8 @@ mean_fri_list <- mclapply(list_of_taxa, calculate_mean_fri_with_glm, mc.cores = 
 ```
 
 
-Another method with furrr
+Calculate mean FRI with furrr
+
 ```{r}
 library(furrr)
 num_cores <- detectCores()
@@ -207,7 +206,7 @@ mean_fri_df <- mean_fri_list %>% bind_rows()
 Write to a csv file
 
 ```{r}
-write_csv(mean_fri_df, "processed_data/mean_fri_df_with_glm.csv")
+write_csv(mean_fri_df, "data/mean_fri_df_with_glm.csv")
 ```
 
 ---

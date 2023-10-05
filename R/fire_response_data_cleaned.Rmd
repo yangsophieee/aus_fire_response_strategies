@@ -553,7 +553,7 @@ gbif <-
 # Does not include austraits taxa that cannot be matched to gbif records
 joined_fire_data <-
   resprouting_seeding %>%
-  inner_join(gbif, by = c("taxon_name" = "canonicalName"))
+  inner_join(gbif, by = c("taxon_name" = "accepted_name"))
 
 joined_fire_data %>% write_rds("data/joined_fire_data.rds")
 joined_fire_data <- read_rds("data/joined_fire_data.rds")
