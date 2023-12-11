@@ -9,7 +9,7 @@ editor_options:
 ```{r}
 library(tidyverse)
 
-austraits <- read_rds("data/austraits-4.2.0.rds")
+austraits <- read_rds("data/austraits-5.0.0.rds")
 ```
 
 
@@ -27,13 +27,14 @@ Filter out non-native taxa
 
 ```{r}
 aus_native_lookup <- read_csv("data/aus_native_lookup.csv")
+# Only includes accepted species and species or below taxon ranks
 
 resprouting_capacity <-
   resprouting_capacity %>%
   left_join(aus_native_lookup,
-            by = "taxon_name") %>%
+            by = c("taxon_name" = "canonical_name")) %>%
   filter(aus_native == TRUE) %>%
-  select(-aus_native)
+  select(-aus_native) # Lost 1757 taxa
 ```
 
 
@@ -193,9 +194,9 @@ Filter out non-native species
 post_fire_recruitment <-
   post_fire_recruitment %>%
   left_join(aus_native_lookup,
-            by = "taxon_name") %>%
+            by = c("taxon_name" = "canonical_name")) %>%
   filter(aus_native == TRUE) %>%
-  select(-aus_native)
+  select(-aus_native) # Lost 336
 ```
 
 
@@ -328,11 +329,11 @@ post_fire_seeding <- post_fire_recruitment_summary %>% select(taxon_name, taxon_
 # Join resprouting_capacity and post_fire_recruitment
 
 ```{r}
-resprouting_taxa <- resprouting$taxon_name %>% unique() # 10991 taxa
-seeding_taxa <- post_fire_seeding$taxon_name %>% unique() # 3593 taxa
+resprouting_taxa <- resprouting$taxon_name %>% unique() # 11060 taxa
+seeding_taxa <- post_fire_seeding$taxon_name %>% unique() # 3615 taxa
 
 intersecting_taxa <- intersect(resprouting_taxa, seeding_taxa)
-# 3450 taxa intersect between resprouting_capacity and post_fire_recruitment
+# 3474 taxa intersect between resprouting_capacity and post_fire_recruitment
 ```
 
 
@@ -370,19 +371,6 @@ resprouting_seeding <-
   resprouting_seeding %>%
   filter(!str_detect(taxon_name, pattern = " x "))
 
-# Align taxon_rank values with gbif taxon_rank values
-resprouting_seeding$taxon_rank <-
-  resprouting_seeding$taxon_rank %>%
-  str_replace("Forma", "Form")
-
-resprouting_seeding$taxon_rank <-
-  resprouting_seeding$taxon_rank %>%
-  str_replace("Varietas", "Variety")
-
-resprouting_seeding$taxon_rank <-
-  resprouting_seeding$taxon_rank %>%
-  toupper()
-
 # Make variables ordered factors
 resprouting_seeding$resprouting <-
   factor(
@@ -410,11 +398,6 @@ resprouting_seeding$resprouter_or_seeder <-
 Summarise values
 
 ```{r}
-resprouting_seeding %>%
-  group_by(resprouter_or_seeder) %>%
-  summarise(count = n()) %>%
-  ungroup()
-
 # Filter for taxa with data on both variables
 resprouting_seeding %>%
   filter(data_on_both == TRUE) %>%
@@ -463,7 +446,7 @@ resprouting_seeding_woodiness %>%
   summarise(count = n()) %>%
   ungroup()
 
-# 4611 herbs, 6366 woody, 67 semi-woody, 47 unclear, 11 NA
+# 4641 herbs, 6390 woody, 67 semi-woody, 47 unclear, 16 NA
 ```
 
 
@@ -491,7 +474,8 @@ resprouting_seeding <-
       resprouter_or_seeder == "seeder" ~ "seeder",
       resprouter_or_seeder == "resprouter" ~ "resprouter"
       ), NA_character_)
-    )
+  ) |>
+  distinct()
 ```
 
 
@@ -537,6 +521,9 @@ lookup_table <- create_taxonomic_update_lookup(
   taxa = gbif_taxa,
   resources = resources
 )
+
+lookup_table %>% saveRDS("data/lookup_table.rds")
+lookup_table <- readRDS("data/lookup_table.rds")
 ```
 
 
@@ -555,12 +542,12 @@ joined_fire_data <-
   resprouting_seeding %>%
   inner_join(gbif, by = c("taxon_name" = "accepted_name"))
 
-joined_fire_data %>% write_rds("data/joined_fire_data.rds")
-joined_fire_data <- read_rds("data/joined_fire_data.rds")
+joined_fire_data %>% saveRDS("data/joined_fire_data.rds")
+joined_fire_data <- readRDS("data/joined_fire_data.rds")
 
 resprouting_seeding_taxa <- resprouting_seeding$taxon_name %>% unique()
 joined_fire_data_taxa <- joined_fire_data$taxon_name %>% unique()
-# Lost 262 taxa
+# Lost 280 taxa
 ```
 
 
@@ -584,9 +571,8 @@ joined_fire_data$cell <-
 data_grid <-
   joined_fire_data %>%
   group_by(cell, taxon_name) %>%
-  mutate(n_obs = n()) %>%
-  slice(1) %>%
-  ungroup
+  summarise(n_obs = n()) %>%
+  ungroup()
 
 # Replace "x", which is the location of the obs, with grid-based x which is better just for plotting
 xy_from_grid <- as_tibble(terra::xyFromCell(base_raster, data_grid$cell))
@@ -620,7 +606,7 @@ output_grid <-
     frac_resprouters = n_resprouters / n_species,
     frac_seeders = n_seeders / n_species
   ) %>%
-  ungroup
+  ungroup()
 ```
 
 ```{r}
@@ -761,7 +747,8 @@ make_taxa_proportion_plot <- function(df, variable, pixel_size = 1) {
   base_raster <- fire_data %>% terra::ext() %>% terra::rast()
   terra::res(base_raster) <- pixel_size
 
-# terra::rasterize doesn't work the same way as raster::rasterize, it only summarises the geometries in the cell, not the data values associated with the geometries
+# terra::rasterize doesn't work the same way as raster::rasterize, it only summarises the geometries in the cell,
+# not the data values associated with the geometries
 
   # Calculate RasterLayer for each value in variable
   for (i in 1:length(values_in_var)) {
@@ -885,12 +872,12 @@ p1 <-
         axis.text = element_text(colour = "black", size = 9),
         axis.title = element_blank(),
         strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
-        strip.text = element_text(size = 11, face = "bold", margin = margin(3,0,4,0)),
+        strip.text = element_text(size = 11, face = "bold", margin = margin(3, 0, 4, 0)),
         panel.spacing = unit(0.2, "cm"),
         legend.position = "none",
         legend.title = element_blank(),
         plot.title.position = "plot",
-        plot.title = element_text(size = 14, margin = margin(0,0,10,0)))
+        plot.title = element_text(size = 14, margin = margin(0, 0, 10, 0)))
 
 p1
 ```
@@ -950,7 +937,7 @@ p2 <-
         axis.text = element_text(colour = "black", size = 9),
         axis.title = element_blank(),
         strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
-        strip.text = element_text(size = 11, face = "bold", margin = margin(3,0,4,0)),
+        strip.text = element_text(size = 11, face = "bold", margin = margin(3, 0, 4, 0)),
         legend.position = "right",
         legend.title = element_blank(),
         panel.spacing = unit(0.2, "cm"),
@@ -1098,7 +1085,7 @@ num_fires_plot <-
         axis.text = element_text(colour = "black", size = 9),
         axis.title = element_blank(),
         strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
-        strip.text = element_text(size = 11, face = "bold", margin = margin(3,0,4,0)),
+        strip.text = element_text(size = 11, face = "bold", margin = margin(3, 0, 4, 0)),
         legend.position = "right",
         legend.title = element_blank(),
         panel.spacing = unit(0.2, "cm"),
@@ -1120,15 +1107,21 @@ plot <- cbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(num_fires_plot))
 ggsave("maps.png", plot = plot, width = 8, height = 2.4)
 
 p3 <- cbind(ggplotGrob(p1), ggplotGrob(p2))
-ggarrange(p3, num_fires_plot, ncol = 2, nrow = 1, heights = c(2,1)) # Fiddle with heights argument or align argument
+ggarrange(p3, num_fires_plot, ncol = 2, nrow = 1, heights = c(2, 1)) # Fiddle with heights argument or align argument
 # common.legend = TRUE
 # legend = "bottom"
 # labels = c("a)", "b)")
 # It's because you are plotting p3 as one plot and the other as another so they try make them the same size
 plot <- ggarrange(p1, p2, num_fires_plot, ncol = 3, nrow = 1)
 ggsave("maps.png", plot = plot, width = 10, height = 3)
-ggarrange(p1, p2, num_fires_plot, ncol = 3, nrow = 1, labels = c("a) Proportion of Resprouting Taxa", "", "b) Number of Fires"))
-ggarrange(ggarrange(p1, p2, ncol = 2, nrow = 1, common.legend = TRUE, legend = "right"), num_fires_plot,
-          ncol = 2, nrow = 1, labels = c("a) Proportion of Resprouting Taxa", "b) Number of Fires"))
+ggarrange(
+  p1, p2, num_fires_plot,
+  ncol = 3, nrow = 1,
+  labels = c("a) Proportion of Resprouting Taxa", "", "b) Number of Fires")
+)
+ggarrange(
+  ggarrange(p1, p2, ncol = 2, nrow = 1, common.legend = TRUE, legend = "right"), num_fires_plot,
+  ncol = 2, nrow = 1, labels = c("a) Proportion of Resprouting Taxa", "b) Number of Fires")
+)
 ```
 
