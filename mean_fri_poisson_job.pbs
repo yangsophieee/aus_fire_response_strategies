@@ -9,7 +9,7 @@
 #PBS -o /home/z5208613/honours/output_report_mean_fri_poisson_method
 
 module purge
-module add R/4.3.1
+module add r/4.3.1
 module add geos/3.9.1
 module add perl/5.36.0
 module add gdal/3.5.3
