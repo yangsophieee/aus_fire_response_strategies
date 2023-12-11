@@ -1,7 +1,6 @@
 
 # Load libraries
 library(parallel)
-library(raster)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
@@ -16,12 +15,11 @@ library(ciTools)
 
 
 # Read in fire response and gbif data
-joined_fire_data_inner <- readRDS(file = "processed_data/joined_fire_data_inner.rds")
-
+joined_fire_data <- readRDS(file = "data/joined_fire_data.rds")
 
 # Get list of raster file names
 list_of_files <-
-  list.files("raw_data/Win20", recursive = TRUE, full.names = TRUE) %>%
+  list.files("data/Win20", recursive = TRUE, full.names = TRUE) %>%
   str_subset("burndate") # Filter for the burndate layers not the QA layers
 
 
@@ -43,7 +41,7 @@ extract_burn_dates <- function(file_path, gbif_coordinates) {
     intersecting_pixels %>%
     terra::as.data.frame() %>%
     rename(burn_date = contains("burndate")) %>%
-    select(decimalLongitude, decimalLatitude, burn_date) %>%
+    dplyr::select(decimalLongitude, decimalLatitude, burn_date) %>%
     # Filter out -2 and 0 values
     filter(burn_date > 0) %>%
     # Convert Julian date to calendar date
@@ -87,7 +85,7 @@ calc_fri <- function(burn_dates, start_date = "2000-10-31", end_date = "2022-10-
 # Function for calculating median FRI for a taxon
 calculate_median_fri <- function(
   taxon,
-  data = joined_fire_data_inner,
+  data = joined_fire_data,
   list_of_rasters = list_of_files,
   start_date = "2000-10-31",
   end_date = "2022-10-01"
@@ -96,8 +94,8 @@ calculate_median_fri <- function(
   # Subset data to taxon
   species_subset <-
     data %>%
-    filter(taxon_name == taxon) %>%
-    select(decimalLongitude, decimalLatitude)
+    dplyr::filter(taxon_name == taxon) %>%
+    dplyr::select(decimalLongitude, decimalLatitude)
 
   # Round species_subset to resolution of 0.005 decimal degrees so that any coordinates
   # that are approximately within the same MODIS pixel can be removed
@@ -110,18 +108,14 @@ calculate_median_fri <- function(
     ) %>%
     distinct(.keep_all = TRUE) # Remove duplicates
 
-  # Convert to a SpatialPointsDataFrame
-  spdf <- SpatialPointsDataFrame(
-    coords = species_subset,
-    data = species_subset,
-    proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs")
-  )
+  # Convert to a vector object
+  coords <- species_subset %>% terra::vect(geom = c("decimalLongitude", "decimalLatitude"), keepgeom = TRUE)
 
   # Extract burn dates for each gbif coordinate
   df <-
-    map_dfr(list_of_rasters, extract_burn_dates, spdf) %>%
+    map_dfr(list_of_rasters, extract_burn_dates, coords) %>%
     arrange(decimalLongitude, decimalLatitude, burn_date)
-
+  browser()
   # Find fire return intervals
   fri_df <-
     df %>%
@@ -204,23 +198,12 @@ calculate_median_fri <- function(
 
 
 # Extract list of unique taxa
-list_of_taxa <- joined_fire_data_inner$taxon_name %>% unique()
-
-
-# Subset to portion of taxa
-list_of_taxa_1600 <- list_of_taxa[1:1600]
-
+list_of_taxa <- joined_fire_data$taxon_name %>% unique()
 
 # Run in parallel
-library(furrr)
-num_cores <- detectCores()
-plan(multisession, workers = num_cores)
-median_fri_list <- future_map(list_of_taxa_1600, calculate_median_fri, .progress = TRUE)
-
-
-# Bind into data frame
+num_cores <- parallel::detectCores()
+median_fri_list <- parallel::mclapply(list_of_taxa, calculate_median_fri, mc.cores = num_cores)
 median_fri_df <- median_fri_list %>% bind_rows()
 
-
 # Write to a csv file
-write_csv(median_fri_df, "processed_data/median_fris_1600.csv")
+write_csv(median_fri_df, "median_fris.csv")
