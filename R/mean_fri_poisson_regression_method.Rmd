@@ -185,7 +185,7 @@ options(future.globals.maxSize = 3000 * 1024^2)
 ```{r}
 num_of_fires <- terra::wrap(num_of_fires)
 
-#mean_fri_list <- future_map(list_of_taxa, calculate_mean_fri_with_glm, .progress = TRUE)
+mean_fri_list <- future_map(list_of_taxa[1:3], calculate_mean_fri_with_glm, .progress = TRUE)
 mean_fri_list1 <- future_map(list_of_taxa[1:2000], calculate_mean_fri_with_glm, .progress = TRUE)
 mean_fri_list2 <- future_map(list_of_taxa[2001:4000], calculate_mean_fri_with_glm, .progress = TRUE)
 mean_fri_list3 <- future_map(list_of_taxa[4001:6000], calculate_mean_fri_with_glm, .progress = TRUE)

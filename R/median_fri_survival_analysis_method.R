@@ -53,7 +53,7 @@ extract_burn_dates <- function(file_path, gbif_coordinates) {
 
 
 # Function for extracting fire return intervals for each coordinate
-calc_fri <- function(burn_dates, start_date = "2000-10-31", end_date = "2022-10-01") {
+calc_fri <- function(burn_dates, start_date = "2000-10-31", end_date = "2022-11-01") {
 
   # Add the start and end of the study period as dates
   start_data <- as.Date(start_date)
@@ -88,7 +88,7 @@ calculate_median_fri <- function(
   data = joined_fire_data,
   list_of_rasters = list_of_files,
   start_date = "2000-10-31",
-  end_date = "2022-10-01"
+  end_date = "2022-11-01"
 ) {
 
   # Subset data to taxon
@@ -115,12 +115,12 @@ calculate_median_fri <- function(
   df <-
     map_dfr(list_of_rasters, extract_burn_dates, coords) %>%
     arrange(decimalLongitude, decimalLatitude, burn_date)
-  browser()
+
   # Find fire return intervals
   fri_df <-
     df %>%
     group_by(decimalLongitude, decimalLatitude) %>%
-    summarise(fri = calc_fri(burn_date), .groups = "keep") %>%
+    reframe(fri = calc_fri(burn_date)) %>%
     unpack(cols = fri)
 
   # Join to original gbif coordinates to keep coordinates with no burns
@@ -131,7 +131,7 @@ calculate_median_fri <- function(
   # Calculate time interval of the whole MODIS period
   start_data <- as.Date(start_date)
   end_data <- as.Date(end_date)
-  modis_period <- end_data - start_data # 8005 days
+  modis_period <- end_data - start_data # 8036 days
 
   # Add open intervals for pixels that did not burn in MODIS period
   full_fri_df <-
@@ -139,7 +139,7 @@ calculate_median_fri <- function(
     replace_na(list(fire_intervals = modis_period, uncensored = 0))
 
   # Make function to capture warning messages
-  quiet_survreg <- quietly(survreg)
+  quiet_survreg <- quietly(survival::survreg)
 
   # Run survival analysis on interval data including unburnt pixels
   survreg_with_unburnt <-
@@ -206,4 +206,4 @@ median_fri_list <- parallel::mclapply(list_of_taxa, calculate_median_fri, mc.cor
 median_fri_df <- median_fri_list %>% bind_rows()
 
 # Write to a csv file
-write_csv(median_fri_df, "median_fris.csv")
+write_csv(median_fri_df, "outputs/median_fris.csv")

@@ -141,4 +141,4 @@ mean_fri_list <- parallel::mclapply(list_of_taxa, calculate_mean_fri_with_glm, m
 
 mean_fri_df <- mean_fri_list %>% bind_rows()
 
-write_csv(mean_fri_df, "mean_fri_df_with_glm.csv")
+write_csv(mean_fri_df, "outputs/mean_fri_df_with_glm.csv")
