@@ -19,7 +19,7 @@ austraits <- read_rds("data/austraits-5.0.0.rds") # This is an updated rds file
 ```
 
 
-Read in lma and leaf N data
+Read in LMA and leaf N data
 
 ```{r}
 lma <-
@@ -329,7 +329,7 @@ summary(pm4)
 grid::grid.draw(rbind(cbind(ggplotGrob(p1), ggplotGrob(p3)), cbind(ggplotGrob(p2), ggplotGrob(p4))))
 
 final_plot <- rbind(cbind(ggplotGrob(p1), ggplotGrob(p3)), cbind(ggplotGrob(p2), ggplotGrob(p4)))
-ggsave("outputs/leaf_traits.png", plot = final_plot, width = 8.5, height = 4.8)
+ggsave("figures/leaf_traits.png", plot = final_plot, width = 8.5, height = 4.8)
 ```
 
 
