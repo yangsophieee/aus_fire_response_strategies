@@ -18,7 +18,7 @@ library(tidyverse)
 Read in fire response strategy data
 
 ```{r}
-resprouting_seeding_binomial <- readRDS("data/resprouting_seeding.rds")
+resprouting_seeding <- readRDS("data/resprouting_seeding.rds")
 ```
 
 
@@ -35,7 +35,7 @@ resprouting_seeding_woody_herb_only %>%
   geom_col() +
   facet_wrap(~woody_or_herb) +
   theme_classic()
-# 2896 (60.9%) resprouting and 1863 non-resprouting in woody taxa, 1854 resprouting (61.9%) and 1140
+# 4022 (64.1%) resprouting and 2254 non-resprouting in woody taxa, 3006 resprouting (65.3%) and 1599
 # non-resprouting in herby taxa
 
 resprouting_seeding_woody_herb_only %>%
@@ -46,7 +46,7 @@ resprouting_seeding_woody_herb_only %>%
   geom_col() +
   facet_wrap(~woody_or_herb) +
   theme_classic()
-# 1799 seeding and 494 non-seeding (78.5%) in woody taxa, 461 seeding (85.8%) and 76
+# 2092 seeding and 569 non-seeding (78.6%) in woody taxa, 712 seeding (78.3%) and 197
 # non-seeding in herby taxa
 ```
 
@@ -60,7 +60,7 @@ resprouting_seeding_woody_herb_only %>%
 Read in median fire return interval data from survival analysis
 
 ```{r}
-median_fris <- read_csv("data/median_fris.csv")
+median_fris <- read_csv("outputs/median_fris.csv")
 
 median_fris <- median_fris %>% left_join(resprouting_seeding, by = c("taxon_name"))
 
@@ -74,8 +74,8 @@ median_fris <- median_fris %>%
 
 median_fires_per_50_years <- median_fris %>%
   mutate(across(
-  c(med_w, med_w_lwr, med_w_upr, med_wo, med_wo_lwr, med_wo_upr),
-  ~ 50 / .x
+    c(med_w, med_w_lwr, med_w_upr, med_wo, med_wo_lwr, med_wo_upr),
+    ~ 50 / .x
   ))
 ```
 
@@ -90,8 +90,8 @@ median_fris_w <-
   median_fris %>%
   filter(is.na(med_w_warnings)) %>% # Filter median FRIs less than X years
   select(
-  taxon_name, med_w, med_w_lwr, med_w_upr, num_unburnt_pixels, num_pixels,
-  resprouting, post_fire_seeding, resprouter_or_seeder, data_on_both, taxonRank
+    taxon_name, med_w, med_w_lwr, med_w_upr, num_unburnt_pixels, num_pixels,
+    resprouting_binomial, seeding_binomial, data_on_both, taxon_rank
   )
 
 # Maybe should do this more elegantly by filtering out values that have very large confidence intervals
@@ -117,113 +117,7 @@ median_fris_w %>%
   geom_point(alpha = 0.025) +
   scale_x_log10() +
   theme_classic()
-
-median_fris_w %>%
-  filter(!is.na(resprouting)) %>%
-  group_by(resprouting) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(resprouting, "\nN = ", n)) %>%
-  ggplot(aes(med_w, factor(label), fill = factor(label))) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-
-median_fris_w %>%
-  filter(!is.na(resprouting)) %>%
-  ggplot(aes(med_w, resprouting)) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-median_fris_w %>%
-  filter(!is.na(resprouting)) %>%
-  ggplot(aes(med_w, resprouting, fill = resprouting)) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
 ```
-
-
-```{r}
-median_fris_w %>%
-  filter(!is.na(post_fire_seeding)) %>%
-  group_by(post_fire_seeding) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(post_fire_seeding, "\nN = ", n)) %>%
-  ggplot(aes(med_w, factor(label))) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-median_fris_w %>%
-  filter(!is.na(post_fire_seeding)) %>%
-  group_by(post_fire_seeding) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(post_fire_seeding, "\nN = ", n)) %>%
-  ggplot(aes(med_w, factor(label), fill = factor(label))) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-
-median_fris_w %>%
-  filter(!is.na(post_fire_seeding)) %>%
-  ggplot(aes(med_w, post_fire_seeding)) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-median_fris_w %>%
-  filter(!is.na(post_fire_seeding)) %>%
-  ggplot(aes(med_w, post_fire_seeding, fill = post_fire_seeding)) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-```
-
-
-```{r}
-median_fris_w %>%
-  filter(!is.na(resprouter_or_seeder), data_on_both == TRUE) %>%
-  group_by(resprouter_or_seeder) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(resprouter_or_seeder, "\nN = ", n)) %>%
-  ggplot(aes(med_w, factor(label))) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-median_fris_w %>%
-  filter(!is.na(resprouter_or_seeder), data_on_both == TRUE) %>%
-  group_by(resprouter_or_seeder) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(resprouter_or_seeder, "\nN = ", n)) %>%
-  ggplot(aes(med_w, factor(label), fill = factor(label))) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-
-median_fris_w %>%
-  filter(!is.na(resprouter_or_seeder), data_on_both == TRUE) %>%
-  ggplot(aes(med_w, resprouter_or_seeder)) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-median_fris_w %>%
-  filter(!is.na(resprouter_or_seeder), data_on_both == TRUE) %>%
-  ggplot(aes(med_w, resprouter_or_seeder, fill = resprouter_or_seeder)) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-```
-
-
 
 # Median FRIs calculated without unburnt pixels
 
@@ -234,11 +128,10 @@ median_fris_wo <-
   median_fris %>% # Sub with median_fires_per_50_years
   filter(is.na(med_wo_warnings), med_wo < 100000) %>%
   select(
-  taxon_name, med_wo, med_wo_lwr, med_wo_upr, num_unburnt_pixels, num_pixels, resprouting,
-  post_fire_seeding, resprouter_or_seeder, data_on_both, taxonRank, resprouting_binomial
+    taxon_name, med_wo, med_wo_lwr, med_wo_upr, num_unburnt_pixels, num_pixels, resprouting_binomial,
+    seeding_binomial, data_on_both, taxon_rank
   )
 ```
-
 
 
 Histogram of median FRIs
@@ -256,33 +149,8 @@ median_fris_wo %>%
   group_by(resprouting_binomial) %>%
   mutate(n = n()) %>%
   mutate(label = paste0(resprouting_binomial, "\nN = ", n)) %>%
-  ggplot(aes(med_wo, factor(label))) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-median_fris_wo %>%
-  filter(!is.na(resprouting_binomial)) %>%
-  group_by(resprouting_binomial) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(resprouting_binomial, "\nN = ", n)) %>%
   ggplot(aes(med_wo, factor(label), fill = factor(label))) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-
-median_fris_wo %>%
-  filter(!is.na(resprouting)) %>%
-  ggplot(aes(med_wo, resprouting)) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-median_fris_wo %>%
-  filter(!is.na(resprouting)) %>%
-  ggplot(aes(med_wo, resprouting, fill = resprouting)) +
-  geom_density_ridges() +
+  ggridges::geom_density_ridges() +
   scale_x_log10() +
   theme_classic() +
   theme(legend.position = "none")
@@ -291,82 +159,16 @@ median_fris_wo %>%
 
 ```{r}
 median_fris_wo %>%
-  filter(!is.na(post_fire_seeding)) %>%
-  group_by(post_fire_seeding) %>%
+  filter(!is.na(seeding_binomial)) %>%
+  group_by(seeding_binomial) %>%
   mutate(n = n()) %>%
-  mutate(label = paste0(post_fire_seeding, "\nN = ", n)) %>%
-  ggplot(aes(med_wo, factor(label))) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-median_fris_wo %>%
-  filter(!is.na(post_fire_seeding)) %>%
-  group_by(post_fire_seeding) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(post_fire_seeding, "\nN = ", n)) %>%
+  mutate(label = paste0(seeding_binomial, "\nN = ", n)) %>%
   ggplot(aes(med_wo, factor(label), fill = factor(label))) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-
-
-median_fris_wo %>%
-  filter(!is.na(post_fire_seeding)) %>%
-  ggplot(aes(med_wo, post_fire_seeding)) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-median_fris_wo %>%
-  filter(!is.na(post_fire_seeding)) %>%
-  ggplot(aes(med_wo, post_fire_seeding, fill = post_fire_seeding)) +
-  geom_density_ridges() +
+  ggridges::geom_density_ridges() +
   scale_x_log10() +
   theme_classic() +
   theme(legend.position = "none")
 ```
-
-
-```{r}
-median_fris_wo %>%
-  filter(!is.na(resprouter_or_seeder), data_on_both == TRUE) %>%
-  group_by(resprouter_or_seeder) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(resprouter_or_seeder, "\nN = ", n)) %>%
-  ggplot(aes(med_wo, factor(label))) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-median_fris_wo %>%
-  filter(!is.na(resprouter_or_seeder), data_on_both == TRUE) %>%
-  group_by(resprouter_or_seeder) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(resprouter_or_seeder, "\nN = ", n)) %>%
-  ggplot(aes(med_wo, factor(label), fill = factor(label))) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-
-median_fris_wo %>%
-  filter(!is.na(resprouter_or_seeder), data_on_both == TRUE) %>%
-  ggplot(aes(med_wo, resprouter_or_seeder)) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-median_fris_wo %>%
-  filter(!is.na(resprouter_or_seeder), data_on_both == TRUE) %>%
-  ggplot(aes(med_wo, resprouter_or_seeder, fill = resprouter_or_seeder)) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-```
-
 
 
 ---
@@ -377,9 +179,9 @@ median_fris_wo %>%
 Read in mean fire return interval data from GLMs
 
 ```{r}
-mean_fris <- read_csv("processed_data/mean_fri_df_with_glm.csv", guess_max = 8009)
+mean_fris <- read_csv("outputs/mean_fri_df_with_glm.csv", guess_max = 10000)
 
-mean_fris <- mean_fris %>% left_join(resprouting_seeding_binomial, by = c("taxon_name"))
+mean_fris <- mean_fris %>% left_join(resprouting_seeding, by = c("taxon_name"))
 ```
 
 
@@ -394,8 +196,8 @@ mean_fris_no_errors <-
 
 
 ```{r}
-write_csv(mean_fris_no_errors, "processed_data/final_df_predicted_fris_and_fire_response.csv")
-mean_fris_no_errors <- read_csv("processed_data/final_df_predicted_fris_and_fire_response.csv")
+write_csv(mean_fris_no_errors, "outputs/final_df_predicted_fris_and_fire_response.csv")
+mean_fris_no_errors <- read_csv("outputs/final_df_predicted_fris_and_fire_response.csv")
 ```
 
 
@@ -403,126 +205,6 @@ Histogram of mean FRIs
 
 ```{r}
 hist(mean_fris_no_errors$mean_fri)
-```
-
-
-Plot
-
-```{r}
-mean_fris_no_errors %>%
-  filter(!is.na(resprouting)) %>%
-  group_by(resprouting) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(resprouting, "\nN = ", n)) %>%
-  ggplot(aes(mean_fri, factor(label))) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-mean_fris_no_errors %>%
-  filter(!is.na(resprouting)) %>%
-  group_by(resprouting) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(resprouting, "\nN = ", n)) %>%
-  ggplot(aes(mean_fri, factor(label), fill = factor(label))) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-
-mean_fris_no_errors %>%
-  filter(!is.na(resprouting)) %>%
-  ggplot(aes(mean_fri, resprouting)) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-mean_fris_no_errors %>%
-  filter(!is.na(resprouting)) %>%
-  ggplot(aes(mean_fri, resprouting, fill = resprouting)) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-```
-
-
-
-```{r}
-mean_fris_no_errors %>%
-  filter(!is.na(post_fire_seeding)) %>%
-  group_by(post_fire_seeding) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(post_fire_seeding, "\nN = ", n)) %>%
-  ggplot(aes(mean_fri, factor(label))) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-mean_fris_no_errors %>%
-  filter(!is.na(post_fire_seeding)) %>%
-  group_by(post_fire_seeding) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(post_fire_seeding, "\nN = ", n)) %>%
-  ggplot(aes(mean_fri, factor(label), fill = factor(label))) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-
-mean_fris_no_errors %>%
-  filter(!is.na(post_fire_seeding)) %>%
-  ggplot(aes(mean_fri, post_fire_seeding)) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-mean_fris_no_errors %>%
-  filter(!is.na(post_fire_seeding)) %>%
-  ggplot(aes(mean_fri, post_fire_seeding, fill = post_fire_seeding)) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-```
-
-
-```{r}
-mean_fris_no_errors %>%
-  filter(!is.na(resprouter_or_seeder), data_on_both == TRUE) %>%
-  group_by(resprouter_or_seeder) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(resprouter_or_seeder, "\nN = ", n)) %>%
-  ggplot(aes(mean_fri, factor(label))) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-mean_fris_no_errors %>%
-  filter(!is.na(resprouter_or_seeder), data_on_both == TRUE) %>%
-  group_by(resprouter_or_seeder) %>%
-  mutate(n = n()) %>%
-  mutate(label = paste0(resprouter_or_seeder, "\nN = ", n)) %>%
-  ggplot(aes(mean_fri, factor(label), fill = factor(label))) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
-
-mean_fris_no_errors %>%
-  filter(!is.na(resprouter_or_seeder), data_on_both == TRUE) %>%
-  ggplot(aes(mean_fri, resprouter_or_seeder)) +
-  geom_point(alpha = 0.025) +
-  scale_x_log10() +
-  theme_classic()
-
-mean_fris_no_errors %>%
-  filter(!is.na(resprouter_or_seeder), data_on_both == TRUE) %>%
-  ggplot(aes(mean_fri, resprouter_or_seeder, fill = resprouter_or_seeder)) +
-  geom_density_ridges() +
-  scale_x_log10() +
-  theme_classic() +
-  theme(legend.position = "none")
 ```
 
 
@@ -696,8 +378,6 @@ mean_fris_no_errors %>%
 Clean mean FRI data
 
 ```{r}
-mean_fris_no_errors <- read_csv("processed_data/final_df_predicted_fris_and_fire_response.csv")
-
 mean_fris_clean <- mean_fris_no_errors %>% filter(upr_confint > 0)
 ```
 
@@ -808,13 +488,13 @@ resprouting_density <-
   geom_vline(data = means, aes(xintercept = mean, col = resprouting_binomial),
          alpha = 1, size = 1, linetype = "longdash") +
   facet_wrap(~woody_or_herb, ncol = 1, scales = "free") +
-  scale_x_log10(expand = c(0,0),
-          limits = c(1.05,5000),
-          breaks = c(10,100,1000),
-          labels = c(10,100,1000)) +
-  scale_y_continuous(expand = c(0,0),
-             limits = c(0,1),
-             breaks = c(0,0.5,1.0)) +
+  scale_x_log10(expand = c(0, 0),
+          limits = c(1.05, 5000),
+          breaks = c(10, 100, 1000),
+          labels = c(10, 100, 1000)) +
+  scale_y_continuous(expand = c(0, 0),
+             limits = c(0, 1),
+             breaks = c(0, 0.5, 1.0)) +
   scale_fill_manual(values = c("#EA294C", "#2166AC")) +
   scale_colour_manual(values = c("#EA294C", "#2166AC")) +
   xlab("Fire Return Interval (Yrs)") +
@@ -823,12 +503,12 @@ resprouting_density <-
   theme(axis.line = element_blank(),
       strip.background = element_blank(),
       strip.text = element_blank(),
-      plot.margin = unit(c(0.5,0.5,0.1,0.1), "cm"),
+      plot.margin = unit(c(0.5, 0.5, 0.1, 0.1), "cm"),
       panel.border = element_rect(colour = "black", fill = NA),
       panel.spacing = unit(0.5, "lines"),
       axis.text = element_text(colour = "black", size = 8),
-      axis.title.y = element_text(size = 10, margin = margin(0,8,0,0)),
-      axis.title.x = element_text(size = 10, margin = margin(8,0,0,0)),
+      axis.title.y = element_text(size = 10, margin = margin(0, 8, 0, 0)),
+      axis.title.x = element_text(size = 10, margin = margin(8, 0, 0, 0)),
       legend.position = "none")
 resprouting_density
 ```
@@ -885,11 +565,12 @@ Phylogenetic regression
 ```{r}
 library(phylolm)
 library(future)
+library(ape)
 plan(multisession)
 
-tree <- read.tree("raw_data/v0.1-big-seed-plant-trees/ALLMB.tre")
+tree <- read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
 df_woody_herb_only$taxon_name <- gsub(" ", "_", df_woody_herb_only$taxon_name)
-df_woody_herb_only <- df_woody_herb_only[df_woody_herb_only$taxon_name %in% tree$tip.label,]
+df_woody_herb_only <- df_woody_herb_only[df_woody_herb_only$taxon_name %in% tree$tip.label, ]
 df_woody_herb_only$resprouting_binomial <-
   ifelse(df_woody_herb_only$resprouting_binomial == TRUE, 1, 0) # Make numeric
 
@@ -901,7 +582,7 @@ pruned_tree <- as.phylo(pruned_tree)
 With sorted data (?)
 
 ```{r}
-sorted_data <- df_woody_herb_only[order(match(df_woody_herb_only$taxon_name, pruned_tree$tip.label)),]
+sorted_data <- df_woody_herb_only[order(match(df_woody_herb_only$taxon_name, pruned_tree$tip.label)), ]
 
 sorted_data <-
   sorted_data %>%
@@ -930,8 +611,8 @@ df1 <- df1 %>% rename(woody_or_herb = sorted_data.woody_or_herb)
 p3 <-
   ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
   geom_line(size = 1.3) +
-  scale_x_log10(breaks = c(10,100,1000),
-          labels = c(10,100,1000)) +
+  scale_x_log10(breaks = c(10, 100, 1000),
+          labels = c(10, 100, 1000)) +
   scale_y_continuous(limits = c(0,1.0),
              expand = c(0,0)) +
   ylab("Resprouting Probability") +
@@ -966,7 +647,7 @@ categories <- unique(y)
 mean1 <- mean(pred[which(y == categories[1])], na.rm = TRUE)
 mean2 <- mean(pred[which(y == categories[2])], na.rm = TRUE)
 
-abs(mean1 - mean2) # 0.013
+abs(mean1 - mean2) # 0.028
 ```
 
 
@@ -1173,6 +854,7 @@ p2 <-
       plot.margin = unit(c(0.1,0.5,0.1,0.1), "cm"),
       axis.title.y = element_text(size = 11, margin = margin(0,8,0,0)),
       axis.title.x = element_text(size = 11, margin = margin(8,0,0,0)))
+p2
 ```
 
 
@@ -1390,158 +1072,3 @@ mean2 <- mean(pred[which(y == categories[2])], na.rm = TRUE)
 
 abs(mean1 - mean2) # 0.062
 ```
-
-
-## Obligate resprouting or obligate seeding binomial
-
-
-```{r}
-df_woody_herb_only$obligate_resprouting_or_seeding <-
-  df_woody_herb_only$obligate_resprouting_or_seeding %>% as.factor()
-
-m3 <- glm(obligate_resprouting_or_seeding ~ poly(log10(mean_fri),2) * woody_or_herb,
-      data = df_woody_herb_only,
-      family = binomial)
-summary(m3)
-
-ggpredict(m3, c("mean_fri", "woody_or_herb")) %>%
-  ggplot(aes(x, predicted, color = group)) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
-  scale_x_log10() +
-  ylab("Obligate Seeding Probability") +
-  xlab("Mean FRI") +
-  theme_classic()
-```
-
-
-```{r}
-m3 <- glm(obligate_resprouting_or_seeding ~ poly(log10(mean_fri),3),
-      data = df_woody_herb_only,
-      family = binomial)
-summary(m3)
-ggpredict(m3, c("mean_fri")) %>%
-  ggplot(aes(x, predicted)) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.2, linetype = 0) +
-  scale_x_log10() +
-  ylab("Obligate Seeding Probability") +
-  xlab("Mean FRI") +
-  theme_classic()
-```
-
-
-
-```{r}
-index <-
-  sample(1:length(df_woody_herb_only$obligate_resprouting_or_seeding),
-       0.7*length(df_woody_herb_only$obligate_resprouting_or_seeding))
-training_x <- df_woody_herb_only[index, c("mean_fri", "woody_or_herb")]
-training_y <- df_woody_herb_only[index, "obligate_resprouting_or_seeding"]
-test_x <- df_woody_herb_only[-index, c("mean_fri", "woody_or_herb")]
-test_y <- df_woody_herb_only[-index, "obligate_resprouting_or_seeding"]
-```
-
-
-```{r}
-set.seed(1)
-
-m1 <- glm(obligate_resprouting_or_seeding ~ poly(log10(mean_fri),2) * woody_or_herb,
-      data = data.frame(training_x, training_y),
-      family = binomial)
-summary(m1)
-predictions <- predict(m1, newdata = data.frame(test_x, test_y),
-             newx = as.matrix(test_x), type = "link") # Make predictions
-
-predictions_vs_real <- data.frame(test_x, test_y, predictions)
-predictions_vs_real <-
-  predictions_vs_real %>%
-  mutate(preds_transformed = 1/(1 + exp(-predictions)),
-       preds_binomial = case_when(preds_transformed >= 0.5 ~ "obligate seeder",
-                    preds_transformed < 0.5 ~ "obligate resprouter"))
-predictions_vs_real$preds_binomial <- predictions_vs_real$preds_binomial %>% as.factor()
-
-predictions_vs_real %>%
-  drop_na(obligate_resprouting_or_seeding) %>%
-  ggplot(aes(obligate_resprouting_or_seeding, preds_transformed)) +
-  geom_boxplot() +
-  facet_wrap(~woody_or_herb) +
-  theme_classic()
-
-library(caret)
-confusionMatrix(predictions_vs_real$preds_binomial, predictions_vs_real$obligate_resprouting_or_seeding)
-```
-
-
-
-
-
-## Resprouting vs seeding binomial
-
-
-```{r}
-df_woody_herb_only$resprouting_seeding_binomial <-
-  df_woody_herb_only$resprouting_seeding_binomial %>% as.factor()
-
-m3 <- glm(resprouting_seeding_binomial ~ poly(log10(mean_fri),2) * woody_or_herb,
-      data = df_woody_herb_only,
-      family = binomial)
-summary(m3)
-
-ggpredict(m3, c("mean_fri", "woody_or_herb")) %>%
-  ggplot(aes(x, predicted, color = group)) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
-  scale_x_log10() +
-  ylab("Seeding vs Resprouting Probability") +
-  xlab("Mean FRI") +
-  theme_classic()
-```
-
-
-
-
-
-```{r}
-index <-
-  sample(1:length(df_woody_herb_only$resprouting_seeding_binomial),
-       0.7*length(df_woody_herb_only$resprouting_seeding_binomial))
-training_x <- df_woody_herb_only[index, c("mean_fri", "woody_or_herb")]
-training_y <- df_woody_herb_only[index, "resprouting_seeding_binomial"]
-test_x <- df_woody_herb_only[-index, c("mean_fri", "woody_or_herb")]
-test_y <- df_woody_herb_only[-index, "resprouting_seeding_binomial"]
-```
-
-
-```{r}
-set.seed(1)
-
-m1 <- glm(resprouting_seeding_binomial ~ poly(log10(mean_fri),2) * woody_or_herb,
-      data = data.frame(training_x, training_y),
-      family = binomial)
-summary(m1)
-predictions <- predict(m1, newdata = data.frame(test_x, test_y),
-             newx = as.matrix(test_x), type = "link") # Make predictions
-
-predictions_vs_real <- data.frame(test_x, test_y, predictions)
-predictions_vs_real <-
-  predictions_vs_real %>%
-  mutate(preds_transformed = 1/(1 + exp(-predictions)),
-       preds_binomial = case_when(preds_transformed >= 0.5 ~ "seeder",
-                    preds_transformed < 0.5 ~ "resprouter"))
-predictions_vs_real$preds_binomial <- predictions_vs_real$preds_binomial %>% as.factor()
-
-predictions_vs_real %>%
-  drop_na(resprouting_seeding_binomial) %>%
-  ggplot(aes(resprouting_seeding_binomial, preds_transformed)) +
-  geom_boxplot() +
-  facet_wrap(~woody_or_herb) +
-  theme_classic()
-
-library(caret)
-confusionMatrix(predictions_vs_real$preds_binomial, predictions_vs_real$resprouting_seeding_binomial)
-```
-
-
-
-

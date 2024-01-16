@@ -209,13 +209,13 @@ write_csv(mean_fri_df, "data/mean_fri_df_with_glm.csv")
 
 ---
 
-Out of 8009 taxa, 294 did not fit and they were all because all pixels were unburnt.
-Out of the 7715 with no errors, 419 had confidence intervals bounding zero, which
-were discarded, leaving us with 7296 taxa. There were 2 taxa with mean FRI greater
-than 5000 years. 5574 taxa had confidence intervals less than 100 years big.
+Out of 10871 taxa, 359 did not fit and they were all because all pixels were unburnt.
+Out of the 10512 with no errors, 419 had confidence intervals bounding zero, which
+were discarded, leaving us with 7296 taxa. There were 131 taxa with mean FRI greater
+than 1000 years. 9940 taxa had confidence intervals less than 100 years big. #TODO update
 
 ```{r}
-mean_fris <- read_csv("processed_data/mean_fri_df_with_glm.csv", guess_max = 8009)
+mean_fris <- read_csv("outputs/mean_fri_df_with_glm.csv", guess_max = 10000)
 
 mean_fris %>% filter(mean_fri > 1000) %>% nrow()
 mean_fris_clean %>% filter(upr_confint - lwr_confint < 100) %>% nrow()
@@ -229,10 +229,10 @@ hist(y$confint_size)
 Comparatively, the survival analysis resulted in 1443 that did not fit (incl. unburnt
 pixels). The warning was "ran out of iterations and did not converge". This occurred
 because most or all pixels were unburnt. There were 7217 taxa with median FRI greater
-than 5000 years. 221 taxa had confidence intervals less than 100 years big.
+than 5000 years. 221 taxa had confidence intervals less than 100 years big. #TODO update
 
 ```{r}
-median_fris <- read_csv("processed_data/median_fris.csv", guess_max = 8009)
+median_fris <- read_csv("outputs/median_fris.csv", guess_max = 10871)
 median_fris <-
   median_fris %>%
   mutate(across(
@@ -250,5 +250,5 @@ median_fris %>% filter(med_wo > 5000) %>% nrow()
 ```
 
 1282 that did not fit (when not including unburnt pixels). There were 6719 taxa with
-median FRI greater than 5000 years.
+median FRI greater than 5000 years. #TODO update
 

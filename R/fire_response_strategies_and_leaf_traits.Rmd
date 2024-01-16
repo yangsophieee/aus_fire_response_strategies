@@ -15,7 +15,7 @@ library(grid)
 library(RColorBrewer)
 library(phylolm)
 
-austraits <- read_rds("data/austraits-4.2.0.rds") # This is an updated rds file
+austraits <- read_rds("data/austraits-5.0.0.rds") # This is an updated rds file
 ```
 
 
@@ -25,14 +25,14 @@ Read in lma and leaf N data
 lma <-
   austraits$traits %>%
   filter(trait_name == "leaf_mass_per_area") %>%
-  pivot_wider(names_from = "trait_name", value_from = "value")
+  pivot_wider(names_from = "trait_name", values_from = "value")
 
 lma$leaf_mass_per_area <- as.numeric(lma$leaf_mass_per_area)
 
 leaf_n <-
   austraits$traits %>%
   filter(trait_name == "leaf_N_per_dry_mass") %>%
-  pivot_wider(names_from = "trait_name", value_from = "value")
+  pivot_wider(names_from = "trait_name", values_from = "value")
 
 leaf_n$leaf_N_per_dry_mass <- as.numeric(leaf_n$leaf_N_per_dry_mass)
 ```
