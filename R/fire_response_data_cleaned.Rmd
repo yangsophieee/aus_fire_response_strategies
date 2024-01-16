@@ -658,11 +658,13 @@ n_herb_resprouters <-
 n_woody_resprouters + n_herb_resprouters
 ggsave("figures/sr_resprouters.jpg", width = 8.5, height = 3)
 ggsave("figures/sr_resprouters.pdf", width = 8.5, height = 3)
+```
 
+```{r}
 frac_woody_resprouters <-
   output_grid %>%
   filter(woody_or_herb == "woody") %>%
-  filter(n_obs >= 10, frac_resprouters > 0.37) %>%
+  filter(n_obs >= 10, frac_resprouters >= 0.3) %>%
   ggplot(aes(x, y, fill = frac_resprouters)) +
   geom_tile() +
   geom_polygon(
@@ -671,17 +673,24 @@ frac_woody_resprouters <-
     fill = NA,
     colour = "#1a1a1a",
     linewidth = 0.4) +
-  scale_fill_continuous(type = "viridis") +
+  scale_fill_continuous(type = "viridis", limits = c(0.3, 1)) +
   theme_bw() +
   coord_fixed() +
-  labs(fill = "Fraction of species\nthat are resprouters", x = "Longitude", y = "Latitude", tag = "a)") +
-  theme(plot.tag = element_text()) +
-  ggtitle("Woody N>=10")
+  labs(
+    subtitle = "Woody") +
+  ggtitle("a) Proportion of resprouting taxa") +
+  theme(
+    plot.title = element_text(size = 20, margin = margin(0, 0, 20, 0)),
+    plot.subtitle = element_text(hjust = 0.5, size = 16),
+    axis.title = element_blank(),
+    legend.position = "none",
+    panel.grid = element_blank()
+  )
 
 frac_herbaceous_resprouters <-
   output_grid %>%
   filter(woody_or_herb == "herb") %>%
-  filter(n_obs >= 10) %>%
+  filter(n_obs >= 10, frac_resprouters >= 0.3) %>%
   ggplot(aes(x, y, fill = frac_resprouters)) +
   geom_tile() +
   geom_polygon(
@@ -691,12 +700,22 @@ frac_herbaceous_resprouters <-
     colour = "#1a1a1a",
     linewidth = 0.4) +
   coord_fixed() +
-  scale_fill_continuous(type = "viridis") +
+  scale_fill_continuous(type = "viridis", limits = c(0.3, 1)) +
   theme_bw() +
   coord_fixed() +
-  ggtitle("Herbaceous N>=10") +
-  labs(fill = "Fraction of species\nthat are resprouters", x = "Longitude", y = "Latitude", tag = "(B)") +
-  theme(plot.tag = element_text())
+  labs(
+    subtitle = "Herbaceous") +
+  guides(
+    fill = guide_colourbar(
+      barwidth = 0.7
+    )
+  ) +
+  theme(
+    plot.subtitle = element_text(hjust = 0.5, size = 16),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    legend.title = element_blank()
+  )
 
 frac_woody_resprouters + frac_herbaceous_resprouters
 ggsave("figures/frac_resprouters.jpg", width = 8.5, height = 3)
