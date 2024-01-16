@@ -58,7 +58,7 @@ mean_leaf_n <-
 Join to fire response
 
 ```{r}
-fire_response_and_mean_fris <- read_csv("processed_data/final_df_predicted_fris_and_fire_response.csv")
+fire_response_and_mean_fris <- read_csv("outputs/final_df_predicted_fris_and_fire_response.csv")
 
 fire_response_and_leaf_traits <-
   fire_response_and_mean_fris %>%
@@ -103,7 +103,7 @@ p1 <-
   facet_wrap(~woody_or_herb,
          labeller = as_labeller(facet_labels)) +
   scale_y_log10() +
-  labs(x = "Resprouting", y = bquote("lma (" *mm^2/mg *")")) +
+  labs(x = "Resprouting", y = bquote("LMA (" *g/m2 *")")) + #TODO switch from SLA to LMA
   scale_fill_manual(values = c("#915330", "#aedb65"),
             name = "",
             breaks = c("woody", "herb"),
@@ -129,7 +129,7 @@ Rerun with phylogenetic linear model (some taxa are dropped because cannot be ma
 to a tip on the phylogeny)
 
 ```{r}
-tree <- read.tree("raw_data/v0.1-big-seed-plant-trees/ALLMB.tre")
+tree <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
 leaf_traits_woody_herb_only$taxon_name <- gsub(" ", "_", leaf_traits_woody_herb_only$taxon_name)
 leaf_traits_woody_herb_only <- leaf_traits_woody_herb_only[leaf_traits_woody_herb_only$taxon_name %in% tree$tip.label,]
 leaf_traits_woody_herb_only$resprouting_binomial <-
@@ -326,11 +326,10 @@ summary(pm4)
 
 
 ```{r}
-grid.draw(rbind(cbind(ggplotGrob(p1), ggplotGrob(p3)), cbind(ggplotGrob(p2), ggplotGrob(p4))))
+grid::grid.draw(rbind(cbind(ggplotGrob(p1), ggplotGrob(p3)), cbind(ggplotGrob(p2), ggplotGrob(p4))))
 
 final_plot <- rbind(cbind(ggplotGrob(p1), ggplotGrob(p3)), cbind(ggplotGrob(p2), ggplotGrob(p4)))
-ggsave("leaf_traits_v2.png", plot = final_plot,
-     width = 8.5, height = 4.8)
+ggsave("outputs/leaf_traits.png", plot = final_plot, width = 8.5, height = 4.8)
 ```
 
 
@@ -360,23 +359,23 @@ leaf_traits_woody_herb_only <-
   add_higher_order()
 
 # Number of genera
-leaf_traits_woody_herb_only$genus %>% unique() %>% length() # 1114
+leaf_traits_woody_herb_only$genus %>% unique() %>% length() # 1442
 
 # Number of families
-leaf_traits_woody_herb_only$family %>% unique() %>% length() # 192
+leaf_traits_woody_herb_only$family %>% unique() %>% length() # 215
 ```
 
 
 Number of genera and families with resprouting and seeding data
 
 ```{r}
-leaf_traits_woody_herb_only %>% drop_na(resprouting_binomial) -> resprouting_data
-resprouting_data$genus %>% unique() %>% length() # 1111
-resprouting_data$family %>% unique() %>% length() # 192
+resprouting_data <- leaf_traits_woody_herb_only %>% drop_na(resprouting_binomial)
+resprouting_data$genus %>% unique() %>% length() # 1436
+resprouting_data$family %>% unique() %>% length() # 215
 
-leaf_traits_woody_herb_only %>% drop_na(seeding_binomial) -> seeding_data
-seeding_data$genus %>% unique() %>% length() # 607
-seeding_data$family %>% unique() %>% length() # 133
+seeding_data <- leaf_traits_woody_herb_only %>% drop_na(seeding_binomial)
+seeding_data$genus %>% unique() %>% length() # 734
+seeding_data$family %>% unique() %>% length() # 149
 ```
 
 
@@ -386,9 +385,9 @@ Number of genera and families with fire frequency data
 # Filter out mean FRIs that have confidence intervals that include zero
 data_clean <-
   leaf_traits_woody_herb_only %>%
-  filter(upr_confint > 0)
-data_clean$genus %>% unique() %>% length() # 1088
-data_clean$family %>% unique() %>% length() # 190
+  filter(upr_confint > 0) # Not sure this actually does what we want, confidence intervals could still include zero
+data_clean$genus %>% unique() %>% length() # 1411
+data_clean$family %>% unique() %>% length() # 211
 ```
 
 
@@ -396,23 +395,20 @@ data_clean$family %>% unique() %>% length() # 190
 Number of genera and families with lma and leaf N data
 
 ```{r}
-leaf_traits_woody_herb_only %>% drop_na(mean_lma) -> lma_data
-lma_data$genus %>% unique() %>% length() # 632
-lma_data$family %>% unique() %>% length() # 142
+lma_data <- leaf_traits_woody_herb_only %>% drop_na(mean_lma)
+lma_data$genus %>% unique() %>% length() # 720
+lma_data$family %>% unique() %>% length() # 152
 
-leaf_traits_woody_herb_only %>% drop_na(mean_leaf_n) -> leaf_n_data
-leaf_n_data$genus %>% unique() %>% length() # 395
-leaf_n_data$family %>% unique() %>% length() # 107
+leaf_n_data <- leaf_traits_woody_herb_only %>% drop_na(mean_leaf_n)
+leaf_n_data$genus %>% unique() %>% length() # 465
+leaf_n_data$family %>% unique() %>% length() # 114
 ```
 
 
 Number of genera and families with all data
 
 ```{r}
-data_clean %>% drop_na(mean_lma, mean_leaf_n, resprouting_binomial, seeding_binomial) -> all_data
-all_data$genus %>% unique() %>% length() # 246
-all_data$family %>% unique() %>% length() # 78
+all_data <- data_clean %>% drop_na(mean_lma, mean_leaf_n, resprouting_binomial, seeding_binomial)
+all_data$genus %>% unique() %>% length() # 268
+all_data$family %>% unique() %>% length() # 85
 ```
-
-
-
