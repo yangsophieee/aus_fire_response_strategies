@@ -853,33 +853,3 @@ frac_woody_resprouters + frac_herbaceous_resprouters + num_fires_plot
 
 ggsave("figures/frac_resprouters_and_num_fires.png", width = 13, height = 3)
 ```
-
-```{r}
-library(grid)
-grid.newpage()
-grid.draw(cbind(ggplotGrob(p1), ggplotGrob(p2)))
-grid.draw(cbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(num_fires_plot)))
-ggarrange(cbind(ggplotGrob(p1), ggplotGrob(p2)), num_fires_plot, ncol = 2, nrow = 1)
-
-plot <- cbind(ggplotGrob(p1), ggplotGrob(p2), ggplotGrob(num_fires_plot))
-ggsave("maps.png", plot = plot, width = 8, height = 2.4)
-
-p3 <- cbind(ggplotGrob(p1), ggplotGrob(p2))
-ggarrange(p3, num_fires_plot, ncol = 2, nrow = 1, heights = c(2, 1)) # Fiddle with heights argument or align argument
-# common.legend = TRUE
-# legend = "bottom"
-# labels = c("a)", "b)")
-# It's because you are plotting p3 as one plot and the other as another so they try make them the same size
-plot <- ggarrange(p1, p2, num_fires_plot, ncol = 3, nrow = 1)
-ggsave("maps.png", plot = plot, width = 10, height = 3)
-ggarrange(
-  p1, p2, num_fires_plot,
-  ncol = 3, nrow = 1,
-  labels = c("a) Proportion of Resprouting Taxa", "", "b) Number of Fires")
-)
-ggarrange(
-  ggarrange(p1, p2, ncol = 2, nrow = 1, common.legend = TRUE, legend = "right"), num_fires_plot,
-  ncol = 2, nrow = 1, labels = c("a) Proportion of Resprouting Taxa", "b) Number of Fires")
-)
-```
-
