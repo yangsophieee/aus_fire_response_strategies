@@ -660,11 +660,11 @@ frac_woody_resprouters <-
   labs(subtitle = "Woody") +
   ggtitle("a) Proportion of resprouting taxa") +
   theme(
-    plot.title = element_text(size = 13, margin = margin(0, 0, 10, 0)),
+    plot.title = element_text(size = 16, margin = margin(0, 0, 10, 0)),
     plot.title.position = "plot",
-    plot.subtitle = element_text(hjust = 0.5, size = 11),
+    plot.subtitle = element_text(hjust = 0.55, size = 14),
     axis.title = element_blank(),
-    axis.text = element_text(size = 7, colour = "#1a1a1a"),
+    axis.text = element_text(size = 10, colour = "#1a1a1a"),
     legend.position = "none",
     panel.grid = element_blank(),
     plot.background = element_rect(fill = NA, colour = NA)
@@ -698,10 +698,11 @@ frac_herbaceous_resprouters <-
       ticks.colour = "#1a1a1a")
   ) +
   theme(
-    plot.subtitle = element_text(hjust = 0.5, size = 11),
+    plot.subtitle = element_text(hjust = 0.5, size = 14),
     axis.title = element_blank(),
-    axis.text = element_text(size = 7, colour = "#1a1a1a"),
+    axis.text = element_text(size = 10, colour = "#1a1a1a"),
     legend.title = element_blank(),
+    legend.text = element_text(size = 10, colour = "#1a1a1a"),
     panel.grid = element_blank(),
     plot.background = element_rect(fill = NA, colour = NA)
   )
@@ -840,10 +841,12 @@ num_fires_plot <-
   ggtitle("b) Number of fires") +
   theme_bw() +
   theme(
-    plot.subtitle = element_text(hjust = 0.5, size = 11),
+    plot.title.position = "plot",
+    plot.subtitle = element_text(hjust = 0.5, size = 14),
     axis.title = element_blank(),
-    axis.text = element_text(size = 7, colour = "#1a1a1a"),
+    axis.text = element_text(size = 10, colour = "#1a1a1a"),
     legend.title = element_blank(),
+    legend.text = element_text(size = 10, colour = "#1a1a1a"),
     panel.grid = element_blank(),
     plot.background = element_rect(fill = NA, colour = NA)
   )
