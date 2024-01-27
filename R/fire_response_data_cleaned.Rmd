@@ -8,14 +8,14 @@ editor_options:
 
 ```{r}
 library(tidyverse)
-
-austraits <- read_rds("data/austraits-5.0.0.rds")
+library(patchwork)
 ```
 
 
 # Extract `resprouting_capacity` trait records
 
 ```{r}
+austraits <- read_rds("data/austraits-5.0.0.rds")
 resprouting_capacity <-
   austraits$traits %>%
   filter(trait_name == "resprouting_capacity") %>%
@@ -409,7 +409,7 @@ resprouting_seeding %>%
 
 # Extract woodiness data
 
-**Use Lizzy's curated dataset instead (Wenk_2022)**
+**Use Lizzy's curated dataset (Wenk_2022)**
 
 ```{r}
 woodiness <-
@@ -610,7 +610,6 @@ output_grid <-
 ```
 
 ```{r}
-library(patchwork)
 data_ozmaps <- ozmaps::ozmap_country
 data_sea <- rnaturalearth::ne_download(scale = 10, type = "ocean", category = "physical", returnclass = "sf")
 data_woody <- output_grid %>% filter(woody_or_herb == "woody")
@@ -823,9 +822,9 @@ num_fires_plot <-
   coord_sf(ylim = c(-45, -8), xlim = c(110, 157), expand = FALSE) +
   scale_x_continuous(breaks = seq(110, 150, by = 20)) +
   scale_y_continuous(breaks = seq(-40, -10, by = 10)) +
-  scale_fill_distiller(
-    palette = "YlOrRd",
-    direction = 1,
+  viridis::scale_fill_viridis(
+    option = "inferno",
+    direction = -1,
     trans = "log",
     na.value = "white",
     breaks = c(1, 3, 8, 21)
@@ -841,6 +840,7 @@ num_fires_plot <-
   ggtitle("b) Number of fires") +
   theme_bw() +
   theme(
+    plot.title = element_text(size = 16, margin = margin(0, 0, 10, 0)),
     plot.title.position = "plot",
     plot.subtitle = element_text(hjust = 0.5, size = 14),
     axis.title = element_blank(),
