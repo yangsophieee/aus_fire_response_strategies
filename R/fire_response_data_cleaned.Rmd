@@ -724,7 +724,7 @@ Instructions for obtaining the data begins on pg 22.
 
 ```{r}
 list_of_files <-
-  list.files("data/MODIS_burn_data_australia/Win20", recursive = TRUE, full.names = TRUE) %>%
+  list.files("data/Win20", recursive = TRUE, full.names = TRUE) %>%
   str_subset("burndate") # Filter for the burndate layers not the QA layers
 ```
 
@@ -772,11 +772,15 @@ num_of_fires_df <-
   group_by(x, y) %>%
   summarise(num_of_fires = sum(burn_date != 0)) %>%
   ungroup()
+
+num_of_fires_df |> write_csv("data/num_fires_df.csv")
 ```
 
 
+Join to the first raster in dataset to get back no fire pixels
+
 ```{r}
-init_raster <- terra::rast("data/MODIS_burn_data_australia/Win20/2000/MCD64monthly.A2000306.Win20.006.burndate.tif")
+init_raster <- terra::rast("data/Win20/2000/MCD64monthly.A2000306.Win20.006.burndate.tif")
 # Resolution = 0.004
 # Extent: 112, 155.0005, 0.004394531, -10 (xmin, xmax, ymin, ymax)
 
@@ -792,26 +796,16 @@ full_fires_df <- full_join(init_df, num_of_fires_df, by = c("x", "y"))
 nrow(full_fires_df)
 nrow(init_df)
 nrow(num_of_fires_df)
-# 18.6% of pixels burned (but this includes water pixels)
+# 34% of pixels burned (but this includes water pixels)
 
 full_fires_df <- full_fires_df %>% replace_na(list(num_of_fires = 0))
-
-# Filter out values outside of Australia
-full_fires_no_water <-
-  full_fires_df %>%
-  filter(x > 143 | y > -39) %>%
-  filter(x > 120 | y > -36) %>%
-  filter(x > 126 | y < -12) %>%
-  filter(x < 145 | y < -14)
-
-num_fires_raster <- terra::rast(full_fires_no_water, type = "xyz")
-
-terra::writeRaster(num_fires_raster, "data/num_fires_map.tif", overwrite = TRUE)
+num_fires_raster <- terra::rast(full_fires_df, type = "xyz")
+terra::writeRaster(num_fires_raster, "data/num_fires_map_new.tif", overwrite = TRUE)
 ```
 
 
 ```{r}
-num_fires <- terra::rast("data/num_fires_map.tif")
+num_fires <- terra::rast("data/num_fires_map_new.tif")
 num_fires <- num_fires %>% as.data.frame(xy = TRUE) |> filter(!is.na(num_of_fires))
 
 num_fires_plot <-
