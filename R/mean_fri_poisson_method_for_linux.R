@@ -77,10 +77,10 @@ calculate_mean_fires_with_glm <- function(
     mean_fires_in_sampling_period <- model$result$coefficients[[1]]
 
     # Lower confidence interval bound
-    lwr <- predict(model$result, type = "link")[[1]] + summary$coefficients[[2]] * 1.96
+    lwr <- predict(model$result, type = "link")[[1]] - summary$coefficients[[2]] * 1.96
 
     # Upper confidence interval bound
-    upr <- predict(model$result, type = "link")[[1]] - summary$coefficients[[2]] * 1.96
+    upr <- predict(model$result, type = "link")[[1]] + summary$coefficients[[2]] * 1.96
 
     # Dispersion test
     dispersion_test <- performance::check_overdispersion(model$result)
@@ -90,8 +90,8 @@ calculate_mean_fires_with_glm <- function(
       taxon_name = taxon,
       mean_fri = predicted_fri,
       mean_fires = mean_fires_in_sampling_period,
-      lwr_confint = lwr,
-      upr_confint = upr,
+      lwr_conf_int = lwr,
+      upr_conf_int = upr,
       dispersion_ratio = dispersion_test$dispersion_ratio,
       dispersion_p_value = dispersion_test$p_value,
       num_unburnt_pixels = df %>% filter(.data$num_of_fires == 0) %>% nrow(),

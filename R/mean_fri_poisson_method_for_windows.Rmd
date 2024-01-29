@@ -99,10 +99,10 @@ calculate_mean_fires_with_glm <- function(
     mean_fires_in_sampling_period <- model$result$coefficients[[1]]
 
     # Lower confidence interval bound
-    lwr <- predict(model$result, type = "link")[[1]] + summary$coefficients[[2]] * 1.96
+    lwr <- predict(model$result, type = "link")[[1]] - summary$coefficients[[2]] * 1.96
 
     # Upper confidence interval bound
-    upr <- predict(model$result, type = "link")[[1]] - summary$coefficients[[2]] * 1.96
+    upr <- predict(model$result, type = "link")[[1]] + summary$coefficients[[2]] * 1.96
 
     # Dispersion test
     dispersion_test <- performance::check_overdispersion(model$result)
@@ -112,8 +112,8 @@ calculate_mean_fires_with_glm <- function(
       taxon_name = taxon,
       mean_fri = predicted_fri,
       mean_fires = mean_fires_in_sampling_period,
-      lwr_confint = lwr,
-      upr_confint = upr,
+      lwr_conf_int = lwr,
+      upr_conf_int = upr,
       dispersion_ratio = dispersion_test$dispersion_ratio,
       dispersion_p_value = dispersion_test$p_value,
       num_unburnt_pixels = df %>% filter(.data$num_of_fires == 0) %>% nrow(),
@@ -206,51 +206,4 @@ Write to a csv file
 ```{r}
 write_csv(mean_fires_df, "data/mean_fires_df_with_glm.csv")
 ```
-
----
-
-# Comparison of survival analysis and poisson regression methods
-
-Out of 10871 taxa, 359 did not fit and they were all because all pixels were unburnt.
-Out of the 10512 with no errors, 419 had confidence intervals bounding zero, which
-were discarded, leaving us with 7296 taxa. There were 131 taxa with mean FRI greater
-than 1000 years. 9940 taxa had confidence intervals less than 100 years big. #TODO update
-
-```{r}
-mean_fires <- read_csv("outputs/mean_fires_df_with_glm.csv", guess_max = 10000)
-
-mean_fires %>% filter(mean_fri > 1000) %>% nrow()
-mean_fires_clean %>% filter(upr_confint - lwr_confint < 100) %>% nrow()
-
-y <- mean_fires_clean %>% mutate(confint_size = upr_confint - lwr_confint)
-hist(y$confint_size)
-```
-
-
-
-Comparatively, the survival analysis resulted in 1443 that did not fit (incl. unburnt
-pixels). The warning was "ran out of iterations and did not converge". This occurred
-because most or all pixels were unburnt. There were 7217 taxa with median FRI greater
-than 5000 years. 221 taxa had confidence intervals less than 100 years big. #TODO update
-
-```{r}
-median_fris <- read_csv("outputs/median_fris.csv", guess_max = 10871)
-median_fris <-
-  median_fris %>%
-  mutate(across(
-    c("med_w", "med_w_lwr", "med_w_upr", "med_wo", "med_wo_lwr", "med_wo_upr"),
-    ~ .x / 365.2422
-  ))
-
-median_fris %>% filter(med_w > 1000) %>% nrow()
-median_fris %>% filter(med_w_upr - med_w_lwr < 100) %>% nrow()
-x <- median_fris %>% mutate(confint_size = med_w_upr - med_w_lwr)
-hist(x$confint_size)
-
-median_fris %>% filter(!is.na(med_wo_warnings)) %>% nrow()
-median_fris %>% filter(med_wo > 5000) %>% nrow()
-```
-
-1282 that did not fit (when not including unburnt pixels). There were 6719 taxa with
-median FRI greater than 5000 years. #TODO update
 
