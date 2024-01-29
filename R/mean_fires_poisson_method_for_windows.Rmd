@@ -173,7 +173,9 @@ test_df %>% View()
 ```
 
 
-Calculate mean FRI with furrr
+Calculate mean FRI with {furrr}
+(Does not seem to work; so cannot use parallel computing)
+This was done on a university supercomputer using the `mean_fires_poisson_method_for_linux.R` script
 
 ```{r}
 library(furrr)
