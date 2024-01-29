@@ -46,7 +46,7 @@ safely_n_quietly <- function(.f, otherwise = NULL) {
 Function that returns a data frame with predicted FRI and other metrics
 
 ```{r}
-calculate_mean_fri_with_glm <- function(
+calculate_mean_fires_with_glm <- function(
   taxon,
   gbif_data = joined_fire_data,
   num_of_fires_raster = num_of_fires,
@@ -95,7 +95,7 @@ calculate_mean_fri_with_glm <- function(
     # Calculate predicted fire return interval
     predicted_fri <- sampling_period / predict(model$result, type = "link")[[1]]
 
-    # Calculate mean number of fires in 20 years
+    # Calculate mean number of fires in sampling period
     mean_fires_in_sampling_period <- model$result$coefficients[[1]]
 
     # Lower confidence interval bound
@@ -168,7 +168,7 @@ list_of_taxa <- joined_fire_data$taxon_name %>% unique()
 Run for test species
 
 ```{r}
-test_df <- calculate_mean_fri_with_glm(list_of_taxa[1])
+test_df <- calculate_mean_fires_with_glm(list_of_taxa[1])
 test_df %>% View()
 ```
 
@@ -185,29 +185,31 @@ options(future.globals.maxSize = 3000 * 1024^2)
 ```{r}
 num_of_fires <- terra::wrap(num_of_fires)
 
-mean_fri_list <- future_map(list_of_taxa[1:3], calculate_mean_fri_with_glm, .progress = TRUE)
-mean_fri_list1 <- future_map(list_of_taxa[1:2000], calculate_mean_fri_with_glm, .progress = TRUE)
-mean_fri_list2 <- future_map(list_of_taxa[2001:4000], calculate_mean_fri_with_glm, .progress = TRUE)
-mean_fri_list3 <- future_map(list_of_taxa[4001:6000], calculate_mean_fri_with_glm, .progress = TRUE)
-mean_fri_list4 <- future_map(list_of_taxa[6001:8000], calculate_mean_fri_with_glm, .progress = TRUE)
-mean_fri_list5 <- future_map(list_of_taxa[8001:10840], calculate_mean_fri_with_glm, .progress = TRUE)
+mean_fires_list <- future_map(list_of_taxa[1:3], calculate_mean_fires_with_glm, .progress = TRUE)
+mean_fires_list1 <- future_map(list_of_taxa[1:2000], calculate_mean_fires_with_glm, .progress = TRUE)
+mean_fires_list2 <- future_map(list_of_taxa[2001:4000], calculate_mean_fires_with_glm, .progress = TRUE)
+mean_fires_list3 <- future_map(list_of_taxa[4001:6000], calculate_mean_fires_with_glm, .progress = TRUE)
+mean_fires_list4 <- future_map(list_of_taxa[6001:8000], calculate_mean_fires_with_glm, .progress = TRUE)
+mean_fires_list5 <- future_map(list_of_taxa[8001:10840], calculate_mean_fires_with_glm, .progress = TRUE)
 ```
 
 
 Bind into data frame
 
 ```{r}
-mean_fri_df <- mean_fri_list %>% bind_rows()
+mean_fires_df <- mean_fires_list %>% bind_rows()
 ```
 
 
 Write to a csv file
 
 ```{r}
-write_csv(mean_fri_df, "data/mean_fri_df_with_glm.csv")
+write_csv(mean_fires_df, "data/mean_fires_df_with_glm.csv")
 ```
 
 ---
+
+# Comparison of survival analysis and poisson regression methods
 
 Out of 10871 taxa, 359 did not fit and they were all because all pixels were unburnt.
 Out of the 10512 with no errors, 419 had confidence intervals bounding zero, which
@@ -215,12 +217,12 @@ were discarded, leaving us with 7296 taxa. There were 131 taxa with mean FRI gre
 than 1000 years. 9940 taxa had confidence intervals less than 100 years big. #TODO update
 
 ```{r}
-mean_fris <- read_csv("outputs/mean_fri_df_with_glm.csv", guess_max = 10000)
+mean_fires <- read_csv("outputs/mean_fires_df_with_glm.csv", guess_max = 10000)
 
-mean_fris %>% filter(mean_fri > 1000) %>% nrow()
-mean_fris_clean %>% filter(upr_confint - lwr_confint < 100) %>% nrow()
+mean_fires %>% filter(mean_fri > 1000) %>% nrow()
+mean_fires_clean %>% filter(upr_confint - lwr_confint < 100) %>% nrow()
 
-y <- mean_fris_clean %>% mutate(confint_size = upr_confint - lwr_confint)
+y <- mean_fires_clean %>% mutate(confint_size = upr_confint - lwr_confint)
 hist(y$confint_size)
 ```
 

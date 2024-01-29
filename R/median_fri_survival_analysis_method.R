@@ -206,4 +206,4 @@ median_fri_list <- parallel::mclapply(list_of_taxa, calculate_median_fri, mc.cor
 median_fri_df <- median_fri_list %>% bind_rows()
 
 # Write to a csv file
-write_csv(median_fri_df, "outputs/median_fris.csv")
+write_csv(median_fri_df, "outputs/median_fris_with_survival_analysis.csv")

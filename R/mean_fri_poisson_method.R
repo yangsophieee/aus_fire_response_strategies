@@ -26,7 +26,7 @@ safely_n_quietly <- function(.f, otherwise = NULL) {
     }
   }
 
-calculate_mean_fri_with_glm <- function(
+calculate_mean_fires_with_glm <- function(
   taxon,
   gbif_data = joined_fire_data,
   num_of_fires_raster = num_of_fires,
@@ -137,8 +137,8 @@ list_of_taxa <- joined_fire_data$taxon_name %>% unique()
 
 num_cores <- parallel::detectCores()
 
-mean_fri_list <- parallel::mclapply(list_of_taxa, calculate_mean_fri_with_glm, mc.cores = num_cores)
+mean_fires_list <- parallel::mclapply(list_of_taxa, calculate_mean_fires_with_glm, mc.cores = num_cores)
 
-mean_fri_df <- mean_fri_list %>% bind_rows()
+mean_fires_df <- mean_fires_list %>% bind_rows()
 
-write_csv(mean_fri_df, "outputs/mean_fri_df_with_glm.csv")
+write_csv(mean_fires_df, "outputs/mean_fires_df_with_poisson_glm.csv")
