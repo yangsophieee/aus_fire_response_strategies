@@ -332,43 +332,41 @@ Clean mean FRI data
 # Eliminate species with less than 10 pixels
 mean_fires_clean <- mean_fires_no_errors |> dplyr::filter(num_pixels >= 10) # Removed 284
 
+# Convert to mean number of fires in 100 years, instead of mean number of fires in the sampling period
+
 df_woody_herb_only <-
   mean_fires_clean %>%
   filter(woody_or_herb %in% c("woody", "herb"))
 
 df_woody_herb_only$resprouting_binomial <- df_woody_herb_only$resprouting_binomial %>% as.factor()
+df_woody_herb_only$seeding_binomial <- df_woody_herb_only$seeding_binomial %>% as.factor()
 ```
 
 
 ```{r}
 library(ggeffects)
 library(RColorBrewer)
-
-#m1 <- glm(resprouting_binomial ~ poly(log10(mean_fri),2) * woody_or_herb,
-#      data = df_woody_herb_only,
-#      family = binomial)
+library(sjPlot)
 
 m1 <- glm(
-  resprouting_binomial ~ log10(mean_fri) + I(log10(mean_fri)^2) + log10(mean_fri):woody_or_herb + I(log10(mean_fri)^2):woody_or_herb + woody_or_herb,
+  resprouting_binomial ~
+    log10(mean_fires) + I(log10(mean_fires)^2) + log10(mean_fires):woody_or_herb +
+    I(log10(mean_fires)^2):woody_or_herb + woody_or_herb,
   data = df_woody_herb_only,
   family = binomial
 )
 
-#m1 <- glm(resprouting_binomial ~ mean_fri + I(mean_fri^2) + mean_fri:woody_or_herb + I(mean_fri^2):woody_or_herb + woody_or_herb, data = df_woody_herb_only, family = binomial)
-
 summary(m1)
-#ggpredict(m1, c("mean_fri", "woody_or_herb")) %>% plot(ci = FALSE)
 
-ggpredict(m1, c("mean_fri", "woody_or_herb")) %>%
+ggpredict(m1, c("mean_fires", "woody_or_herb")) %>%
   ggplot(aes(x, predicted, color = group)) +
   geom_line(size = 1) +
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
   scale_x_log10() +
   ylab("Resprouting Probability") +
-  xlab("Mean FRI") +
+  xlab("Mean fires") +
   theme_classic()
 
-library(sjPlot)
 tab_model(m1)
 ```
 
@@ -407,9 +405,9 @@ p1 <-
       axis.text = element_text(colour = "black", size = 8),
       plot.margin = unit(c(0.1, 0.5, 0.1, 0.1), "cm"),
       plot.title.position = "plot",
-      plot.title = element_text(size = 13, margin = margin(0,0,10,0)),
-      axis.title.y = element_text(size = 10, margin = margin(0,8,0,0)),
-      axis.title.x = element_text(size = 10, margin = margin(8,0,0,0)),
+      plot.title = element_text(size = 13, margin = margin(0, 0, 10, 0)),
+      axis.title.y = element_text(size = 10, margin = margin(0, 8, 0, 0)),
+      axis.title.x = element_text(size = 10, margin = margin(8, 0, 0, 0)),
       panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
       axis.line = element_blank())
 
