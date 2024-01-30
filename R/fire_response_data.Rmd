@@ -493,6 +493,35 @@ fire_response_woody_herb_only <-
 ```
 
 
+Number of resprouters and seeders in woody and herb taxa
+
+```{r}
+resprouting_seeding_woody_herb_only <- readRDS("data/fire_response_woody_herb_only.rds")
+
+resprouting_seeding_woody_herb_only %>%
+  drop_na(resprouting_binomial) %>%
+  group_by(resprouting_binomial, woody_or_herb) %>%
+  summarise(count = n()) %>%
+  ggplot(aes(x = resprouting_binomial, y = count)) +
+  geom_col() +
+  facet_wrap(~woody_or_herb) +
+  theme_classic()
+# 4022 (64.1%) resprouting and 2254 non-resprouting in woody taxa, 3006 resprouting (65.3%) and 1599
+# non-resprouting in herby taxa
+
+resprouting_seeding_woody_herb_only %>%
+  drop_na(seeding_binomial) %>%
+  group_by(seeding_binomial, woody_or_herb) %>%
+  summarise(count = n()) %>%
+  ggplot(aes(x = seeding_binomial, y = count)) +
+  geom_col() +
+  facet_wrap(~woody_or_herb) +
+  theme_classic()
+# 2092 seeding and 569 non-seeding (78.6%) in woody taxa, 712 seeding (78.3%) and 197
+# non-seeding in herby taxa
+```
+
+
 ---
 
 # Read in gbif data

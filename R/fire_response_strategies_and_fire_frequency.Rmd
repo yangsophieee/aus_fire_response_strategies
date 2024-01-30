@@ -14,8 +14,8 @@ Load libraries
 
 ```{r}
 library(tidyverse)
+library(easystats)
 ```
-
 
 Read in fire response strategy data
 
@@ -24,39 +24,793 @@ resprouting_seeding <- readRDS("data/resprouting_seeding.rds")
 ```
 
 
-Number of resprouters and seeders in woody and herb taxa
+
+## Mean fires from Poisson regression
+
+Read in mean fire return interval data from GLMs
 
 ```{r}
-resprouting_seeding_woody_herb_only <- readRDS("data/fire_response_woody_herb_only.rds")
-
-resprouting_seeding_woody_herb_only %>%
-  drop_na(resprouting_binomial) %>%
-  group_by(resprouting_binomial, woody_or_herb) %>%
-  summarise(count = n()) %>%
-  ggplot(aes(x = resprouting_binomial, y = count)) +
-  geom_col() +
-  facet_wrap(~woody_or_herb) +
-  theme_classic()
-# 4022 (64.1%) resprouting and 2254 non-resprouting in woody taxa, 3006 resprouting (65.3%) and 1599
-# non-resprouting in herby taxa
-
-resprouting_seeding_woody_herb_only %>%
-  drop_na(seeding_binomial) %>%
-  group_by(seeding_binomial, woody_or_herb) %>%
-  summarise(count = n()) %>%
-  ggplot(aes(x = seeding_binomial, y = count)) +
-  geom_col() +
-  facet_wrap(~woody_or_herb) +
-  theme_classic()
-# 2092 seeding and 569 non-seeding (78.6%) in woody taxa, 712 seeding (78.3%) and 197
-# non-seeding in herby taxa
+mean_fires <- read_csv("outputs/mean_fires_df_with_poisson_glm.csv", guess_max = 10000)
+mean_fires <- mean_fires %>% left_join(resprouting_seeding, by = c("taxon_name"))
 ```
+
+Filter out taxa with warning messages
+
+```{r}
+mean_fires_no_errors <-
+  mean_fires %>%
+  filter(is.na(warnings), is.na(error), is.na(messages)) %>%
+  select(-warnings, -messages, -error)
+write_csv(mean_fires_no_errors, "outputs/final_df_predicted_fris_and_fire_response.csv")
+mean_fires_no_errors <- read_csv("outputs/final_df_predicted_fris_and_fire_response.csv")
+```
+
+Clean data
+
+```{r}
+# Eliminate species with less than 10 pixels
+mean_fires_clean <- mean_fires_no_errors |>
+  dplyr::filter(num_pixels >= 10) |> # Removed 284
+  # Convert to mean number of fires in 100 years, instead of mean number of fires in the sampling period
+  mutate(mean_fires_100 = mean_fires / 22.17 * 100)
+
+# Not ordered woody_or_herb factor
+df_woody_herb_only <-
+  mean_fires_clean %>%
+  dplyr::filter(woody_or_herb %in% c("woody", "herb")) |>
+  mutate(across(c("resprouting_binomial", "seeding_binomial", "woody_or_herb"), as.factor))
+
+# Ordered woody_or_herb factor
+df_woody_herb_only <-
+  mean_fires_clean %>%
+  dplyr::filter(woody_or_herb %in% c("woody", "herb")) |>
+  mutate(across(c("resprouting_binomial", "seeding_binomial"), as.factor)) |>
+  mutate(woody_or_herb = factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")))
+```
+
+Histogram of mean FRIs
+
+```{r}
+hist(mean_fires_clean$mean_fri, breaks = 40)
+```
+
+
+
+### Binomial logistic regression
+
+
+#### Resprouting binomial
+
+```{r}
+glm_resprouting <- glm(
+  resprouting_binomial ~
+    log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
+    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+  data = df_woody_herb_only,
+  family = binomial
+)
+
+summary(glm_resprouting)
+sjPlot::tab_model(glm_resprouting)
+
+ggeffects::ggpredict(glm_resprouting, c("mean_fires_100", "woody_or_herb")) %>%
+  ggplot(aes(x, predicted, color = group)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
+  scale_x_log10() +
+  ylab("Resprouting Probability") +
+  xlab("Mean fires") +
+  theme_classic()
+
+modelbased::estimate_expectation(glm_resprouting) |>
+  ggplot(aes(x = mean_fires_100, y = Predicted, color = woody_or_herb)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = CI_low, ymax = CI_high, fill = woody_or_herb), alpha = 0.2, linetype = 0) +
+  scale_x_log10() +
+  ylab("Resprouting Probability") +
+  xlab("Mean fires") +
+  theme_classic()
+```
+
+
+```{r}
+coef2 <- coef(glm_resprouting)
+x1 <- log10(df_woody_herb_only$mean_fires_100)
+x2 <- df_woody_herb_only$woody_or_herb
+x2 <- ifelse(x2 == "woody", 1, 0)
+pred_y <- coef2[1] + coef2[2] * x1 + coef2[3] * x1^2 + coef2[4] * x2 + coef2[5] * x1 * x2 + coef2[6] * x1^2 * x2
+pred_p <- exp(pred_y) / (1 + exp(pred_y))
+df1 <- data.frame(x1, x2, df_woody_herb_only$woody_or_herb, pred_y, pred_p)
+df1 <- df1 %>% rename(woody_or_herb = df_woody_herb_only.woody_or_herb)
+
+resprouting_plot <-
+  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
+  geom_line(size = 1.3) +
+  scale_x_log10(
+    expand = c(0, 0),
+    limits = c(0.01, 100),
+    labels = c("0.01", "0.1", "1", "10", "100")
+  ) +
+  scale_y_continuous(
+    limits = c(0, 0.8),
+    expand = c(0, 0)) +
+  ylab("Resprouting Probability") +
+  xlab("Fire Frequency (Per Century)") +
+  scale_colour_manual(
+    values = c("#7e5137", "#b9ce6f"),
+    name = "",
+    breaks = c("woody", "herb"),
+    labels = c("Woody", "Herb")) +
+  ggtitle("a)") +
+  theme_classic() +
+  theme(
+    panel.border = element_rect(colour = "black", fill = NA),
+    legend.position = "none",
+    axis.text = element_text(colour = "black", size = 8),
+    plot.margin = unit(c(0.1, 0.5, 0.1, 0.1), "cm"),
+    plot.title.position = "plot",
+    plot.title = element_text(size = 13, margin = margin(0, 0, 10, 0)),
+    axis.title.y = element_text(size = 10, margin = margin(0, 8, 0, 0)),
+    axis.title.x = element_text(size = 10, margin = margin(8, 0, 0, 0)),
+    panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
+    axis.line = element_blank())
+
+resprouting_plot
+```
+
+
+Density distributions
+
+```{r}
+medians <- df_woody_herb_only %>%
+  drop_na(resprouting_binomial) %>%
+  group_by(woody_or_herb, resprouting_binomial) %>%
+  summarise(median = median(mean_fires_100)) # Medians are robust to log scale and
+  # also more suited to non-normal distributions
+
+resprouting_density <-
+  df_woody_herb_only %>%
+  drop_na(resprouting_binomial) %>%
+  ggplot(aes(mean_fires_100, fill = resprouting_binomial)) +
+  geom_density(alpha = 0.6, size = 0.8, col = NA) +
+  #geom_vline(
+  #  data = medians,
+  #  aes(xintercept = median, col = resprouting_binomial),
+  #  alpha = 1,
+  #  size = 1,
+  #  linetype = "longdash"
+  #) +
+  facet_wrap(~factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")), ncol = 1, scales = "free") +
+  scale_x_log10(
+    expand = c(0, 0),
+    limits = c(0.01, 100),
+    labels = c("0.01", "0.1", "1", "10", "100")
+  ) +
+  scale_y_continuous(
+    expand = c(0, 0),
+    limits = c(0, 1),
+    breaks = c(0, 0.5, 1.0)) +
+  scale_fill_manual(
+    values = c("#eb8775", "#172e6d"),
+    labels = c("No", "Yes")
+  ) +
+  scale_colour_manual(values = c("#eb8775", "#172e6d")) +
+  labs(
+    x = "Fire Frequency (Per Century)",
+    y = "Density",
+    fill = "Resprouting/Seeding"
+  ) +
+  theme_classic() +
+  theme(
+    axis.line = element_blank(),
+    strip.background = element_blank(),
+    strip.text = element_blank(),
+    plot.margin = unit(c(0.5, 0.5, 0.1, 0.1), "cm"),
+    panel.border = element_rect(colour = "black", fill = NA),
+    panel.spacing = unit(0.5, "lines"),
+    axis.text = element_text(colour = "black", size = 8),
+    axis.title.y = element_text(size = 10, margin = margin(0, 8, 0, 0)),
+    axis.title.x = element_text(size = 10, margin = margin(8, 0, 0, 0)))
+resprouting_density
+```
+
+
+Check accuracy of model
+
+```{r}
+index <-
+  sample(
+    seq_along(df_woody_herb_only$resprouting_binomial),
+    0.7 * length(df_woody_herb_only$resprouting_binomial)
+  )
+training_x <- df_woody_herb_only[index, c("mean_fri", "woody_or_herb")]
+training_y <- df_woody_herb_only[index, "resprouting_binomial"]
+test_x <- df_woody_herb_only[-index, c("mean_fri", "woody_or_herb")]
+test_y <- df_woody_herb_only[-index, "resprouting_binomial"]
+```
+
+
+```{r}
+set.seed(1)
+
+glm_resprouting <- glm(
+  resprouting_binomial ~ poly(log10(mean_fri), 2) * woody_or_herb,
+  data = data.frame(training_x, training_y),
+  family = binomial
+)
+summary(glm_resprouting)
+
+predictions <- predict(
+  glm_resprouting,
+  newdata = data.frame(test_x, test_y),
+  newx = as.matrix(test_x), type = "link"
+) # Make predictions
+
+predictions_vs_real <- data.frame(test_x, test_y, predictions)
+
+predictions_vs_real <-
+  predictions_vs_real %>%
+  mutate(
+    preds_transformed = 1 / (1 + exp(-predictions)),
+    preds_binomial = case_when(
+      preds_transformed >= 0.5 ~ TRUE,
+      preds_transformed < 0.5 ~ FALSE
+    ),
+    preds_binomial = as.factor(preds_binomial)
+  )
+
+predictions_vs_real %>%
+  drop_na(resprouting_binomial) %>%
+  ggplot(aes(resprouting_binomial, preds_transformed)) +
+  geom_boxplot() +
+  facet_wrap(~woody_or_herb) +
+  theme_classic()
+
+caret::confusionMatrix(predictions_vs_real$preds_binomial, predictions_vs_real$resprouting_binomial)
+```
+
+
+
+Phylogenetic regression
+
+```{r}
+library(phylolm)
+library(future)
+library(ape)
+plan(multisession)
+
+tree <- read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
+df_woody_herb_only$taxon_name <- gsub(" ", "_", df_woody_herb_only$taxon_name)
+df_woody_herb_only <- df_woody_herb_only[df_woody_herb_only$taxon_name %in% tree$tip.label, ]
+df_woody_herb_only$resprouting_binomial <- ifelse(df_woody_herb_only$resprouting_binomial == TRUE, 1, 0) # Make numeric
+
+pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, df_woody_herb_only$taxon_name))
+pruned_tree <- as.phylo(pruned_tree)
+```
+
+
+With sorted data
+
+```{r}
+sorted_data <- df_woody_herb_only[order(match(df_woody_herb_only$taxon_name, pruned_tree$tip.label)), ]
+
+sorted_data <-
+  sorted_data %>%
+  select(taxon_name, mean_fires_100, resprouting_binomial, woody_or_herb) %>%
+  column_to_rownames("taxon_name") |>
+  mutate(across(c("woody_or_herb", "resprouting_binomial"), as.factor))
+
+# Why does this create a different plot?
+sorted_data <- sorted_data |>
+  mutate(
+    resprouting_binomial = as.factor(resprouting_binomial),
+    woody_or_herb = factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb"))
+  )
+
+pglm_resprouting <- phyloglm(
+  resprouting_binomial ~
+    log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
+    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+  method = "logistic_MPLE",
+  data = sorted_data,
+  phy = pruned_tree,
+  btol = 100,
+  boot = 0
+)
+
+summary(pglm_resprouting)
+
+modelbased::estimate_prediction(pglm_resprouting) |>
+  ggplot(aes(x = mean_fires_100, y = Predicted, color = woody_or_herb)) +
+  geom_line(size = 1) +
+  scale_x_log10() +
+  ylab("Resprouting Probability") +
+  xlab("Mean fires") +
+  theme_classic()
+
+coef2 <- coef(pglm_resprouting)
+x1 <- log10(sorted_data$mean_fires_100)
+x2 <- sorted_data$woody_or_herb
+x2 <- ifelse(x2 == "woody", 1, 0)
+pred_y <- coef2[1] + coef2[2] * x1 + coef2[3] * x1^2 + coef2[4] * x2 + coef2[5] * x1 * x2 + coef2[6] * x1^2 * x2
+pred_p <- exp(pred_y) / (1 + exp(pred_y))
+df1 <- data.frame(x1, x2, sorted_data$woody_or_herb, pred_y, pred_p)
+df1 <- df1 %>% rename(woody_or_herb = sorted_data.woody_or_herb)
+
+resprouting_phylo_plot <-
+  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
+  geom_line(size = 1.3) +
+  scale_x_log10() +
+  scale_y_continuous(limits = c(0, 1.0),
+             expand = c(0, 0)) +
+  ylab("Resprouting Probability") +
+  xlab("Fire Frequency (Per Century)") +
+  scale_colour_manual(values = c("#7e5137", "#b9ce6f"),
+            name = "",
+            breaks = c("woody", "herb"),
+            labels = c("Woody", "Herb")) +
+  ggtitle("a)") +
+  theme_classic() +
+  theme(panel.border = element_rect(colour = "black", fill = NA),
+      legend.position = "none",
+      axis.text = element_text(colour = "black", size = 8),
+      plot.margin = unit(c(0.1,0.5,0.1,0.1), "cm"),
+      plot.title.position = "plot",
+      plot.title = element_text(size = 13, margin = margin(0,0,10,0)),
+      axis.title.y = element_text(size = 10, margin = margin(0,8,0,0)),
+      axis.title.x = element_text(size = 10, margin = margin(8,0,0,0)),
+      panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
+      axis.line = element_blank())
+resprouting_phylo_plot
+```
+
+
+To calculate R2 Tjur
+
+```{r}
+pred <- fitted(pglm_resprouting)
+y <- pglm_resprouting$y
+
+categories <- unique(y)
+mean1 <- mean(pred[which(y == categories[1])], na.rm = TRUE)
+mean2 <- mean(pred[which(y == categories[2])], na.rm = TRUE)
+
+abs(mean1 - mean2) # 0.028
+```
+
+
+
+```{r}
+coef2 <- coef(pglm_resprouting)
+plot.new()
+plot(seq(-100, 100, by = 20), seq(0,1, by = 0.1), xlab="Mean FRI",ylab="Resprouting Probability")
+curve(plogis(coef2[1] + coef2[2]*x), col = "red", add = TRUE)
+
+sorted_data %>%
+  ggplot(aes(x = mean_fri, y = resprouting_binomial)) +
+  geom_jitter(height = 0.01, alpha = 0.25) +
+  stat_smooth(method = "glm", method.args = list(family = binomial)) +
+  #facet_wrap(~woody_or_herb) +
+  scale_x_log10() +
+  theme_classic()
+```
+
+
+
+
+#### Seeding binomial
+
+
+```{r}
+m2 <- glm(
+  seeding_binomial ~
+    log10(mean_fri) + I(log10(mean_fri)^2) + log10(mean_fri):woody_or_herb +
+    I(log10(mean_fri)^2):woody_or_herb + woody_or_herb,
+  data = df_woody_herb_only,
+  family = binomial
+)
+summary(m2)
+ggpredict(m2, c("mean_fri", "woody_or_herb")) %>% plot()
+
+ggpredict(m2, c("mean_fri", "woody_or_herb")) %>%
+  ggplot(aes(x, predicted, color = group)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
+  scale_x_log10() +
+  ylab("Seeding Probability") +
+  xlab("Mean FRI") +
+  theme_classic()
+
+#m2 <- glm(seeding_binomial ~ poly(log10(mean_fri),2),
+#      data = df_woody_herb_only,
+#      family = binomial)
+#summary(m2)
+ggpredict(m2, c("mean_fri")) %>%
+  ggplot(aes(x, predicted)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.2, linetype = 0) +
+  scale_x_log10() +
+  ylab("Seeding Probability") +
+  xlab("Mean FRI") +
+  theme_classic()
+```
+
+
+Model without herb data
+
+```{r}
+df_woody_only <-
+  df_woody_herb_only %>%
+  filter(woody_or_herb == "woody")
+
+m2 <- glm(seeding_binomial ~ log10(mean_fri) + I(log10(mean_fri)^2),
+      data = df_woody_only,
+      family = binomial)
+summary(m2)
+
+ggpredict(m2, c("mean_fri")) %>%
+  ggplot(aes(x, predicted, color = group)) +
+  geom_line(size = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
+  scale_x_log10() +
+  ylab("Seeding Probability") +
+  xlab("Mean FRI") +
+  theme_classic()
+
+coef2 <- coef(m2)
+
+x1 <- log10(df_woody_only$mean_fri)
+x2 <- df_woody_only$woody_or_herb
+x2 <- ifelse(x2 == "woody", 1, 0)
+pred_y <- coef2[1] + coef2[2]*x1 + coef2[3]*x1^2
+pred_p <- exp(pred_y) / (1 + exp(pred_y))
+df1 <- data.frame(x1, x2, df_woody_only$woody_or_herb, pred_y, pred_p)
+df1 <- df1 %>% rename(woody_or_herb = df_woody_only.woody_or_herb)
+
+p3 <-
+  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
+  geom_line(size = 1.3) +
+  scale_x_log10(expand = c(0,0),
+          limits = c(1.05,5000),
+          breaks = c(10,100,1000),
+          labels = c(10,100,1000)) +
+  scale_y_continuous(limits = c(0,1.0),
+             expand = c(0,0)) +
+  ylab("Seeding Probability") +
+  xlab("Fire Return Interval (Years)") +
+  scale_colour_manual(values = c("#7e5137"),
+            name = "",
+            breaks = c("woody"),
+            labels = c("Woody")) +
+  ggtitle("b)") +
+  theme_classic() +
+  theme(panel.border = element_rect(colour = "black", fill = NA),
+      legend.position = "none",
+      axis.text = element_text(colour = "black", size = 8),
+      plot.margin = unit(c(0.1,0.5,0.1,0.1), "cm"),
+      plot.title.position = "plot",
+      plot.title = element_text(size = 13, margin = margin(0,0,10,0)),
+      axis.title.y = element_text(size = 10, margin = margin(0,8,0,0)),
+      axis.title.x = element_text(size = 10, margin = margin(8,0,0,0)),
+      panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
+      axis.line = element_blank())
+
+p3
+```
+
+
+Density distributions
+
+```{r}
+means <- df_woody_herb_only %>%
+  drop_na(seeding_binomial) %>%
+  group_by(woody_or_herb, seeding_binomial) %>%
+  summarise(mean = mean(mean_fri))
+
+medians <- df_woody_herb_only %>%
+  drop_na(seeding_binomial) %>%
+  group_by(woody_or_herb, seeding_binomial) %>%
+  summarise(median = median(mean_fri))
+
+seeding_density <-
+  df_woody_herb_only %>%
+  drop_na(seeding_binomial) %>%
+  ggplot(aes(mean_fri, fill = seeding_binomial)) +
+  geom_density(alpha = 0.6, size = 0.8, col = NA) +
+  geom_vline(data = means, aes(xintercept = mean, col = seeding_binomial),
+         alpha = 1, size = 1, linetype = "longdash") +
+  facet_wrap(~woody_or_herb, ncol = 1, scales = "free") +
+  scale_x_log10(expand = c(0,0),
+          limits = c(1.05,5000),
+          breaks = c(10,100,1000),
+          labels = c(10,100,1000)) +
+  scale_y_continuous(expand = c(0,0),
+             limits = c(0,1),
+             breaks = c(0,0.5,1.0)) +
+  scale_fill_manual(name = "Resprouting/Seeding",
+            values = c("#eb8775", "#172e6d"),
+            labels = c("No", "Yes")) +
+  scale_colour_manual(values = c("#eb8775", "#172e6d")) +
+  guides(fill = guide_legend(ncol = 2)) +
+  xlab("Fire Return Interval (Yrs)") +
+  ylab("Density") +
+  theme_classic() +
+  theme(axis.line = element_blank(),
+      strip.background = element_blank(),
+      strip.text = element_blank(),
+      plot.margin = unit(c(0.5,0.5,0.1,0.1), "cm"),
+      panel.border = element_rect(colour = "black", fill = NA),
+      panel.spacing = unit(0.5, "lines"),
+      axis.text = element_text(colour = "black", size = 8),
+      axis.title.y = element_text(size = 10, margin = margin(0,8,0,0)),
+      axis.title.x = element_text(size = 10, margin = margin(8,0,0,0)),
+      legend.position = "none")
+
+seeding_density
+```
+
+
+
+```{r}
+coef2 <- coef(m2)
+
+x1 <- log10(df_woody_herb_only$mean_fri)
+x2 <- df_woody_herb_only$woody_or_herb
+x2 <- ifelse(x2 == "woody", 1, 0)
+pred_y <- coef2[1] + coef2[2]*x1 + coef2[3]*x1^2 + coef2[4]*x2 + coef2[5]*x1*x2 + coef2[6]*x1^2*x2
+pred_p <- exp(pred_y) / (1 + exp(pred_y))
+df1 <- data.frame(x1, x2, df_woody_herb_only$woody_or_herb, pred_y, pred_p)
+df1 <- df1 %>% rename(woody_or_herb = df_woody_herb_only.woody_or_herb)
+
+
+p2 <-
+  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
+  geom_line(size = 1.3) +
+  scale_x_log10(breaks = c(10,100,1000),
+          labels = c(10,100,1000)) +
+  scale_y_continuous(limits = c(0,1.0),
+             expand = c(0,0)) +
+  ylab("Seeding Probability") +
+  xlab("Mean FRI") +
+  scale_colour_manual(values = c("#B15928", "#B2DF8A"),
+            name = "",
+            breaks = c("woody", "herb"),
+            labels = c("Woody", "Herb")) +
+  theme_classic() +
+  theme(panel.border = element_rect(colour = "black", fill = NA),
+      legend.position = "none",
+      axis.text = element_text(colour = "black", size = 9),
+      plot.margin = unit(c(0.1,0.5,0.1,0.1), "cm"),
+      axis.title.y = element_text(size = 11, margin = margin(0,8,0,0)),
+      axis.title.x = element_text(size = 11, margin = margin(8,0,0,0)))
+p2
+```
+
+
+Plot resprouting and seeding probability graphs together
+
+```{r}
+library(grid)
+grid.newpage()
+grid.draw(cbind(ggplotGrob(p1), ggplotGrob(p3)))
+final_plot <- cbind(ggplotGrob(p1), ggplotGrob(p3))
+ggsave("resprouting_seeding_probabilites.png", plot = final_plot, width = 6, height = 2.8)
+
+cbind(ggplotGrob(resprouting_density), rbind(ggplotGrob(seeding_density1), ggplotGrob(seeding_density2)))
+
+ggsave("resprouting_densities.png", plot = resprouting_density, width = 3, height = 2.3)
+ggsave("seeding_densities.png", plot = seeding_density, width = 3, height = 2.3)
+
+```
+
+
+
+```{r}
+index <-
+  sample(1:length(df_woody_herb_only$seeding_binomial),
+       0.7*length(df_woody_herb_only$seeding_binomial))
+training_x <- df_woody_herb_only[index, c("mean_fri", "woody_or_herb")]
+training_y <- df_woody_herb_only[index, "seeding_binomial"]
+test_x <- df_woody_herb_only[-index, c("mean_fri", "woody_or_herb")]
+test_y <- df_woody_herb_only[-index, "seeding_binomial"]
+```
+
+
+```{r}
+set.seed(1)
+
+glm_seeding <- glm(seeding_binomial ~ poly(log10(mean_fri), 2) * woody_or_herb,
+      data = data.frame(training_x, training_y),
+      family = binomial)
+summary(glm_seeding)
+predictions <- predict(glm_seeding, newdata = data.frame(test_x, test_y),
+             newx = as.matrix(test_x), type = "link") # Make predictions
+
+predictions_vs_real <- data.frame(test_x, test_y, predictions)
+predictions_vs_real <-
+  predictions_vs_real %>%
+  mutate(preds_transformed = 1/(1 + exp(-predictions)),
+       preds_binomial = case_when(preds_transformed >= 0.5 ~ TRUE,
+                    preds_transformed < 0.5 ~ FALSE))
+predictions_vs_real$preds_binomial <- predictions_vs_real$preds_binomial %>% as.factor()
+
+predictions_vs_real %>%
+  drop_na(seeding_binomial) %>%
+  ggplot(aes(seeding_binomial, preds_transformed)) +
+  geom_boxplot() +
+  facet_wrap(~woody_or_herb) +
+  theme_classic()
+
+library(caret)
+confusionMatrix(predictions_vs_real$preds_binomial, predictions_vs_real$resprouting_binomial)
+```
+
+
+Phylogenetic logistic regression
+
+```{r}
+tree <- read.tree("raw_data/v0.1-big-seed-plant-trees/ALLMB.tre")
+df_woody_herb_only$taxon_name <- gsub(" ", "_", df_woody_herb_only$taxon_name)
+df_woody_herb_only <- df_woody_herb_only[df_woody_herb_only$taxon_name %in% tree$tip.label,]
+df_woody_herb_only$seeding_binomial <-
+  ifelse(df_woody_herb_only$seeding_binomial == TRUE, 1, 0) # make numeric
+
+pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, df_woody_herb_only$taxon_name))
+pruned_tree <- as.phylo(pruned_tree)
+
+sorted_data <- df_woody_herb_only[order(match(df_woody_herb_only$taxon_name, pruned_tree$tip.label)),]
+
+sorted_data <-
+  sorted_data %>%
+  select(taxon_name, mean_fri, seeding_binomial, woody_or_herb) %>%
+  column_to_rownames("taxon_name")
+
+
+pglm_resprouting <- phyloglm(seeding_binomial ~ log10(mean_fri) + I(log10(mean_fri)^2) + log10(mean_fri):woody_or_herb + I(log10(mean_fri)^2):woody_or_herb + woody_or_herb,
+         method = "logistic_MPLE",
+         data = sorted_data,
+         phy = pruned_tree,
+         btol = 100,
+         boot = 0)
+summary(pglm_resprouting)
+
+coef2 <- coef(pglm_resprouting)
+
+x1 <- log10(sorted_data$mean_fri)
+x2 <- sorted_data$woody_or_herb
+x2 <- ifelse(x2 == "woody", 1, 0)
+pred_y <- coef2[1] + coef2[2]*x1 + coef2[3]*x1^2 + coef2[4]*x2 + coef2[5]*x1*x2 + coef2[6]*x1^2*x2
+pred_p <- exp(pred_y) / (1 + exp(pred_y))
+df1 <- data.frame(x1, x2, sorted_data$woody_or_herb, pred_y, pred_p)
+df1 <- df1 %>% rename(woody_or_herb = sorted_data.woody_or_herb)
+
+
+p6 <-
+  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
+  geom_line(size = 1.3) +
+  scale_x_log10(breaks = c(10,100,1000),
+          labels = c(10,100,1000)) +
+  scale_y_continuous(limits = c(0,1.0),
+             expand = c(0,0)) +
+  scale_colour_manual(values = c("#7e5137", "#b9ce6f"),
+            name = "",
+            breaks = c("woody", "herb"),
+            labels = c("Woody", "Herb")) +
+  ylab("Seeding Probability") +
+  xlab("Mean FRI") +
+  theme_classic() +
+  theme(panel.border = element_rect(colour = "black", fill = NA),
+      legend.position = "none",
+      axis.text = element_text(colour = "black", size = 9),
+      plot.margin = unit(c(0.1, 0.5, 0.1, 0.1), "cm"),
+      axis.title.y = element_text(size = 11, margin = margin(0, 8, 0, 0)),
+      axis.title.x = element_text(size = 11, margin = margin(8, 0, 0, 0)))
+```
+
+
+Model without herb data
+
+```{r}
+df_woody_only <-
+  df_woody_herb_only %>%
+  filter(woody_or_herb == "woody")
+
+tree <- read.tree("raw_data/v0.1-big-seed-plant-trees/ALLMB.tre")
+df_woody_only$taxon_name <- gsub(" ", "_", df_woody_only$taxon_name)
+df_woody_only <- df_woody_only[df_woody_only$taxon_name %in% tree$tip.label, ]
+df_woody_only$seeding_binomial <-
+  ifelse(df_woody_only$seeding_binomial == TRUE, 1, 0) # make numeric
+
+pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, df_woody_only$taxon_name))
+pruned_tree <- as.phylo(pruned_tree)
+
+sorted_data <- df_woody_only[order(match(df_woody_only$taxon_name, pruned_tree$tip.label)), ]
+
+sorted_data <-
+  sorted_data %>%
+  select(taxon_name, mean_fri, seeding_binomial, woody_or_herb) %>%
+  column_to_rownames("taxon_name")
+
+
+pglm3 <- phyloglm(seeding_binomial ~ log10(mean_fri) + I(log10(mean_fri)^2),
+         method = "logistic_MPLE",
+         data = sorted_data,
+         phy = pruned_tree,
+         btol = 100,
+         boot = 0)
+summary(pglm3)
+
+coef2 <- coef(pglm3)
+
+x1 <- log10(sorted_data$mean_fri)
+x2 <- sorted_data$woody_or_herb
+x2 <- ifelse(x2 == "woody", 1, 0)
+pred_y <- coef2[1] + coef2[2] * x1 + coef2[3] * x1^2
+pred_p <- exp(pred_y) / (1 + exp(pred_y))
+df1 <- data.frame(x1, x2, sorted_data$woody_or_herb, pred_y, pred_p)
+df1 <- df1 %>% rename(woody_or_herb = sorted_data.woody_or_herb)
+
+
+p5 <-
+  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
+  geom_line(size = 1.3) +
+  scale_x_log10(breaks = c(10, 100, 1000),
+          labels = c(10,100,1000)) +
+  scale_y_continuous(limits = c(0,1.0),
+             expand = c(0,0)) +
+  scale_colour_manual(values = c("#915330"),
+            name = "",
+            breaks = c("woody"),
+            labels = c("Woody")) +
+  ggtitle("b)") +
+  ylab("Seeding Probability") +
+  xlab("Fire Return Interval (Years)") +
+  theme_classic() +
+  theme(panel.border = element_rect(colour = "black", fill = NA),
+      legend.position = "none",
+      axis.text = element_text(colour = "black", size = 8),
+      plot.margin = unit(c(0.1,0.5,0.1,0.1), "cm"),
+      plot.title.position = "plot",
+      plot.title = element_text(size = 13, margin = margin(0,0,10,0)),
+      axis.title.y = element_text(size = 10, margin = margin(0,8,0,0)),
+      axis.title.x = element_text(size = 10, margin = margin(8,0,0,0)),
+      panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
+      axis.line = element_blank())
+p5
+
+# To calculate odds ratio, exp(estimate)
+
+
+grid.newpage()
+grid.draw(cbind(ggplotGrob(p3), ggplotGrob(p5)))
+
+final_plot <- cbind(ggplotGrob(p3), ggplotGrob(p5))
+ggsave("resprouting_seeding_probabilites_phylo.png", plot = final_plot, width = 6, height = 2.8)
+```
+
+
+To calculate R2 Tjur
+
+```{r}
+pred <- fitted(pglm3)
+y <- pglm3$y
+
+categories <- unique(y)
+mean1 <- mean(pred[which(y == categories[1])], na.rm = TRUE)
+mean2 <- mean(pred[which(y == categories[2])], na.rm = TRUE)
+
+abs(mean1 - mean2) # 0.062
+```
+
 
 
 
 ---
 
-# Survival Analysis Method
+## Comparison of survival analysis and poisson regression methods
+
+
+### Survival analysis method
 
 
 Read in median fire return interval data from survival analysis
@@ -83,7 +837,7 @@ median_fires_per_22_years <- median_fris %>%
 
 
 
-# Median FRIs calculated with unburnt pixels
+#### Median FRIs calculated with unburnt pixels
 
 Filter out taxa with warning messages
 
@@ -122,44 +876,53 @@ median_fris_w %>%
 ```
 
 
----
 
-# GLM Method
-
-
-Read in mean fire return interval data from GLMs
+Out of 10871 taxa, 359 did not fit and they were all because all pixels were unburnt.
+Out of the 10512 with no errors, 419 had confidence intervals bounding zero, which
+were discarded, leaving us with 7296 taxa. There were 131 taxa with mean FRI greater
+than 1000 years. 9940 taxa had confidence intervals less than 100 years big. #TODO update
 
 ```{r}
-mean_fires <- read_csv("outputs/mean_fires_df_with_poisson_glm.csv", guess_max = 10000)
+mean_fires <- read_csv("outputs/mean_fires_df_with_glm.csv", guess_max = 10000)
 
-mean_fires <- mean_fires %>% left_join(resprouting_seeding, by = c("taxon_name"))
+mean_fires %>% filter(mean_fri > 1000) %>% nrow()
+mean_fires_clean %>% filter(upr_conf_int - lwr_conf_int < 100) %>% nrow()
+
+y <- mean_fires_clean %>% mutate(confint_size = upr_conf_int - lwr_conf_int)
+hist(y$confint_size)
 ```
 
 
-Filter out taxa with warning messages
+
+Comparatively, the survival analysis resulted in 1443 that did not fit (incl. unburnt
+pixels). The warning was "ran out of iterations and did not converge". This occurred
+because most or all pixels were unburnt. There were 7217 taxa with median FRI greater
+than 5000 years. 221 taxa had confidence intervals less than 100 years big. #TODO update
 
 ```{r}
-mean_fires_no_errors <-
-  mean_fires %>%
-  filter(is.na(warnings), is.na(error), is.na(messages)) %>%
-  select(-warnings, -messages, -error)
+median_fris <- read_csv("outputs/median_fris_with_survival_analysis.csv", guess_max = 10871)
+median_fris <-
+  median_fris %>%
+  mutate(across(
+    c("med_w", "med_w_lwr", "med_w_upr", "med_wo", "med_wo_lwr", "med_wo_upr"),
+    ~ .x / 365.2422
+  ))
+
+median_fris %>% filter(med_w > 1000) %>% nrow()
+median_fris %>% filter(med_w_upr - med_w_lwr < 100) %>% nrow()
+x <- median_fris %>% mutate(confint_size = med_w_upr - med_w_lwr)
+hist(x$confint_size)
+
+median_fris %>% filter(!is.na(med_wo_warnings)) %>% nrow()
+median_fris %>% filter(med_wo > 5000) %>% nrow()
 ```
 
-
-```{r}
-write_csv(mean_fires_no_errors, "outputs/final_df_predicted_fris_and_fire_response.csv")
-mean_fires_no_errors <- read_csv("outputs/final_df_predicted_fris_and_fire_response.csv")
-```
+1282 that did not fit (when not including unburnt pixels). There were 6719 taxa with
+median FRI greater than 5000 years. #TODO update
 
 
-Histogram of mean FRIs
 
-```{r}
-hist(mean_fires_no_errors$mean_fri)
-```
-
-
-## New Stacked Plots
+## New stacked plots
 
 
 Binary resprouting variable
@@ -317,762 +1080,3 @@ mean_fires_no_errors %>%
   scale_fill_brewer(palette = "Set1") +
   theme_classic()
 ```
-
-
----
-
-# Binomial logistic regression
-
-
-## Resprouting binomial
-
-Clean mean FRI data
-
-```{r}
-# Eliminate species with less than 10 pixels
-mean_fires_clean <- mean_fires_no_errors |>
-  dplyr::filter(num_pixels >= 10) |> # Removed 284
-  # Convert to mean number of fires in 100 years, instead of mean number of fires in the sampling period
-  mutate(mean_fires_100 = mean_fires / 22.17 * 100)
-
-df_woody_herb_only <-
-  mean_fires_clean %>%
-  filter(woody_or_herb %in% c("woody", "herb"))
-
-df_woody_herb_only$resprouting_binomial <- df_woody_herb_only$resprouting_binomial %>% as.factor()
-df_woody_herb_only$seeding_binomial <- df_woody_herb_only$seeding_binomial %>% as.factor()
-```
-
-
-```{r}
-library(ggeffects)
-library(RColorBrewer)
-library(sjPlot)
-
-m1 <- glm(
-  resprouting_binomial ~
-    log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
-    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
-  data = df_woody_herb_only,
-  family = binomial
-)
-
-summary(m1)
-
-ggpredict(m1, c("mean_fires_100", "woody_or_herb")) %>%
-  ggplot(aes(x, predicted, color = group)) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
-  scale_x_log10() +
-  ylab("Resprouting Probability") +
-  xlab("Mean fires") +
-  theme_classic()
-
-tab_model(m1)
-```
-
-
-```{r}
-coef2 <- coef(m1)
-
-x1 <- log10(df_woody_herb_only$mean_fires_100)
-x2 <- df_woody_herb_only$woody_or_herb
-x2 <- ifelse(x2 == "woody", 1, 0)
-pred_y <- coef2[1] + coef2[2] * x1 + coef2[3] * x1^2 + coef2[4] * x2 + coef2[5] * x1 * x2 + coef2[6] * x1^2 * x2
-pred_p <- exp(pred_y) / (1 + exp(pred_y))
-df1 <- data.frame(x1, x2, df_woody_herb_only$woody_or_herb, pred_y, pred_p)
-df1 <- df1 %>% rename(woody_or_herb = df_woody_herb_only.woody_or_herb)
-
-p1 <-
-  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
-  geom_line(size = 1.3) +
-  scale_x_log10(
-    expand = c(0, 0),
-    limits = c(0.008, 100)
-  ) +
-  scale_y_continuous(
-    limits = c(0, 0.8),
-    expand = c(0, 0)) +
-  ylab("Resprouting Probability") +
-  xlab("Fire Frequency (Per Century)") +
-  scale_colour_manual(values = c("#915330", "#aedb65"),
-            name = "",
-            breaks = c("woody", "herb"),
-            labels = c("Woody", "Herb")) +
-  ggtitle("a)") +
-  theme_classic() +
-  theme(panel.border = element_rect(colour = "black", fill = NA),
-      legend.position = "none",
-      axis.text = element_text(colour = "black", size = 8),
-      plot.margin = unit(c(0.1, 0.5, 0.1, 0.1), "cm"),
-      plot.title.position = "plot",
-      plot.title = element_text(size = 13, margin = margin(0, 0, 10, 0)),
-      axis.title.y = element_text(size = 10, margin = margin(0, 8, 0, 0)),
-      axis.title.x = element_text(size = 10, margin = margin(8, 0, 0, 0)),
-      panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
-      axis.line = element_blank())
-
-p1
-```
-
-
-Density distributions
-
-```{r}
-df_woody_herb_only$woody_or_herb <- factor(df_woody_herb_only$woody_or_herb,
-                       levels = c("woody", "herb"))
-
-means <- df_woody_herb_only %>%
-  drop_na(resprouting_binomial) %>%
-  group_by(woody_or_herb, resprouting_binomial) %>%
-  summarise(mean = mean(mean_fri))
-
-medians <- df_woody_herb_only %>%
-  drop_na(resprouting_binomial) %>%
-  group_by(woody_or_herb, resprouting_binomial) %>%
-  summarise(median = median(mean_fri))
-
-
-resprouting_density <-
-  df_woody_herb_only %>%
-  drop_na(resprouting_binomial) %>%
-  ggplot(aes(mean_fri, fill = resprouting_binomial)) +
-  geom_density(alpha = 0.6, size = 0.8, col = NA) +
-  geom_vline(data = means, aes(xintercept = mean, col = resprouting_binomial),
-         alpha = 1, size = 1, linetype = "longdash") +
-  facet_wrap(~woody_or_herb, ncol = 1, scales = "free") +
-  scale_x_log10(expand = c(0, 0),
-          limits = c(1.05, 5000),
-          breaks = c(10, 100, 1000),
-          labels = c(10, 100, 1000)) +
-  scale_y_continuous(expand = c(0, 0),
-             limits = c(0, 1),
-             breaks = c(0, 0.5, 1.0)) +
-  scale_fill_manual(values = c("#EA294C", "#2166AC")) +
-  scale_colour_manual(values = c("#EA294C", "#2166AC")) +
-  xlab("Fire Return Interval (Yrs)") +
-  ylab("Density") +
-  theme_classic() +
-  theme(axis.line = element_blank(),
-      strip.background = element_blank(),
-      strip.text = element_blank(),
-      plot.margin = unit(c(0.5, 0.5, 0.1, 0.1), "cm"),
-      panel.border = element_rect(colour = "black", fill = NA),
-      panel.spacing = unit(0.5, "lines"),
-      axis.text = element_text(colour = "black", size = 8),
-      axis.title.y = element_text(size = 10, margin = margin(0, 8, 0, 0)),
-      axis.title.x = element_text(size = 10, margin = margin(8, 0, 0, 0)),
-      legend.position = "none")
-resprouting_density
-```
-
-
-
-
-Check accuracy of model
-
-```{r}
-index <-
-  sample(1:length(df_woody_herb_only$resprouting_binomial),
-       0.7*length(df_woody_herb_only$resprouting_binomial))
-training_x <- df_woody_herb_only[index, c("mean_fri", "woody_or_herb")]
-training_y <- df_woody_herb_only[index, "resprouting_binomial"]
-test_x <- df_woody_herb_only[-index, c("mean_fri", "woody_or_herb")]
-test_y <- df_woody_herb_only[-index, "resprouting_binomial"]
-```
-
-
-```{r}
-set.seed(1)
-
-m1 <- glm(resprouting_binomial ~ poly(log10(mean_fri),2) * woody_or_herb,
-      data = data.frame(training_x, training_y),
-      family = binomial)
-summary(m1)
-predictions <- predict(m1, newdata = data.frame(test_x, test_y),
-             newx = as.matrix(test_x), type = "link") # Make predictions
-
-predictions_vs_real <- data.frame(test_x, test_y, predictions)
-predictions_vs_real <-
-  predictions_vs_real %>%
-  mutate(preds_transformed = 1/(1 + exp(-predictions)),
-       preds_binomial = case_when(preds_transformed >= 0.5 ~ TRUE,
-                    preds_transformed < 0.5 ~ FALSE))
-predictions_vs_real$preds_binomial <- predictions_vs_real$preds_binomial %>% as.factor()
-
-predictions_vs_real %>%
-  drop_na(resprouting_binomial) %>%
-  ggplot(aes(resprouting_binomial, preds_transformed)) +
-  geom_boxplot() +
-  facet_wrap(~woody_or_herb) +
-  theme_classic()
-
-library(caret)
-confusionMatrix(predictions_vs_real$preds_binomial, predictions_vs_real$resprouting_binomial)
-```
-
-
-
-Phylogenetic regression
-
-```{r}
-library(phylolm)
-library(future)
-library(ape)
-plan(multisession)
-
-tree <- read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
-df_woody_herb_only$taxon_name <- gsub(" ", "_", df_woody_herb_only$taxon_name)
-df_woody_herb_only <- df_woody_herb_only[df_woody_herb_only$taxon_name %in% tree$tip.label, ]
-df_woody_herb_only$resprouting_binomial <-
-  ifelse(df_woody_herb_only$resprouting_binomial == TRUE, 1, 0) # Make numeric
-
-pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, df_woody_herb_only$taxon_name))
-pruned_tree <- as.phylo(pruned_tree)
-```
-
-
-With sorted data (?)
-
-```{r}
-sorted_data <- df_woody_herb_only[order(match(df_woody_herb_only$taxon_name, pruned_tree$tip.label)), ]
-
-sorted_data <-
-  sorted_data %>%
-  select(taxon_name, mean_fri, resprouting_binomial, woody_or_herb) %>%
-  column_to_rownames("taxon_name")
-
-
-pglm2 <- phyloglm(resprouting_binomial ~ log10(mean_fri) + I(log10(mean_fri)^2) + log10(mean_fri):woody_or_herb + I(log10(mean_fri)^2):woody_or_herb + woody_or_herb,
-         method = "logistic_MPLE",
-         data = sorted_data,
-         phy = pruned_tree,
-         btol = 100,
-         boot = 0)
-
-summary(pglm2)
-coef2 <- coef(pglm2)
-
-x1 <- log10(sorted_data$mean_fri)
-x2 <- sorted_data$woody_or_herb
-x2 <- ifelse(x2 == "woody", 1, 0)
-pred_y <- coef2[1] + coef2[2]*x1 + coef2[3]*x1^2 + coef2[4]*x2 + coef2[5]*x1*x2 + coef2[6]*x1^2*x2
-pred_p <- exp(pred_y) / (1 + exp(pred_y))
-df1 <- data.frame(x1, x2, sorted_data$woody_or_herb, pred_y, pred_p)
-df1 <- df1 %>% rename(woody_or_herb = sorted_data.woody_or_herb)
-
-p3 <-
-  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
-  geom_line(size = 1.3) +
-  scale_x_log10(breaks = c(10, 100, 1000),
-          labels = c(10, 100, 1000)) +
-  scale_y_continuous(limits = c(0,1.0),
-             expand = c(0,0)) +
-  ylab("Resprouting Probability") +
-  xlab("Fire Return Interval (Years)") +
-  scale_colour_manual(values = c("#915330", "#aedb65"),
-            name = "",
-            breaks = c("woody", "herb"),
-            labels = c("Woody", "Herb")) +
-  ggtitle("a)") +
-  theme_classic() +
-  theme(panel.border = element_rect(colour = "black", fill = NA),
-      legend.position = "none",
-      axis.text = element_text(colour = "black", size = 8),
-      plot.margin = unit(c(0.1,0.5,0.1,0.1), "cm"),
-      plot.title.position = "plot",
-      plot.title = element_text(size = 13, margin = margin(0,0,10,0)),
-      axis.title.y = element_text(size = 10, margin = margin(0,8,0,0)),
-      axis.title.x = element_text(size = 10, margin = margin(8,0,0,0)),
-      panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
-      axis.line = element_blank())
-p3
-```
-
-
-To calculate R2 Tjur
-
-```{r}
-pred <- fitted(pglm2)
-y <- pglm2$y
-
-categories <- unique(y)
-mean1 <- mean(pred[which(y == categories[1])], na.rm = TRUE)
-mean2 <- mean(pred[which(y == categories[2])], na.rm = TRUE)
-
-abs(mean1 - mean2) # 0.028
-```
-
-
-
-```{r}
-coef2 <- coef(pglm2)
-plot.new()
-plot(seq(-100, 100, by = 20), seq(0,1, by = 0.1), xlab="Mean FRI",ylab="Resprouting Probability")
-curve(plogis(coef2[1] + coef2[2]*x), col = "red", add = TRUE)
-
-sorted_data %>%
-  ggplot(aes(x = mean_fri, y = resprouting_binomial)) +
-  geom_jitter(height = 0.01, alpha = 0.25) +
-  stat_smooth(method = "glm", method.args = list(family = binomial)) +
-  #facet_wrap(~woody_or_herb) +
-  scale_x_log10() +
-  theme_classic()
-```
-
-
-
-
-## Seeding binomial
-
-
-```{r}
-df_woody_herb_only$seeding_binomial <-
-  df_woody_herb_only$seeding_binomial %>% as.factor()
-
-m2 <- glm(seeding_binomial ~ log10(mean_fri) + I(log10(mean_fri)^2) + log10(mean_fri):woody_or_herb + I(log10(mean_fri)^2):woody_or_herb + woody_or_herb,
-      data = df_woody_herb_only,
-      family = binomial)
-summary(m2)
-ggpredict(m2, c("mean_fri", "woody_or_herb")) %>% plot()
-
-ggpredict(m2, c("mean_fri", "woody_or_herb")) %>%
-  ggplot(aes(x, predicted, color = group)) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
-  scale_x_log10() +
-  ylab("Seeding Probability") +
-  xlab("Mean FRI") +
-  theme_classic()
-
-#m2 <- glm(seeding_binomial ~ poly(log10(mean_fri),2),
-#      data = df_woody_herb_only,
-#      family = binomial)
-#summary(m2)
-ggpredict(m2, c("mean_fri")) %>%
-  ggplot(aes(x, predicted)) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.2, linetype = 0) +
-  scale_x_log10() +
-  ylab("Seeding Probability") +
-  xlab("Mean FRI") +
-  theme_classic()
-```
-
-
-Model without herb data
-
-```{r}
-df_woody_only <-
-  df_woody_herb_only %>%
-  filter(woody_or_herb == "woody")
-
-m2 <- glm(seeding_binomial ~ log10(mean_fri) + I(log10(mean_fri)^2),
-      data = df_woody_only,
-      family = binomial)
-summary(m2)
-
-ggpredict(m2, c("mean_fri")) %>%
-  ggplot(aes(x, predicted, color = group)) +
-  geom_line(size = 1) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
-  scale_x_log10() +
-  ylab("Seeding Probability") +
-  xlab("Mean FRI") +
-  theme_classic()
-
-coef2 <- coef(m2)
-
-x1 <- log10(df_woody_only$mean_fri)
-x2 <- df_woody_only$woody_or_herb
-x2 <- ifelse(x2 == "woody", 1, 0)
-pred_y <- coef2[1] + coef2[2]*x1 + coef2[3]*x1^2
-pred_p <- exp(pred_y) / (1 + exp(pred_y))
-df1 <- data.frame(x1, x2, df_woody_only$woody_or_herb, pred_y, pred_p)
-df1 <- df1 %>% rename(woody_or_herb = df_woody_only.woody_or_herb)
-
-p3 <-
-  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
-  geom_line(size = 1.3) +
-  scale_x_log10(expand = c(0,0),
-          limits = c(1.05,5000),
-          breaks = c(10,100,1000),
-          labels = c(10,100,1000)) +
-  scale_y_continuous(limits = c(0,1.0),
-             expand = c(0,0)) +
-  ylab("Seeding Probability") +
-  xlab("Fire Return Interval (Years)") +
-  scale_colour_manual(values = c("#915330"),
-            name = "",
-            breaks = c("woody"),
-            labels = c("Woody")) +
-  ggtitle("b)") +
-  theme_classic() +
-  theme(panel.border = element_rect(colour = "black", fill = NA),
-      legend.position = "none",
-      axis.text = element_text(colour = "black", size = 8),
-      plot.margin = unit(c(0.1,0.5,0.1,0.1), "cm"),
-      plot.title.position = "plot",
-      plot.title = element_text(size = 13, margin = margin(0,0,10,0)),
-      axis.title.y = element_text(size = 10, margin = margin(0,8,0,0)),
-      axis.title.x = element_text(size = 10, margin = margin(8,0,0,0)),
-      panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
-      axis.line = element_blank())
-
-p3
-```
-
-
-Density distributions
-
-```{r}
-means <- df_woody_herb_only %>%
-  drop_na(seeding_binomial) %>%
-  group_by(woody_or_herb, seeding_binomial) %>%
-  summarise(mean = mean(mean_fri))
-
-medians <- df_woody_herb_only %>%
-  drop_na(seeding_binomial) %>%
-  group_by(woody_or_herb, seeding_binomial) %>%
-  summarise(median = median(mean_fri))
-
-seeding_density <-
-  df_woody_herb_only %>%
-  drop_na(seeding_binomial) %>%
-  ggplot(aes(mean_fri, fill = seeding_binomial)) +
-  geom_density(alpha = 0.6, size = 0.8, col = NA) +
-  geom_vline(data = means, aes(xintercept = mean, col = seeding_binomial),
-         alpha = 1, size = 1, linetype = "longdash") +
-  facet_wrap(~woody_or_herb, ncol = 1, scales = "free") +
-  scale_x_log10(expand = c(0,0),
-          limits = c(1.05,5000),
-          breaks = c(10,100,1000),
-          labels = c(10,100,1000)) +
-  scale_y_continuous(expand = c(0,0),
-             limits = c(0,1),
-             breaks = c(0,0.5,1.0)) +
-  scale_fill_manual(name = "Resprouting/Seeding",
-            values = c("#EA294C", "#2166AC"),
-            labels = c("No", "Yes")) +
-  scale_colour_manual(values = c("#EA294C", "#2166AC")) +
-  guides(fill = guide_legend(ncol = 2)) +
-  xlab("Fire Return Interval (Yrs)") +
-  ylab("Density") +
-  theme_classic() +
-  theme(axis.line = element_blank(),
-      strip.background = element_blank(),
-      strip.text = element_blank(),
-      plot.margin = unit(c(0.5,0.5,0.1,0.1), "cm"),
-      panel.border = element_rect(colour = "black", fill = NA),
-      panel.spacing = unit(0.5, "lines"),
-      axis.text = element_text(colour = "black", size = 8),
-      axis.title.y = element_text(size = 10, margin = margin(0,8,0,0)),
-      axis.title.x = element_text(size = 10, margin = margin(8,0,0,0)),
-      legend.position = "none")
-
-seeding_density
-```
-
-
-
-```{r}
-coef2 <- coef(m2)
-
-x1 <- log10(df_woody_herb_only$mean_fri)
-x2 <- df_woody_herb_only$woody_or_herb
-x2 <- ifelse(x2 == "woody", 1, 0)
-pred_y <- coef2[1] + coef2[2]*x1 + coef2[3]*x1^2 + coef2[4]*x2 + coef2[5]*x1*x2 + coef2[6]*x1^2*x2
-pred_p <- exp(pred_y) / (1 + exp(pred_y))
-df1 <- data.frame(x1, x2, df_woody_herb_only$woody_or_herb, pred_y, pred_p)
-df1 <- df1 %>% rename(woody_or_herb = df_woody_herb_only.woody_or_herb)
-
-
-p2 <-
-  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
-  geom_line(size = 1.3) +
-  scale_x_log10(breaks = c(10,100,1000),
-          labels = c(10,100,1000)) +
-  scale_y_continuous(limits = c(0,1.0),
-             expand = c(0,0)) +
-  ylab("Seeding Probability") +
-  xlab("Mean FRI") +
-  scale_colour_manual(values = c("#B15928", "#B2DF8A"),
-            name = "",
-            breaks = c("woody", "herb"),
-            labels = c("Woody", "Herb")) +
-  theme_classic() +
-  theme(panel.border = element_rect(colour = "black", fill = NA),
-      legend.position = "none",
-      axis.text = element_text(colour = "black", size = 9),
-      plot.margin = unit(c(0.1,0.5,0.1,0.1), "cm"),
-      axis.title.y = element_text(size = 11, margin = margin(0,8,0,0)),
-      axis.title.x = element_text(size = 11, margin = margin(8,0,0,0)))
-p2
-```
-
-
-Plot resprouting and seeding probability graphs together
-
-```{r}
-library(grid)
-grid.newpage()
-grid.draw(cbind(ggplotGrob(p1), ggplotGrob(p3)))
-final_plot <- cbind(ggplotGrob(p1), ggplotGrob(p3))
-ggsave("resprouting_seeding_probabilites.png", plot = final_plot, width = 6, height = 2.8)
-
-cbind(ggplotGrob(resprouting_density), rbind(ggplotGrob(seeding_density1), ggplotGrob(seeding_density2)))
-
-ggsave("resprouting_densities.png", plot = resprouting_density, width = 3, height = 2.3)
-ggsave("seeding_densities.png", plot = seeding_density, width = 3, height = 2.3)
-
-```
-
-
-
-```{r}
-index <-
-  sample(1:length(df_woody_herb_only$seeding_binomial),
-       0.7*length(df_woody_herb_only$seeding_binomial))
-training_x <- df_woody_herb_only[index, c("mean_fri", "woody_or_herb")]
-training_y <- df_woody_herb_only[index, "seeding_binomial"]
-test_x <- df_woody_herb_only[-index, c("mean_fri", "woody_or_herb")]
-test_y <- df_woody_herb_only[-index, "seeding_binomial"]
-```
-
-
-```{r}
-set.seed(1)
-
-m1 <- glm(seeding_binomial ~ poly(log10(mean_fri),2) * woody_or_herb,
-      data = data.frame(training_x, training_y),
-      family = binomial)
-summary(m1)
-predictions <- predict(m1, newdata = data.frame(test_x, test_y),
-             newx = as.matrix(test_x), type = "link") # Make predictions
-
-predictions_vs_real <- data.frame(test_x, test_y, predictions)
-predictions_vs_real <-
-  predictions_vs_real %>%
-  mutate(preds_transformed = 1/(1 + exp(-predictions)),
-       preds_binomial = case_when(preds_transformed >= 0.5 ~ TRUE,
-                    preds_transformed < 0.5 ~ FALSE))
-predictions_vs_real$preds_binomial <- predictions_vs_real$preds_binomial %>% as.factor()
-
-predictions_vs_real %>%
-  drop_na(seeding_binomial) %>%
-  ggplot(aes(seeding_binomial, preds_transformed)) +
-  geom_boxplot() +
-  facet_wrap(~woody_or_herb) +
-  theme_classic()
-
-library(caret)
-confusionMatrix(predictions_vs_real$preds_binomial, predictions_vs_real$resprouting_binomial)
-```
-
-
-Phylogenetic logistic regression
-
-```{r}
-tree <- read.tree("raw_data/v0.1-big-seed-plant-trees/ALLMB.tre")
-df_woody_herb_only$taxon_name <- gsub(" ", "_", df_woody_herb_only$taxon_name)
-df_woody_herb_only <- df_woody_herb_only[df_woody_herb_only$taxon_name %in% tree$tip.label,]
-df_woody_herb_only$seeding_binomial <-
-  ifelse(df_woody_herb_only$seeding_binomial == TRUE, 1, 0) # make numeric
-
-pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, df_woody_herb_only$taxon_name))
-pruned_tree <- as.phylo(pruned_tree)
-
-sorted_data <- df_woody_herb_only[order(match(df_woody_herb_only$taxon_name, pruned_tree$tip.label)),]
-
-sorted_data <-
-  sorted_data %>%
-  select(taxon_name, mean_fri, seeding_binomial, woody_or_herb) %>%
-  column_to_rownames("taxon_name")
-
-
-pglm1 <- phyloglm(seeding_binomial ~ log10(mean_fri) + I(log10(mean_fri)^2) + log10(mean_fri):woody_or_herb + I(log10(mean_fri)^2):woody_or_herb + woody_or_herb,
-         method = "logistic_MPLE",
-         data = sorted_data,
-         phy = pruned_tree,
-         btol = 100,
-         boot = 0)
-summary(pglm1)
-
-coef2 <- coef(pglm1)
-
-x1 <- log10(sorted_data$mean_fri)
-x2 <- sorted_data$woody_or_herb
-x2 <- ifelse(x2 == "woody", 1, 0)
-pred_y <- coef2[1] + coef2[2]*x1 + coef2[3]*x1^2 + coef2[4]*x2 + coef2[5]*x1*x2 + coef2[6]*x1^2*x2
-pred_p <- exp(pred_y) / (1 + exp(pred_y))
-df1 <- data.frame(x1, x2, sorted_data$woody_or_herb, pred_y, pred_p)
-df1 <- df1 %>% rename(woody_or_herb = sorted_data.woody_or_herb)
-
-
-p6 <-
-  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
-  geom_line(size = 1.3) +
-  scale_x_log10(breaks = c(10,100,1000),
-          labels = c(10,100,1000)) +
-  scale_y_continuous(limits = c(0,1.0),
-             expand = c(0,0)) +
-  scale_colour_manual(values = c("#B15928", "#B2DF8A"),
-            name = "",
-            breaks = c("woody", "herb"),
-            labels = c("Woody", "Herb")) +
-  ylab("Seeding Probability") +
-  xlab("Mean FRI") +
-  theme_classic() +
-  theme(panel.border = element_rect(colour = "black", fill = NA),
-      legend.position = "none",
-      axis.text = element_text(colour = "black", size = 9),
-      plot.margin = unit(c(0.1,0.5,0.1,0.1), "cm"),
-      axis.title.y = element_text(size = 11, margin = margin(0,8,0,0)),
-      axis.title.x = element_text(size = 11, margin = margin(8,0,0,0)))
-```
-
-
-Model without herb data
-
-```{r}
-df_woody_only <-
-  df_woody_herb_only %>%
-  filter(woody_or_herb == "woody")
-
-tree <- read.tree("raw_data/v0.1-big-seed-plant-trees/ALLMB.tre")
-df_woody_only$taxon_name <- gsub(" ", "_", df_woody_only$taxon_name)
-df_woody_only <- df_woody_only[df_woody_only$taxon_name %in% tree$tip.label,]
-df_woody_only$seeding_binomial <-
-  ifelse(df_woody_only$seeding_binomial == TRUE, 1, 0) # make numeric
-
-pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, df_woody_only$taxon_name))
-pruned_tree <- as.phylo(pruned_tree)
-
-sorted_data <- df_woody_only[order(match(df_woody_only$taxon_name, pruned_tree$tip.label)),]
-
-sorted_data <-
-  sorted_data %>%
-  select(taxon_name, mean_fri, seeding_binomial, woody_or_herb) %>%
-  column_to_rownames("taxon_name")
-
-
-pglm3 <- phyloglm(seeding_binomial ~ log10(mean_fri) + I(log10(mean_fri)^2),
-         method = "logistic_MPLE",
-         data = sorted_data,
-         phy = pruned_tree,
-         btol = 100,
-         boot = 0)
-summary(pglm3)
-
-coef2 <- coef(pglm3)
-
-x1 <- log10(sorted_data$mean_fri)
-x2 <- sorted_data$woody_or_herb
-x2 <- ifelse(x2 == "woody", 1, 0)
-pred_y <- coef2[1] + coef2[2]*x1 + coef2[3]*x1^2
-pred_p <- exp(pred_y) / (1 + exp(pred_y))
-df1 <- data.frame(x1, x2, sorted_data$woody_or_herb, pred_y, pred_p)
-df1 <- df1 %>% rename(woody_or_herb = sorted_data.woody_or_herb)
-
-
-p5 <-
-  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
-  geom_line(size = 1.3) +
-  scale_x_log10(breaks = c(10,100,1000),
-          labels = c(10,100,1000)) +
-  scale_y_continuous(limits = c(0,1.0),
-             expand = c(0,0)) +
-  scale_colour_manual(values = c("#915330"),
-            name = "",
-            breaks = c("woody"),
-            labels = c("Woody")) +
-  ggtitle("b)") +
-  ylab("Seeding Probability") +
-  xlab("Fire Return Interval (Years)") +
-  theme_classic() +
-  theme(panel.border = element_rect(colour = "black", fill = NA),
-      legend.position = "none",
-      axis.text = element_text(colour = "black", size = 8),
-      plot.margin = unit(c(0.1,0.5,0.1,0.1), "cm"),
-      plot.title.position = "plot",
-      plot.title = element_text(size = 13, margin = margin(0,0,10,0)),
-      axis.title.y = element_text(size = 10, margin = margin(0,8,0,0)),
-      axis.title.x = element_text(size = 10, margin = margin(8,0,0,0)),
-      panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
-      axis.line = element_blank())
-p5
-
-# To calculate odds ratio, exp(estimate)
-
-
-grid.newpage()
-grid.draw(cbind(ggplotGrob(p3), ggplotGrob(p5)))
-
-final_plot <- cbind(ggplotGrob(p3), ggplotGrob(p5))
-ggsave("resprouting_seeding_probabilites_phylo.png", plot = final_plot, width = 6, height = 2.8)
-```
-
-
-To calculate R2 Tjur
-
-```{r}
-pred <- fitted(pglm3)
-y <- pglm3$y
-
-categories <- unique(y)
-mean1 <- mean(pred[which(y == categories[1])], na.rm = TRUE)
-mean2 <- mean(pred[which(y == categories[2])], na.rm = TRUE)
-
-abs(mean1 - mean2) # 0.062
-```
-
-
-
-
----
-
-# Comparison of survival analysis and poisson regression methods
-
-Out of 10871 taxa, 359 did not fit and they were all because all pixels were unburnt.
-Out of the 10512 with no errors, 419 had confidence intervals bounding zero, which
-were discarded, leaving us with 7296 taxa. There were 131 taxa with mean FRI greater
-than 1000 years. 9940 taxa had confidence intervals less than 100 years big. #TODO update
-
-```{r}
-mean_fires <- read_csv("outputs/mean_fires_df_with_glm.csv", guess_max = 10000)
-
-mean_fires %>% filter(mean_fri > 1000) %>% nrow()
-mean_fires_clean %>% filter(upr_conf_int - lwr_conf_int < 100) %>% nrow()
-
-y <- mean_fires_clean %>% mutate(confint_size = upr_conf_int - lwr_conf_int)
-hist(y$confint_size)
-```
-
-
-
-Comparatively, the survival analysis resulted in 1443 that did not fit (incl. unburnt
-pixels). The warning was "ran out of iterations and did not converge". This occurred
-because most or all pixels were unburnt. There were 7217 taxa with median FRI greater
-than 5000 years. 221 taxa had confidence intervals less than 100 years big. #TODO update
-
-```{r}
-median_fris <- read_csv("outputs/median_fris_with_survival_analysis.csv", guess_max = 10871)
-median_fris <-
-  median_fris %>%
-  mutate(across(
-    c("med_w", "med_w_lwr", "med_w_upr", "med_wo", "med_wo_lwr", "med_wo_upr"),
-    ~ .x / 365.2422
-  ))
-
-median_fris %>% filter(med_w > 1000) %>% nrow()
-median_fris %>% filter(med_w_upr - med_w_lwr < 100) %>% nrow()
-x <- median_fris %>% mutate(confint_size = med_w_upr - med_w_lwr)
-hist(x$confint_size)
-
-median_fris %>% filter(!is.na(med_wo_warnings)) %>% nrow()
-median_fris %>% filter(med_wo > 5000) %>% nrow()
-```
-
-1282 that did not fit (when not including unburnt pixels). There were 6719 taxa with
-median FRI greater than 5000 years. #TODO update
-
