@@ -42,8 +42,8 @@ mean_fires_no_errors <-
   mean_fires %>%
   filter(is.na(warnings), is.na(error), is.na(messages)) %>%
   select(-warnings, -messages, -error)
-write_csv(mean_fires_no_errors, "outputs/final_df_predicted_fris_and_fire_response.csv")
-mean_fires_no_errors <- read_csv("outputs/final_df_predicted_fris_and_fire_response.csv")
+#write_csv(mean_fires_no_errors, "outputs/final_df_predicted_fris_and_fire_response.csv")
+#mean_fires_no_errors <- read_csv("outputs/final_df_predicted_fris_and_fire_response.csv")
 ```
 
 Clean data
@@ -200,7 +200,7 @@ resprouting_plot <-
     plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
     axis.title.x = element_blank(),
-    panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
+    panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
     axis.line = element_blank())
 
 resprouting_plot
@@ -358,8 +358,8 @@ Check accuracy of model
 
 ```{r}
 index <-
-  sample(1:length(df_woody_herb_only$seeding_binomial),
-       0.7*length(df_woody_herb_only$seeding_binomial))
+  sample(seq_along(df_woody_herb_only$seeding_binomial),
+       0.7 * length(df_woody_herb_only$seeding_binomial))
 training_x <- df_woody_herb_only[index, c("mean_fri", "woody_or_herb")]
 training_y <- df_woody_herb_only[index, "seeding_binomial"]
 test_x <- df_woody_herb_only[-index, c("mean_fri", "woody_or_herb")]
@@ -370,20 +370,31 @@ test_y <- df_woody_herb_only[-index, "seeding_binomial"]
 ```{r}
 set.seed(1)
 
-glm_seeding <- glm(seeding_binomial ~ poly(log10(mean_fri), 2) * woody_or_herb,
-      data = data.frame(training_x, training_y),
-      family = binomial)
+glm_seeding <- glm(
+  seeding_binomial ~ poly(log10(mean_fri), 2) * woody_or_herb,
+  data = data.frame(training_x, training_y),
+  family = binomial
+)
 summary(glm_seeding)
-predictions <- predict(glm_seeding, newdata = data.frame(test_x, test_y),
-             newx = as.matrix(test_x), type = "link") # Make predictions
+
+predictions <- predict(
+  glm_seeding,
+  newdata = data.frame(test_x, test_y),
+  newx = as.matrix(test_x), type = "link"
+) # Make predictions
 
 predictions_vs_real <- data.frame(test_x, test_y, predictions)
+
 predictions_vs_real <-
   predictions_vs_real %>%
-  mutate(preds_transformed = 1/(1 + exp(-predictions)),
-       preds_binomial = case_when(preds_transformed >= 0.5 ~ TRUE,
-                    preds_transformed < 0.5 ~ FALSE))
-predictions_vs_real$preds_binomial <- predictions_vs_real$preds_binomial %>% as.factor()
+  mutate(
+    preds_transformed = 1 / (1 + exp(-predictions)),
+    preds_binomial = case_when(
+      preds_transformed >= 0.5 ~ TRUE,
+      preds_transformed < 0.5 ~ FALSE
+    ),
+    preds_binomial = as.factor(preds_binomial)
+  )
 
 predictions_vs_real %>%
   drop_na(seeding_binomial) %>%
@@ -392,8 +403,7 @@ predictions_vs_real %>%
   facet_wrap(~ woody_or_herb) +
   theme_classic()
 
-library(caret)
-confusionMatrix(predictions_vs_real$preds_binomial, predictions_vs_real$resprouting_binomial)
+caret::confusionMatrix(predictions_vs_real$preds_binomial, predictions_vs_real$resprouting_binomial)
 ```
 
 
@@ -438,7 +448,7 @@ seeding_plot <-
     plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
     axis.title.x = element_blank(),
-    panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
+    panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
     axis.line = element_blank()
   )
 
@@ -478,7 +488,7 @@ seeding_density <-
     labels = c("0.01", "0.1", "1", "10", "100")
   ) +
   scale_y_continuous(
-    expand = c(0,0),
+    expand = c(0, 0),
     limits = c(0, 1.25),
     breaks = seq(0, 1.25, by = 0.625)
   ) +
@@ -536,7 +546,7 @@ seeding_density <-
     labels = c("0.01", "0.1", "1", "10", "100")
   ) +
   scale_y_continuous(
-    expand = c(0,0),
+    expand = c(0, 0),
     limits = c(0, 1.25),
     breaks = seq(0, 1.25, by = 0.625),
     labels = c("0", "0.625", "1.25")
@@ -679,7 +689,7 @@ resprouting_phylo_plot <-
     plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
     axis.title.x = element_blank(),
-    panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
+    panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
     axis.line = element_blank())
 resprouting_phylo_plot
 ```
@@ -707,8 +717,10 @@ plot.new()
 plot(
   seq(-100, 100, by = 20),
   seq(0, 1, by = 0.1),
-  xlab = "Mean fires", ylab = "Resprouting probability")
-curve(plogis(coef2[1] + coef2[2]*x), col = "red", add = TRUE)
+  xlab = "Mean fires",
+  ylab = "Resprouting probability"
+)
+curve(plogis(coef2[1] + coef2[2] * x), col = "red", add = TRUE)
 
 sorted_data |>
   dplyr::filter(!is.na(resprouting_binomial)) |>
@@ -791,7 +803,7 @@ seeding_phylo_plot <-
     labels = c("0.01", "0.1", "1", "10", "100")
   ) +
   scale_y_continuous(
-    limits = c(0, 1.0),
+    limits = c(0, 1),
     expand = c(0, 0)) +
   scale_colour_manual(
     values = c("#7e5137"),
@@ -811,7 +823,7 @@ seeding_phylo_plot <-
     plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
     axis.title.x = element_blank(),
-    panel.grid.major = element_line(colour = "#ebebeb", size = 0.5),
+    panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
     axis.line = element_blank()
   )
 
@@ -821,7 +833,10 @@ seeding_phylo_plot
 
 ```{r}
 resprouting_phylo_plot + seeding_phylo_plot
+
+ggsave("figures/fire_response_probabilities_phyloglm.png", height = 4.25, width = 9)
 ```
+
 
 ---
 
@@ -830,27 +845,29 @@ resprouting_phylo_plot + seeding_phylo_plot
 
 ### Survival analysis method
 
-
 Read in median fire return interval data from survival analysis
 
 ```{r}
 median_fris <- read_csv("outputs/median_fris_with_survival_analysis.csv")
-
 median_fris <- median_fris %>% left_join(resprouting_seeding, by = c("taxon_name"))
-
 
 # Convert intervals to years not days
 median_fris <- median_fris %>%
-  mutate(across(
-  c(med_w, med_w_lwr, med_w_upr, med_wo, med_wo_lwr, med_wo_upr),
-  ~ .x / 365.25
-  ))
-
-median_fires_per_22_years <- median_fris %>%
+  dplyr::filter(is.na(med_w_warnings)) %>%
   mutate(across(
     c(med_w, med_w_lwr, med_w_upr, med_wo, med_wo_lwr, med_wo_upr),
-    ~ 22.17 / .x
+    ~ .x / 365.25
   ))
+
+median_fires_per_century <- median_fris %>%
+  mutate(across(
+    c(med_w, med_w_lwr, med_w_upr, med_wo, med_wo_lwr, med_wo_upr),
+    ~ 100 / .x
+  )) |>
+  select(
+    taxon_name, med_w, med_w_lwr, med_w_upr, num_unburnt_pixels, num_pixels,
+    resprouting_binomial, seeding_binomial, data_on_both, woody_or_herb, taxon_rank
+  )
 ```
 
 
@@ -859,30 +876,17 @@ median_fires_per_22_years <- median_fris %>%
 
 Filter out taxa with warning messages
 
-```{r}
-median_fris_w <-
-  median_fris %>%
-  filter(is.na(med_w_warnings)) %>%
-  select(
-    taxon_name, med_w, med_w_lwr, med_w_upr, num_unburnt_pixels, num_pixels,
-    resprouting_binomial, seeding_binomial, data_on_both, woody_or_herb, taxon_rank
-  )
-
-# Maybe should do this more elegantly by filtering out values that have very large confidence intervals
-```
-
-
 Histogram of median FRIs
 
 ```{r}
-hist(median_fris_w$med_w)
+hist(median_fires_per_century$med_w)
 ```
 
 
 Plot
 
 ```{r}
-median_fris_w %>%
+median_fires_per_century %>%
   filter(!is.na(resprouting_binomial)) %>%
   group_by(resprouting_binomial) %>%
   mutate(n = n()) %>%
