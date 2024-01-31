@@ -11,6 +11,7 @@ editor_options:
 
 ```{r}
 library(tidyverse)
+library(patchwork)
 
 austraits <- read_rds("data/austraits-5.0.0.rds") # This is an updated rds file
 ```
@@ -63,77 +64,251 @@ fire_response_and_leaf_traits <-
 
 
 
-# Run linear models
+Run linear models
 
 ```{r}
-library(emmeans)
+lma_resp_model <- lm(
+  mean_lma ~ resprouting_binomial * woody_or_herb,
+  data = fire_response_and_leaf_traits)
 
-leaf_traits_woody_herb_only <- fire_response_and_leaf_traits %>%
-  filter(woody_or_herb %in% c("woody", "herb"))
-leaf_traits_woody_herb_only$woody_or_herb <-
-  leaf_traits_woody_herb_only$woody_or_herb %>%
-  factor(ordered = TRUE, levels = c("woody", "herb"))
+summary(lma_resp_model)
+
+lma_resp_emmeans <- emmeans::emmeans(
+  lma_resp_model, specs = pairwise ~ resprouting_binomial:woody_or_herb)
+lma_resp_emmeans$contrasts %>% confint()
+```
 
 
-facet_labels <- c("woody" = "Woody",
-          "herb" = "Herbaceous")
+```{r}
+leaf_n_resp_model <- lm(
+  mean_leaf_n ~ resprouting_binomial * woody_or_herb,
+  data = fire_response_and_leaf_traits)
+summary(leaf_n_resp_model)
 
-m1 <- lm(mean_lma ~ resprouting_binomial * woody_or_herb, data = leaf_traits_woody_herb_only)
-summary(m1)
+leaf_n_resp_emmeans <- emmeans(leaf_n_resp_model, specs = pairwise ~ resprouting_binomial:woody_or_herb)
+leaf_n_resp_emmeans$contrasts %>% confint()
+```
 
-emm1 <- emmeans(m1, specs = pairwise ~ resprouting_binomial:woody_or_herb)
-emm1$contrasts %>% confint()
 
+```{r}
+lma_seed_model <- lm(mean_lma ~ seeding_binomial * woody_or_herb, data = fire_response_and_leaf_traits)
+summary(lma_seed_model)
+
+lma_seed_emmeans <- emmeans(lma_seed_model, specs = pairwise ~ seeding_binomial:woody_or_herb)
+lma_seed_emmeans$contrasts %>% confint()
+```
+
+
+```{r}
+leaf_n_seed_model <- lm(mean_leaf_n ~ seeding_binomial * woody_or_herb, data = fire_response_and_leaf_traits)
+summary(leaf_n_seed_model)
+
+leaf_n_seed_emmeans <- emmeans(leaf_n_seed_model, specs = pairwise ~ seeding_binomial:woody_or_herb)
+leaf_n_seed_emmeans$contrasts %>% confint()
+```
+
+
+Plot
+
+```{r}
 annotations_p1 <- data.frame(label = c("p = <0.0001", ""), woody_or_herb = c("herb", "woody"))
 annotations_p1$woody_or_herb <- annotations_p1$woody_or_herb %>% factor(ordered = TRUE, levels = c("woody", "herb"))
 
-p1 <-
-  leaf_traits_woody_herb_only %>%
+lma_resprouting_plot <-
+  fire_response_and_leaf_traits %>%
   drop_na(resprouting_binomial) %>%
   ggplot(aes(x = resprouting_binomial, y = mean_lma, fill = woody_or_herb)) +
   geom_violin(size = 0.8) +
   geom_boxplot(width = 0.05, size = 0.8) +
 #  geom_text(aes(x = 2.1, y = 0.1, label = label), data = annotations_p1,
 #        size = 4, fontface = "bold") +
-  facet_wrap(~woody_or_herb,
-         labeller = as_labeller(facet_labels)) +
+  facet_wrap(
+    ~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")),
+    labeller = as_labeller(c(
+    "woody" = "Woody",
+    "herb" = "Herbaceous"
+  ))) +
   scale_y_log10() +
-  labs(x = "Resprouting", y = bquote("LMA (" *g/m2 *")")) + #TODO switch from SLA to LMA
-  scale_fill_manual(values = c("#915330", "#aedb65"),
-            name = "",
-            breaks = c("woody", "herb"),
-            labels = c("Woody", "Herb")) +
+  scale_fill_manual(
+    values = c("#7e5137", "#b9ce6f"),
+    breaks = c("woody", "herb")) +
+  labs(
+    x = "Resprouting",
+    y = bquote("LMA (" *g/m2 *")")
+  ) +
   theme_classic() +
-  theme(panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
-      plot.margin = unit(c(0.1,1,0.05,0.1), "cm"),
-      axis.text.y = element_text(colour = "black", size = 10),
-      axis.title.y = element_text(size = 12, margin = margin(0,1,0,0)),
-      axis.title.x = element_blank(),
-      axis.text.x = element_blank(),
-      axis.ticks.x = element_blank(),
-      legend.position = "none",
-      strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
-      strip.text = element_text(size = 11, face = "bold"),
-      panel.spacing = unit(0.2, "cm"),
-      axis.line = element_blank())
-p1
+  theme(
+    panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
+    plot.margin = unit(c(0.1, 1, 0.05, 0.1), "cm"),
+    axis.text.y = element_text(colour = "black", size = 10),
+    axis.title.y = element_text(size = 12, margin = margin(0, 10, 0, 0)),
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = "none",
+    strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
+    strip.text = element_text(size = 11, face = "bold"),
+    panel.spacing = unit(0.2, "cm"),
+    axis.line = element_blank()
+  )
+lma_resprouting_plot
 ```
 
 
-Rerun with phylogenetic linear model (some taxa are dropped because cannot be matched
-to a tip on the phylogeny)
+
+```{r}
+leaf_n_resprouting_plot <-
+  fire_response_and_leaf_traits %>%
+  drop_na(resprouting_binomial) %>%
+  ggplot(aes(x = resprouting_binomial, y = mean_leaf_n, fill = woody_or_herb)) +
+  geom_violin(size = 0.8) +
+  geom_boxplot(width = 0.05, size = 0.8) +
+  facet_wrap(
+    ~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")),
+    labeller = as_labeller(c(
+    "woody" = "Woody",
+    "herb" = "Herbaceous"
+  ))) +
+  scale_y_log10() +
+  scale_x_discrete(labels = c("Non-\nresprouters", "Resprouters")) +
+  scale_fill_manual(
+    values = c("#7e5137", "#b9ce6f"),
+    breaks = c("woody", "herb")) +
+  labs(
+    x = "Resprouting",
+    y = "Leaf N (mg/g)"
+  ) +
+  theme_classic() +
+  theme(
+    panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
+    plot.margin = unit(c(0.1, 1, 0.1, 0.1), "cm"),
+    axis.text = element_text(colour = "black", size = 10),
+    axis.title.y = element_text(size = 12, margin = margin(0, 10, 0, 0)),
+    axis.title.x = element_text(size = 12, margin = margin(10, 0, 0, 0), face = "bold"),
+    legend.position = "none",
+    strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
+    strip.text = element_text(size = 11, face = "bold"),
+    panel.spacing = unit(0.2, "cm"),
+    axis.line = element_blank()
+  )
+leaf_n_resprouting_plot
+```
+
+
+
+
+```{r}
+annotations_p3 <- data.frame(label = c("p = 0.037", "p = <0.0001"), woody_or_herb = c("herb", "woody"))
+annotations_p3$woody_or_herb <- annotations_p3$woody_or_herb %>% factor(ordered = TRUE, levels = c("woody", "herb"))
+
+lma_seeding_plot <-
+  fire_response_and_leaf_traits %>%
+  drop_na(seeding_binomial) %>%
+  ggplot(aes(x = seeding_binomial, y = mean_lma, fill = woody_or_herb)) +
+  geom_violin(size = 0.8) +
+  geom_boxplot(width = 0.05, size = 0.8) +
+#  geom_text(aes(x = 2.1, y = 0.1, label = label), data = annotations_p3,
+#        size = 4, fontface = "bold") +
+  facet_wrap(
+    ~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")),
+    labeller = as_labeller(c(
+    "woody" = "Woody",
+    "herb" = "Herbaceous"
+  ))) +
+  scale_y_log10() +
+  scale_fill_manual(
+    values = c("#7e5137", "#b9ce6f"),
+    breaks = c("woody", "herb")) +
+  labs(
+    x = "Post-fire seeding",
+    y = bquote("LMA (" *g/m2 *")")) +
+  theme_classic() +
+  theme(
+    panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
+    plot.margin = unit(c(0.1, 0.1, 0.05, 0.1), "cm"),
+    axis.ticks.y = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text = element_text(colour = "black", size = 10),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    legend.position = "none",
+    strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
+    strip.text = element_text(size = 11, face = "bold"),
+    panel.spacing = unit(0.2, "cm"),
+    axis.line = element_blank())
+lma_seeding_plot
+```
+
+
+```{r}
+annotations_p4 <- data.frame(label = c("p = 0.050", ""), woody_or_herb = c("herb", "woody"))
+annotations_p4$woody_or_herb <- annotations_p4$woody_or_herb %>% factor(ordered = TRUE, levels = c("woody", "herb"))
+
+leaf_n_seeding_plot <-
+  fire_response_and_leaf_traits %>%
+  drop_na(seeding_binomial) %>%
+  ggplot(aes(x = seeding_binomial, y = mean_leaf_n, fill = woody_or_herb)) +
+  geom_violin(size = 0.8) +
+  geom_boxplot(width = 0.05, size = 0.8) +
+#  geom_text(aes(x = 2.1, y = 2.1, label = label), data = annotations_leaf_n_seeding_plot,
+#        size = 4, fontface = "bold") +
+  facet_wrap(
+    ~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")),
+    labeller = as_labeller(c(
+    "woody" = "Woody",
+    "herb" = "Herbaceous"
+  ))) +
+  scale_x_discrete(labels = c("Non-seeders", "Seeders")) +
+  scale_y_log10() +
+  scale_fill_manual(
+    values = c("#7e5137", "#b9ce6f"),
+    breaks = c("woody", "herb")) +
+  labs(
+    x = "Post-fire seeding",
+    y = "Leaf N (mg/g)") +
+  theme_classic() +
+  theme(
+    panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
+    plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text = element_text(colour = "black", size = 10),
+    axis.title.y = element_blank(),
+    axis.title.x = element_text(size = 12, margin = margin(10, 0, 0, 0), face = "bold"),
+    legend.position = "none",
+    strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
+    strip.text = element_text(size = 11, face = "bold"),
+    panel.spacing = unit(0.2, "cm"),
+    axis.line = element_blank()
+  )
+leaf_n_seeding_plot
+```
+
+
+Plot together and save
+
+```{r}
+lma_resprouting_plot + lma_seeding_plot + leaf_n_resprouting_plot + leaf_n_seeding_plot
+ggsave("figures/leaf_traits.png", width = 8.5, height = 4.8)
+```
+
+
+
+Rerun with phylogenetic linear models
 
 ```{r}
 tree <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
-leaf_traits_woody_herb_only$taxon_name <- gsub(" ", "_", leaf_traits_woody_herb_only$taxon_name)
-leaf_traits_woody_herb_only <- leaf_traits_woody_herb_only[leaf_traits_woody_herb_only$taxon_name %in% tree$tip.label,]
-leaf_traits_woody_herb_only$resprouting_binomial <-
-  ifelse(leaf_traits_woody_herb_only$resprouting_binomial == TRUE, 1, 0) # Make numeric
+fire_response_and_leaf_traits$taxon_name <- gsub(" ", "_", fire_response_and_leaf_traits$taxon_name)
+fire_response_and_leaf_traits <- fire_response_and_leaf_traits[fire_response_and_leaf_traits$taxon_name %in% tree$tip.label,]
+fire_response_and_leaf_traits$resprouting_binomial <-
+  ifelse(fire_response_and_leaf_traits$resprouting_binomial == TRUE, 1, 0) # Make numeric
 
-pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, leaf_traits_woody_herb_only$taxon_name))
+pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, fire_response_and_leaf_traits$taxon_name))
 pruned_tree <- as.phylo(pruned_tree)
 
-sorted_data <- leaf_traits_woody_herb_only[order(match(leaf_traits_woody_herb_only$taxon_name, pruned_tree$tip.label)),]
+sorted_data <- fire_response_and_leaf_traits[order(match(fire_response_and_leaf_traits$taxon_name, pruned_tree$tip.label)),]
 
 sorted_data <-
   sorted_data %>%
@@ -142,12 +317,14 @@ sorted_data <-
 
 
 # Return old variable to original state for running normal lm's
-leaf_traits_woody_herb_only <- fire_response_and_leaf_traits %>%
+fire_response_and_leaf_traits <- fire_response_and_leaf_traits %>%
   filter(woody_or_herb %in% c("woody", "herb"))
-leaf_traits_woody_herb_only$woody_or_herb <-
-  leaf_traits_woody_herb_only$woody_or_herb %>%
+fire_response_and_leaf_traits$woody_or_herb <-
+  fire_response_and_leaf_traits$woody_or_herb %>%
   factor(ordered = TRUE, levels = c("woody", "herb"))
+```
 
+```{r}
 pm1 <-
   phylolm(mean_lma ~ resprouting_binomial * woody_or_herb,
       data = sorted_data,
@@ -156,46 +333,6 @@ pm1 <-
 summary(pm1)
 ```
 
-
-
-```{r}
-m2 <- lm(mean_leaf_n ~ resprouting_binomial * woody_or_herb, data = leaf_traits_woody_herb_only)
-summary(m2)
-
-emm2 <- emmeans(m2, specs = pairwise ~ resprouting_binomial:woody_or_herb)
-emm2$contrasts %>% confint()
-
-p2 <-
-  leaf_traits_woody_herb_only %>%
-  drop_na(resprouting_binomial) %>%
-  ggplot(aes(x = resprouting_binomial, y = mean_leaf_n, fill = woody_or_herb)) +
-  geom_violin(size = 0.8) +
-  geom_boxplot(width = 0.05, size = 0.8) +
-  facet_wrap(~woody_or_herb,
-         labeller = as_labeller(facet_labels)) +
-  scale_y_log10() +
-  scale_x_discrete(labels = c("Non-\nresprouters", "Resprouters")) +
-  scale_fill_manual(values = c("#915330", "#aedb65"),
-            name = "",
-            breaks = c("woody", "herb"),
-            labels = c("Woody", "Herb")) +
-  labs(x = "Resprouting", y = "Leaf N (mg/g)") +
-  theme_classic() +
-  theme(panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
-      plot.margin = unit(c(0.1,1,0.1,0.1), "cm"),
-      axis.text = element_text(colour = "black", size = 10),
-      axis.title.y = element_text(size = 12, margin = margin(0,1,0,0)),
-      axis.title.x = element_text(size = 12, margin = margin(10,0,0,0), face = "bold"),
-      legend.position = "none",
-      strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
-      strip.text = element_text(size = 11, face = "bold"),
-      panel.spacing = unit(0.2, "cm"),
-      axis.line = element_blank())
-p2
-```
-
-
-Rerun with phylogenetic linear model
 
 ```{r}
 pm2 <-
@@ -208,53 +345,6 @@ summary(pm2)
 
 
 ```{r}
-m3 <- lm(mean_lma ~ seeding_binomial * woody_or_herb, data = leaf_traits_woody_herb_only)
-summary(m3)
-
-emm3 <- emmeans(m3, specs = pairwise ~ seeding_binomial:woody_or_herb)
-emm3$contrasts %>% confint()
-
-
-annotations_p3 <- data.frame(label = c("p = 0.037", "p = <0.0001"), woody_or_herb = c("herb", "woody"))
-annotations_p3$woody_or_herb <- annotations_p3$woody_or_herb %>% factor(ordered = TRUE, levels = c("woody", "herb"))
-
-p3 <-
-  leaf_traits_woody_herb_only %>%
-  drop_na(seeding_binomial) %>%
-  ggplot(aes(x = seeding_binomial, y = mean_lma, fill = woody_or_herb)) +
-  geom_violin(size = 0.8) +
-  geom_boxplot(width = 0.05, size = 0.8) +
-#  geom_text(aes(x = 2.1, y = 0.1, label = label), data = annotations_p3,
-#        size = 4, fontface = "bold") +
-  facet_wrap(~woody_or_herb,
-         labeller = as_labeller(facet_labels)) +
-  scale_y_log10() +
-  scale_fill_manual(values = c("#915330", "#aedb65"),
-            name = "",
-            breaks = c("woody", "herb"),
-            labels = c("Woody", "Herb")) +
-  labs(x = "Post-fire Seeding", y = bquote("lma (" *mm^2/mg *")")) +
-  theme_classic() +
-  theme(panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
-      plot.margin = unit(c(0.1,0.1,0.05,0.1), "cm"),
-      axis.ticks.y = element_blank(),
-      axis.ticks.x = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.text = element_text(colour = "black", size = 10),
-      axis.title.y = element_blank(),
-      axis.title.x = element_blank(),
-      legend.position = "none",
-      strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
-      strip.text = element_text(size = 11, face = "bold"),
-      panel.spacing = unit(0.2, "cm"),
-      axis.line = element_blank())
-p3
-```
-
-Rerun with phylogenetic linear model
-
-```{r}
 pm3 <-
   phylolm(mean_lma ~ seeding_binomial * woody_or_herb,
       data = sorted_data,
@@ -263,52 +353,6 @@ pm3 <-
 summary(pm3)
 ```
 
-
-```{r}
-m4 <- lm(mean_leaf_n ~ seeding_binomial * woody_or_herb, data = leaf_traits_woody_herb_only)
-summary(m4)
-
-emm4 <- emmeans(m4, specs = pairwise ~ seeding_binomial:woody_or_herb)
-emm4$contrasts %>% confint()
-
-
-annotations_p4 <- data.frame(label = c("p = 0.050", ""), woody_or_herb = c("herb", "woody"))
-annotations_p4$woody_or_herb <- annotations_p4$woody_or_herb %>% factor(ordered = TRUE, levels = c("woody", "herb"))
-
-p4 <-
-  leaf_traits_woody_herb_only %>%
-  drop_na(seeding_binomial) %>%
-  ggplot(aes(x = seeding_binomial, y = mean_leaf_n, fill = woody_or_herb)) +
-  geom_violin(size = 0.8) +
-  geom_boxplot(width = 0.05, size = 0.8) +
-#  geom_text(aes(x = 2.1, y = 2.1, label = label), data = annotations_p4,
-#        size = 4, fontface = "bold") +
-  facet_wrap(~woody_or_herb,
-         labeller = as_labeller(facet_labels)) +
-  scale_x_discrete(labels = c("Non-seeders", "Seeders")) +
-  scale_y_log10() +
-  scale_fill_manual(values = c("#915330", "#aedb65"),
-            name = "",
-            breaks = c("woody", "herb"),
-            labels = c("Woody", "Herb")) +
-  labs(x = "Post-fire Seeding", y = "Leaf N (mg/g)") +
-  theme_classic() +
-  theme(panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
-      plot.margin = unit(c(0.1,0.1,0.1,0.1), "cm"),
-      axis.ticks.y = element_blank(),
-      axis.text.y = element_blank(),
-      axis.text = element_text(colour = "black", size = 10),
-      axis.title.y = element_blank(),
-      axis.title.x = element_text(size = 12, margin = margin(10,0,0,0), face = "bold"),
-      legend.position = "none",
-      strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
-      strip.text = element_text(size = 11, face = "bold"),
-      panel.spacing = unit(0.2, "cm"),
-      axis.line = element_blank())
-p4
-```
-
-Rerun with phylogenetic linear model
 
 ```{r}
 pm4 <-
@@ -320,22 +364,10 @@ summary(pm4)
 ```
 
 
-```{r}
-grid::grid.draw(rbind(cbind(ggplotGrob(p1), ggplotGrob(p3)), cbind(ggplotGrob(p2), ggplotGrob(p4))))
-
-final_plot <- rbind(cbind(ggplotGrob(p1), ggplotGrob(p3)), cbind(ggplotGrob(p2), ggplotGrob(p4)))
-ggsave("figures/leaf_traits.png", plot = final_plot, width = 8.5, height = 4.8)
-```
-
-
-
-
-
 ---
 
 
 # Check number of genera and families in our dataset
-
 
 Total number of genera and families
 
@@ -343,67 +375,53 @@ Total number of genera and families
 library(taxonlookup)
 
 lookup_table <-
-  leaf_traits_woody_herb_only$taxon_name %>%
-  lookup_table(by_species = TRUE,
-         missing_action = "NA") %>%
+  fire_response_and_leaf_traits$taxon_name %>%
+  lookup_table(by_species = TRUE, missing_action = "NA") %>%
   rownames_to_column("taxon_name")
 
-leaf_traits_woody_herb_only <-
-  leaf_traits_woody_herb_only %>%
+fire_response_and_leaf_traits <-
+  fire_response_and_leaf_traits %>%
   left_join(lookup_table, by = "taxon_name") %>%
   add_higher_order()
 
 # Number of genera
-leaf_traits_woody_herb_only$genus %>% unique() %>% length() # 1442
+fire_response_and_leaf_traits$genus %>% unique() %>% length() # 1423
 
 # Number of families
-leaf_traits_woody_herb_only$family %>% unique() %>% length() # 215
+fire_response_and_leaf_traits$family %>% unique() %>% length() # 213
 ```
 
 
 Number of genera and families with resprouting and seeding data
 
 ```{r}
-resprouting_data <- leaf_traits_woody_herb_only %>% drop_na(resprouting_binomial)
-resprouting_data$genus %>% unique() %>% length() # 1436
-resprouting_data$family %>% unique() %>% length() # 215
+resprouting_data <- fire_response_and_leaf_traits %>% drop_na(resprouting_binomial)
+resprouting_data$genus %>% unique() %>% length() # 1417
+resprouting_data$family %>% unique() %>% length() # 213
 
-seeding_data <- leaf_traits_woody_herb_only %>% drop_na(seeding_binomial)
-seeding_data$genus %>% unique() %>% length() # 734
+seeding_data <- fire_response_and_leaf_traits %>% drop_na(seeding_binomial)
+seeding_data$genus %>% unique() %>% length() # 732
 seeding_data$family %>% unique() %>% length() # 149
 ```
-
-
-Number of genera and families with fire frequency data
-
-```{r}
-# Filter out mean FRIs that have confidence intervals that include zero
-data_clean <-
-  leaf_traits_woody_herb_only %>%
-  filter(upr_confint > 0) # Not sure this actually does what we want, confidence intervals could still include zero
-data_clean$genus %>% unique() %>% length() # 1411
-data_clean$family %>% unique() %>% length() # 211
-```
-
 
 
 Number of genera and families with lma and leaf N data
 
 ```{r}
-lma_data <- leaf_traits_woody_herb_only %>% drop_na(mean_lma)
+lma_data <- fire_response_and_leaf_traits %>% drop_na(mean_lma)
 lma_data$genus %>% unique() %>% length() # 720
 lma_data$family %>% unique() %>% length() # 152
 
-leaf_n_data <- leaf_traits_woody_herb_only %>% drop_na(mean_leaf_n)
+leaf_n_data <- fire_response_and_leaf_traits %>% drop_na(mean_leaf_n)
 leaf_n_data$genus %>% unique() %>% length() # 465
 leaf_n_data$family %>% unique() %>% length() # 114
 ```
 
 
-Number of genera and families with all data
+Number of genera and families with data in all columns
 
 ```{r}
-all_data <- data_clean %>% drop_na(mean_lma, mean_leaf_n, resprouting_binomial, seeding_binomial)
-all_data$genus %>% unique() %>% length() # 268
+all_data <- fire_response_and_leaf_traits %>% drop_na(mean_lma, mean_leaf_n, resprouting_binomial, seeding_binomial)
+all_data$genus %>% unique() %>% length() # 269
 all_data$family %>% unique() %>% length() # 85
 ```
