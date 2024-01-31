@@ -42,8 +42,6 @@ mean_fires_no_errors <-
   mean_fires %>%
   filter(is.na(warnings), is.na(error), is.na(messages)) %>%
   select(-warnings, -messages, -error)
-#write_csv(mean_fires_no_errors, "outputs/final_df_predicted_fris_and_fire_response.csv")
-#mean_fires_no_errors <- read_csv("outputs/final_df_predicted_fris_and_fire_response.csv")
 ```
 
 Clean data
@@ -59,12 +57,15 @@ df_woody_herb_only <-
   mean_fires_clean %>%
   dplyr::filter(woody_or_herb %in% c("woody", "herb")) |>
   mutate(across(c("resprouting_binomial", "seeding_binomial", "woody_or_herb"), as.factor))
+
+write_csv(df_woody_herb_only, "outputs/final_df_predicted_fris_and_fire_response.csv")
+df_woody_herb_only <- read_csv("outputs/final_df_predicted_fris_and_fire_response.csv")
 ```
 
-Histogram of mean FRIs
+Histogram of mean fires
 
 ```{r}
-hist(mean_fires_clean$mean_fri, breaks = 40)
+hist(mean_fires_clean$mean_fires_100, breaks = 40)
 ```
 
 
@@ -981,7 +982,7 @@ method_comparison |>
     legend.position = "bottom"
   )
 
-ggsave("figures/method_comparison.png", width = 7, height = 3)
+ggsave("figures/method_comparison.png", width = 7, height = 4)
 ```
 
 
