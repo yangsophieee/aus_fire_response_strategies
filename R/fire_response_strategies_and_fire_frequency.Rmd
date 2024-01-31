@@ -873,7 +873,7 @@ median_fires_weibull <- median_fris %>%
 ```
 
 With the survival analysis method, 1099 models did not converge (incl. unburnt
-pixels) out of 10406 species with pixels >= 10. The warning was "ran out of iterations and did not converge". This occurred
+pixels) out of 10406 species with GBIF occurrences >= 10. The warning was "ran out of iterations and did not converge". This occurred
 because most or all pixels were unburnt.
 
 
@@ -883,6 +883,7 @@ Histogram of median fire frequencies and confidence intervals
 hist(median_fires_weibull$med_w, breaks = 30)
 hist(median_fires_weibull$confint_size, breaks = 30)
 ```
+
 
 ### Poisson regression method
 
@@ -915,10 +916,10 @@ hist(mean_fires_poisson$confint_size, breaks = 30)
 ```
 
 
-In the Poisson regression method, out of 10387 species with pixels >= 10, 159 did not fit and they were all because all pixels were unburnt.
+In the Poisson regression method, out of 10406 species with GBIF occurrences >= 10, 166 did not fit and they were all because all pixels were unburnt.
 
 
-Plot methods against each other
+Join data from the two methods
 
 ```{r}
 method_comparison <- mean_fires_poisson |>
@@ -934,156 +935,105 @@ method_comparison <- mean_fires_poisson |>
 ```
 
 
+Plot methods against each other
+
 ```{r}
-mean_fires_poisson %>%
-  drop_na(resprouting_binomial) %>%
-  filter(woody_or_herb %in% c("woody", "herb")) %>%
-  ggplot(aes(mean_fires, group = resprouting_binomial, fill = resprouting_binomial)) +
-  geom_density(alpha = 0.6) +
-  facet_wrap(~woody_or_herb) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
+method_comparison |>
+  ggplot() +
+  geom_density(
+    aes(avg_fires, fill = method),
+    alpha = 0.6,
+    size = 0.8,
+    col = NA
+  ) +
+  scale_x_log10(
+    expand = c(0, 0),
+    limits = c(0.001, 100),
+    breaks = c(0.001, 0.01, 0.1, 1, 10, 100),
+    labels = c("0.001", "0.01", "0.1", "1", "10", "100")
+  ) +
+  scale_y_continuous(
+    expand = c(0, 0),
+    limits = c(0, 1)
+  ) +
+  scale_fill_manual(
+    values = c("#eb8775", "#172e6d"),
+    labels = c("Poisson regression", "Survival analysis")
+  ) +
+  labs(
+    x = "Fire frequency (per century)",
+    y = "Density",
+    fill = "Method"
+  ) +
+  theme_classic() +
+  theme(
+    axis.line = element_blank(),
+    strip.background = element_blank(),
+    strip.text = element_blank(),
+    plot.margin = unit(c(0.5, 1, 0.1, 0.1), "cm"),
+    panel.border = element_rect(colour = "black", fill = NA),
+    panel.spacing = unit(0.5, "lines"),
+    axis.text = element_text(size = 10),
+    axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
+    axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0)),
+    legend.title = element_text(size = 15),
+    legend.text = element_text(size = 13),
+    legend.position = "bottom"
+  )
 
-mean_fires_poisson %>%
-  drop_na(resprouting_binomial) %>%
-  ggplot(aes(mean_fires, group = resprouting_binomial, fill = resprouting_binomial)) +
-  geom_density(adjust = 1.5, position = "fill", alpha = 0.6) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
-
-mean_fires_poisson %>%
-  drop_na(resprouting_binomial) %>%
-  ggplot(aes(mean_fires, fill = resprouting_binomial)) +
-  geom_histogram(alpha = 0.6, position = "identity", binwidth = 0.1) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
-
-mean_fires_poisson %>%
-  drop_na(resprouting_binomial) %>%
-  filter(woody_or_herb %in% c("woody", "herb")) %>%
-  ggplot(aes(mean_fires, fill = resprouting_binomial)) +
-  geom_histogram(alpha = 0.6, position = "identity", binwidth = 0.1) +
-  facet_wrap(~woody_or_herb) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
-
-mean_fires_poisson %>%
-  drop_na(resprouting_binomial) %>%
-  filter(mean_fires < 6000) %>%
-  ggplot(aes(mean_fires, fill = resprouting_binomial)) +
-  geom_histogram(alpha = 0.6, position = "fill", binwidth = 0.1) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
-
-mean_fires_poisson %>%
-  drop_na(resprouting_binomial) %>%
-  filter(mean_fires < 6000) %>%
-  filter(woody_or_herb %in% c("woody", "herb")) %>%
-  ggplot(aes(mean_fires, fill = resprouting_binomial)) +
-  geom_histogram(alpha = 0.6, position = "fill", binwidth = 0.2) +
-  facet_wrap(~woody_or_herb) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
-
-mean_fires_poisson %>%
-  drop_na(resprouting_binomial) %>%
-  filter(woody_or_herb %in% c("woody", "herb")) %>%
-  ggplot(aes(mean_fires, ..count.., fill = resprouting_binomial)) +
-  geom_density(adjust = 1.5, position = "fill", alpha = 0.6) +
-  facet_wrap(~woody_or_herb) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
-
-mean_fires_poisson %>%
-  drop_na(resprouting_binomial) %>%
-  ggplot(aes(mean_fires, ..count.., fill = resprouting_binomial)) +
-  geom_density(adjust = 1.5, position = "fill", alpha = 0.6) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
+ggsave("figures/method_comparison.png", width = 7, height = 3)
 ```
 
 
-Binary seeding variable
-
 ```{r}
-mean_fires_poisson %>%
-  drop_na(seeding_binomial) %>%
-  filter(woody_or_herb %in% c("woody", "herb")) %>%
-  ggplot(aes(mean_fires, group = seeding_binomial, fill = seeding_binomial)) +
-  geom_density(alpha = 0.6) +
-  facet_wrap(~woody_or_herb) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
+method_comparison |>
+  filter(woody_or_herb %in% c("woody", "herb")) |>
+  mutate(woody_or_herb = if_else(woody_or_herb == "woody", "Woody", "Herbs")) |>
+  ggplot() +
+  geom_density(
+    aes(avg_fires, fill = method),
+    alpha = 0.6,
+    size = 0.8,
+    col = NA
+  ) +
+  facet_wrap(
+    ~ factor(woody_or_herb, ordered = TRUE, levels = c("Woody", "Herbs")),
+    ncol = 1
+  ) +
+  scale_x_log10(
+    expand = c(0, 0),
+    limits = c(0.001, 100),
+    breaks = c(0.001, 0.01, 0.1, 1, 10, 100),
+    labels = c("0.001", "0.01", "0.1", "1", "10", "100")
+  ) +
+  scale_y_continuous(
+    expand = c(0, 0),
+    limits = c(0, 1)
+  ) +
+  scale_fill_manual(
+    values = c("#eb8775", "#172e6d"),
+    labels = c("Poisson regression", "Survival analysis")
+  ) +
+  labs(
+    x = "Fire frequency (per century)",
+    y = "Density",
+    fill = "Method"
+  ) +
+  theme_classic() +
+  theme(
+    strip.background = element_blank(),
+    strip.text = element_text(size = 17, hjust = 0, margin = margin(10, 0, 10, 5), face = "bold"),
+    axis.line = element_blank(),
+    plot.margin = unit(c(0.5, 1, 0.1, 0.1), "cm"),
+    panel.border = element_rect(colour = "black", fill = NA),
+    panel.spacing = unit(0.5, "lines"),
+    axis.text = element_text(size = 12),
+    axis.title.y = element_text(size = 18, margin = margin(0, 15, 0, 0)),
+    axis.title.x = element_text(size = 18, margin = margin(15, 0, 0, 0)),
+    legend.title = element_text(size = 17),
+    legend.text = element_text(size = 15),
+    legend.position = "bottom"
+  )
 
-mean_fires_poisson %>%
-  drop_na(seeding_binomial) %>%
-  ggplot(aes(mean_fires, group = seeding_binomial, fill = seeding_binomial)) +
-  geom_density(adjust = 1.5, position = "fill", alpha = 0.6) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
-
-mean_fires_poisson %>%
-  drop_na(seeding_binomial) %>%
-  ggplot(aes(mean_fires, fill = seeding_binomial)) +
-  geom_histogram(alpha = 0.6, position = "identity", binwidth = 0.1) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
-
-mean_fires_poisson %>%
-  drop_na(seeding_binomial) %>%
-  filter(woody_or_herb %in% c("woody", "herb")) %>%
-  ggplot(aes(mean_fires, fill = seeding_binomial)) +
-  geom_histogram(alpha = 0.6, position = "identity", binwidth = 0.1) +
-  facet_wrap(~woody_or_herb) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
-
-mean_fires_poisson %>%
-  drop_na(seeding_binomial) %>%
-#  filter(mean_fires < 1100) %>% # Filter out high mean FRIs
-  ggplot(aes(mean_fires, fill = seeding_binomial)) +
-  geom_histogram(alpha = 0.6, position = "fill", binwidth = 0.1) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
-
-mean_fires_poisson %>%
-  drop_na(seeding_binomial) %>%
-  filter(woody_or_herb %in% c("woody", "herb")) %>%
-  ggplot(aes(mean_fires, fill = seeding_binomial)) +
-  geom_histogram(alpha = 0.6, position = "fill", binwidth = 0.2) +
-  facet_wrap(~woody_or_herb) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
-
-mean_fires_poisson %>%
-  drop_na(seeding_binomial) %>%
-  filter(woody_or_herb %in% c("woody", "herb")) %>%
-  ggplot(aes(mean_fires, ..count.., fill = seeding_binomial)) +
-  geom_density(adjust = 1.5, position = "fill", alpha = 0.6) +
-  facet_wrap(~woody_or_herb) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
-
-mean_fires_poisson %>%
-  drop_na(seeding_binomial) %>%
-  ggplot(aes(mean_fires, ..count.., fill = seeding_binomial)) +
-  geom_density(adjust = 1.5, position = "fill", alpha = 0.6) +
-  scale_x_log10() +
-  scale_fill_brewer(palette = "Set1") +
-  theme_classic()
+ggsave("figures/method_comparison_woody_herb.png", width = 7, height = 7)
 ```
