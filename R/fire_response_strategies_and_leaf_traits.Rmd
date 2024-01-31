@@ -63,18 +63,17 @@ fire_response_and_leaf_traits <-
 ```
 
 
-
 Run linear models
 
 ```{r}
 lma_resp_model <- lm(
   mean_lma ~ resprouting_binomial * woody_or_herb,
   data = fire_response_and_leaf_traits)
-
 summary(lma_resp_model)
 
 lma_resp_emmeans <- emmeans::emmeans(
   lma_resp_model, specs = pairwise ~ resprouting_binomial:woody_or_herb)
+lma_resp_emmeans
 lma_resp_emmeans$contrasts %>% confint()
 ```
 
