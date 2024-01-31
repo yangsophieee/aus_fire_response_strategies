@@ -159,7 +159,7 @@ lma_resprouting_plot <-
     breaks = c("woody", "herb")) +
   labs(
     x = "Resprouting",
-    y = bquote("LMA (g"m^-2)
+    y = bquote("LMA " ~(g m^-2))
   ) +
   theme_classic() +
   theme(
