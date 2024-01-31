@@ -117,7 +117,7 @@ calculate_mean_fires_with_glm <- function(
       dispersion_ratio = dispersion_test$dispersion_ratio,
       dispersion_p_value = dispersion_test$p_value,
       num_unburnt_pixels = df %>% filter(.data$num_of_fires == 0) %>% nrow(),
-      num_pixels = nrow(df),
+      num_pixels = nrow(species_subset),
       warnings = ifelse(
         length(model$warnings) >= 1,
         paste(model$warnings, collapse = ", "), NA
@@ -140,7 +140,7 @@ calculate_mean_fires_with_glm <- function(
       dispersion_ratio = NA,
       dispersion_p_value = NA,
       num_unburnt_pixels = df %>% filter(.data$num_of_fires == 0) %>% nrow(),
-      num_pixels = nrow(df),
+      num_pixels = nrow(species_subset),
       warnings = ifelse(
         length(model$warnings) >= 1,
         paste(model$warnings, collapse = ", "), NA),
