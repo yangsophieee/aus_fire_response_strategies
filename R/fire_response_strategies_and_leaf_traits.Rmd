@@ -11,6 +11,7 @@ editor_options:
 
 ```{r}
 library(tidyverse)
+library(ggtext)
 library(patchwork)
 
 austraits <- read_rds("data/austraits-5.0.0.rds") # This is an updated rds file
@@ -64,8 +65,6 @@ fire_response_and_leaf_traits <-
 
 
 Run linear models
-
-Log-transform the phylo ones #TODO
 
 ```{r}
 lma_resp_model <- lm(
@@ -137,8 +136,8 @@ lma_resprouting_plot <-
   fire_response_and_leaf_traits %>%
   drop_na(resprouting_binomial) %>%
   ggplot(aes(x = resprouting_binomial, y = mean_lma, fill = woody_or_herb)) +
-  geom_violin(size = 0.8) +
-  geom_boxplot(width = 0.05, size = 0.8) +
+  geom_violin(linewidth = 0.8) +
+  geom_boxplot(width = 0.05, linewidth = 0.8) +
   geom_text(
     data = lma_resprouting_p_values,
     aes(x = x, y = y, label = label),
@@ -159,7 +158,7 @@ lma_resprouting_plot <-
     breaks = c("woody", "herb")) +
   labs(
     x = "Resprouting",
-    y = bquote("LMA " ~(g m^-2))
+    y = expression(LMA~(g~m^-2))
   ) +
   theme_classic() +
   theme(
@@ -201,7 +200,7 @@ leaf_n_resprouting_plot <-
     breaks = c("woody", "herb")) +
   labs(
     x = "Resprouting",
-    y = "Leaf N (mg/g)"
+    y = expression(Leaf~N~(mg~g^-1))
   ) +
   theme_classic() +
   theme(
@@ -255,8 +254,8 @@ lma_seeding_plot <-
     values = c("#7e5137", "#b9ce6f"),
     breaks = c("woody", "herb")) +
   labs(
-    x = "Post-fire seeding",
-    y = bquote("LMA (" *g/m2 *")")) +
+    x = "Post-fire seeding"
+  ) +
   theme_classic() +
   theme(
     panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
@@ -336,14 +335,17 @@ Rerun with phylogenetic linear models
 ```{r}
 tree <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
 fire_response_and_leaf_traits$taxon_name <- gsub(" ", "_", fire_response_and_leaf_traits$taxon_name)
-fire_response_and_leaf_traits <- fire_response_and_leaf_traits[fire_response_and_leaf_traits$taxon_name %in% tree$tip.label,]
+fire_response_and_leaf_traits <-
+  fire_response_and_leaf_traits[fire_response_and_leaf_traits$taxon_name %in% tree$tip.label, ]
+
 fire_response_and_leaf_traits$resprouting_binomial <-
   ifelse(fire_response_and_leaf_traits$resprouting_binomial == TRUE, 1, 0) # Make numeric
 
-pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, fire_response_and_leaf_traits$taxon_name))
-pruned_tree <- as.phylo(pruned_tree)
+pruned_tree <- ape::drop.tip(tree, setdiff(tree$tip.label, fire_response_and_leaf_traits$taxon_name))
+pruned_tree <- ape::as.phylo(pruned_tree)
 
-sorted_data <- fire_response_and_leaf_traits[order(match(fire_response_and_leaf_traits$taxon_name, pruned_tree$tip.label)),]
+sorted_data <-
+  fire_response_and_leaf_traits[order(match(fire_response_and_leaf_traits$taxon_name, pruned_tree$tip.label)), ]
 
 sorted_data <-
   sorted_data %>%
@@ -356,45 +358,53 @@ fire_response_and_leaf_traits <- fire_response_and_leaf_traits %>%
   filter(woody_or_herb %in% c("woody", "herb"))
 fire_response_and_leaf_traits$woody_or_herb <-
   fire_response_and_leaf_traits$woody_or_herb %>%
-  factor(ordered = TRUE, levels = c("woody", "herb"))
+  factor(levels = c("woody", "herb"))
 ```
 
 ```{r}
 pm1 <-
-  phylolm(mean_lma ~ resprouting_binomial * woody_or_herb,
-      data = sorted_data,
-      phy = pruned_tree,
-      model = "BM")
+  phylolm::phylolm(
+    log10(mean_lma) ~ resprouting_binomial * woody_or_herb,
+    data = sorted_data,
+    phy = pruned_tree,
+    model = "BM"
+  )
 summary(pm1)
 ```
 
 
 ```{r}
 pm2 <-
-  phylolm(mean_leaf_n ~ resprouting_binomial * woody_or_herb,
-      data = sorted_data,
-      phy = pruned_tree,
-      model = "BM")
+  phylolm::phylolm(
+    log10(mean_leaf_n) ~ resprouting_binomial * woody_or_herb,
+    data = sorted_data,
+    phy = pruned_tree,
+    model = "BM"
+  )
 summary(pm2)
 ```
 
 
 ```{r}
 pm3 <-
-  phylolm(mean_lma ~ seeding_binomial * woody_or_herb,
-      data = sorted_data,
-      phy = pruned_tree,
-      model = "BM")
+  phylolm::phylolm(
+    log10(mean_lma) ~ seeding_binomial * woody_or_herb,
+    data = sorted_data,
+    phy = pruned_tree,
+    model = "BM"
+  )
 summary(pm3)
 ```
 
 
 ```{r}
 pm4 <-
-  phylolm(mean_leaf_n ~ seeding_binomial * woody_or_herb,
-      data = sorted_data,
-      phy = pruned_tree,
-      model = "BM")
+  phylolm::phylolm(
+    log10(mean_leaf_n) ~ seeding_binomial * woody_or_herb,
+    data = sorted_data,
+    phy = pruned_tree,
+    model = "BM"
+  )
 summary(pm4)
 ```
 
@@ -408,6 +418,11 @@ Total number of genera and families
 
 ```{r}
 library(taxonlookup)
+
+fire_response_and_leaf_traits <-
+  fire_response_and_fire_frequency %>%
+  left_join(mean_lma) %>%
+  left_join(mean_leaf_n)
 
 lookup_table <-
   fire_response_and_leaf_traits$taxon_name %>%
