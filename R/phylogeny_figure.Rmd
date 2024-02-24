@@ -15,7 +15,6 @@ library(tidytree)
 library(ggtreeExtra)
 library(ggtree)
 library(ggnewscale)
-library(taxonlookup)
 library(ape)
 library(RColorBrewer)
 library(phytools)
@@ -27,7 +26,7 @@ library(phytools)
 
 ```{r}
 make_phy_f <- function() {
-  tt <- ape::read.tree("raw_data/v0.1-big-seed-plant-trees/ALLMB.tre")
+  tt <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
   a <- taxonlookup::lookup_table(tt$tip.label, by_species = TRUE)
   a <- rownames_to_column(a, "species")
   take_first <- function(x) x[1]
@@ -35,16 +34,9 @@ make_phy_f <- function() {
   out <- ape::drop.tip(tt, tt$tip.label[!tt$tip.label %in% one_tip$species])
   out$tip.label <- one_tip$family[match(out$tip.label, one_tip$species)]
   plot(out, type = "r")
-  saveRDS(out, "processed_data/phy_plot.rds")
+  saveRDS(out, "data/phy_plot.rds")
 }
 ```
-
-
-```{r}
-ggtree(out, layout = "circular")
-ggtree(out, layout = "fan", size = 0.5)
-```
-
 
 
 ## Make data frame with summarised fire response, mean FRI and leaf traits for each family
@@ -59,16 +51,15 @@ Join to lookup table
 ```{r}
 resprouting_seeding <- readRDS("data/resprouting_seeding.rds")
 
-lookup_table <-
-  resprouting_seeding$taxon_name %>%
-  taxonlookup::lookup_table(by_species = TRUE, missing_action = "NA") %>%
-  rownames_to_column("taxon_name")
+austraits <- read_rds("data/austraits-5.0.0.rds")
 
-resprouting_seeding_new <-
-  resprouting_seeding %>%
-  left_join(lookup_table, by = "taxon_name")
+resprouting_seeding_new <- resprouting_seeding |>
+  left_join(
+    austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
+    by = "taxon_name"
+  )
 
-resprouting_seeding_new$family %>% unique() %>% length() # 218 unique families
+resprouting_seeding_new$family %>% unique() %>% length() # 223 unique families in fire response data
 x <- resprouting_seeding_new %>% group_by(family) %>% summarise(count = n())
 hist(x$count, breaks = 100)
 ```
@@ -79,9 +70,8 @@ Summarise resprouting by family
 ```{r}
 resprouting_summary <-
   resprouting_seeding_new %>%
-  drop_na(resprouting_binomial, family) %>%
+  drop_na(resprouting_binomial) %>%
   group_by(family) %>%
-  filter(n() > 72, family != "Amaranthaceae") %>%
   summarise(prop_resprouting = sum(resprouting_binomial) / n()) %>%
   ungroup()
 ```
@@ -94,41 +84,30 @@ seeding_summary <-
   resprouting_seeding_new %>%
   drop_na(seeding_binomial, family) %>%
   group_by(family) %>%
-#  filter(n() > 50) %>%
   summarise(prop_seeding = sum(seeding_binomial) / n()) %>%
   ungroup()
 ```
 
 
-Mean FRI data
+Mean fire frequency data
 
 ```{r}
-#mean_fris <- read_csv("processed_data/mean_fri_df_with_glm.csv", guess_max = 8009)
-#mean_fris_no_errors <-
-#  mean_fris %>%
-#  filter(is.na(warnings), is.na(error), is.na(messages), upr_confint > 0) %>%
-#  select(-warnings, -messages, -error)
-
-#write_csv(mean_fris_no_errors, "processed_data/mean_fri_df_with_glm_no_errors_clean.csv")
-
-mean_fris <- read_csv("processed_data/mean_fri_df_with_glm_no_errors_clean.csv")
-
-# Might need to filter out taxa with high dispersion ratios (with signif. disperson P-values)
+mean_fires <- read_csv("outputs/final_df_predicted_fires_and_fire_response.csv")
 ```
 
 
 ```{r}
 lookup_table <-
-  mean_fris$taxon_name %>%
+  mean_fires$taxon_name %>%
   lookup_table(by_species = TRUE, missing_action = "NA") %>%
   rownames_to_column("taxon_name")
 
-mean_fris_new <-
-  mean_fris %>%
+mean_fires_new <-
+  mean_fires %>%
   left_join(lookup_table, by = "taxon_name")
 
-mean_fris_summary <-
-  mean_fris_new %>%
+mean_fires_summary <-
+  mean_fires_new %>%
   drop_na(mean_fri, family) %>%
   group_by(family) %>%
 #  filter(n() > 50) %>%
@@ -207,7 +186,7 @@ mean_leaf_n_new <-
   left_join(lookup_table, by = "taxon_name")
 
 mean_leaf_n_new$family %>% unique() %>% length()
-mean_leaf_n_new %>% group_by(family) %>% summarise(count = n()) -> x
+x <- mean_leaf_n_new %>% group_by(family) %>% summarise(count = n())
 hist(x$count, breaks = 100)
 
 mean_leaf_n_summary <-
@@ -317,7 +296,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     legend.box.margin = margin(0, 0, 0, -20)
   ) +
   geom_fruit(
-    data = mean_fris_summary,
+    data = mean_fires_summary,
     geom = geom_tile,
     mapping = aes(x = mean_fri, y = family, fill = mean_fri),
     offset = 0.7,
@@ -520,7 +499,7 @@ ggtree(out_pruned, layout = "rectangular", size = 0.6) +
   scale_fill_distiller(palette = "Reds", direction = 1) +
   new_scale_fill() +
   geom_fruit(
-    data = mean_fris_summary,
+    data = mean_fires_summary,
     geom = geom_tile,
     mapping = aes(x = mean_fri, y = family, fill = mean_fri),
     pwidth = 0,
