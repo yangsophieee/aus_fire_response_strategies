@@ -206,6 +206,6 @@ mean_fires_df <- mean_fires_list %>% bind_rows()
 Write to a csv file
 
 ```{r}
-write_csv(mean_fires_df, "data/mean_fires_df_with_glm.csv")
+write_csv(mean_fires_df, "outputs/mean_fires_df_with_poisson_glm.csv")
 ```
 

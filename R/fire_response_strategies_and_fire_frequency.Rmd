@@ -58,8 +58,8 @@ df_woody_herb_only <-
   dplyr::filter(woody_or_herb %in% c("woody", "herb")) |>
   mutate(across(c("resprouting_binomial", "seeding_binomial", "woody_or_herb"), as.factor))
 
-write_csv(df_woody_herb_only, "outputs/final_df_predicted_fris_and_fire_response.csv")
-df_woody_herb_only <- read_csv("outputs/final_df_predicted_fris_and_fire_response.csv")
+write_csv(df_woody_herb_only, "outputs/final_df_predicted_fires_and_fire_response.csv")
+df_woody_herb_only <- read_csv("outputs/final_df_predicted_fires_and_fire_response.csv")
 ```
 
 Histogram of mean fires

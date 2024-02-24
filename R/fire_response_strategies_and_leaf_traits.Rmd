@@ -14,7 +14,7 @@ library(tidyverse)
 library(ggtext)
 library(patchwork)
 
-austraits <- read_rds("data/austraits-5.0.0.rds") # This is an updated rds file
+austraits <- read_rds("data/austraits-5.0.0.rds")
 ```
 
 
@@ -334,6 +334,10 @@ Rerun with phylogenetic linear models
 
 ```{r}
 tree <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
+
+# Align with APCalign? #TODO
+
+
 fire_response_and_leaf_traits$taxon_name <- gsub(" ", "_", fire_response_and_leaf_traits$taxon_name)
 fire_response_and_leaf_traits <-
   fire_response_and_leaf_traits[fire_response_and_leaf_traits$taxon_name %in% tree$tip.label, ]
