@@ -21,17 +21,37 @@ austraits <- read_rds("data/austraits-5.0.0.rds")
 Read in LMA and leaf N data
 
 ```{r}
+aus_native_lookup <- read_csv("data/aus_native_lookup.csv")
+
 lma <-
   austraits$traits %>%
   filter(trait_name == "leaf_mass_per_area") %>%
   pivot_wider(names_from = "trait_name", values_from = "value") |>
   mutate(leaf_mass_per_area = as.numeric(leaf_mass_per_area))
 
+# Filter out non-native taxa
+lma <-
+  lma %>%
+  left_join(
+    aus_native_lookup,
+    by = c("taxon_name" = "canonical_name")) %>%
+  filter(aus_native == TRUE) %>%
+  select(-aus_native)
+
 leaf_n <-
   austraits$traits %>%
   filter(trait_name == "leaf_N_per_dry_mass") %>%
   pivot_wider(names_from = "trait_name", values_from = "value") |>
   mutate(leaf_N_per_dry_mass = as.numeric(leaf_N_per_dry_mass))
+
+# Filter out non-native taxa
+leaf_n <-
+  leaf_n %>%
+  left_join(
+    aus_native_lookup,
+    by = c("taxon_name" = "canonical_name")) %>%
+  filter(aus_native == TRUE) %>%
+  select(-aus_native)
 ```
 
 
@@ -55,7 +75,7 @@ mean_leaf_n <-
 Join to fire response
 
 ```{r}
-fire_response_and_fire_frequency <- read_csv("outputs/final_df_predicted_fris_and_fire_response.csv")
+fire_response_and_fire_frequency <- read_csv("outputs/final_df_predicted_fires_and_fire_response.csv")
 
 fire_response_and_leaf_traits <-
   fire_response_and_fire_frequency %>%
