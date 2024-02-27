@@ -72,8 +72,13 @@ resprouting_summary <-
   resprouting_seeding_new %>%
   drop_na(resprouting_binomial) %>%
   group_by(family) %>%
-  summarise(prop_resprouting = sum(resprouting_binomial) / n()) %>%
-  ungroup()
+  summarise(
+    prop_resprouting = sum(resprouting_binomial) / n(),
+    data_count = n()
+  ) %>%
+  ungroup() |>
+  arrange(-data_count) |>
+  slice_head(n = 20)
 ```
 
 
@@ -293,15 +298,21 @@ new_tree <- full_join(out_pruned, extra_data, by = "label")
 
 
 ```{r}
+new_tree@phylo |>
+  as_tibble() |>
+  filter(label %in% c("Fabaceae", "Myrtaceae", "Orchidaceae", "Proteaceae", "Asteraceae", "Poaceae"))
+```
+
+```{r}
 ggtree(new_tree, layout = "rectangular", size = 0.7) +
   geom_tiplab(
-    aes(subset = (!node %in% c(3, 7, 10, 15, 14))),
+    aes(subset = (!node %in% c(3, 7, 10, 14, 15, 19))),
     offset = 3,
     size = 4,
     show.legend = FALSE
   ) +
   geom_tiplab(
-    aes(subset = (node %in% c(3, 7, 10, 15, 14)), fontface = "bold"),
+    aes(subset = (node %in% c(3, 7, 10, 14, 15, 19)), fontface = "bold"),
     offset = 3,
     size = 4,
     show.legend = FALSE
@@ -332,7 +343,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
   ) +
   scale_fill_distiller(
     palette = "YlOrRd",
-    direction = -1,
+    direction = 1,
     trans = "log10",
     name = "Mean fire frequency",
     guide = guide_colourbar(
@@ -347,6 +358,14 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
       barwidth = 5,
       barheight = 0.7,
       order = 1)
+  ) +
+  geom_fruit(
+    data = mean_fires_summary,
+    geom = geom_text,
+    mapping = aes(x = mean_fires_100, y = family, label = round(mean_fires_100, digits = 1)),
+    colour = "black",
+    offset = 0.058,
+    pwidth = 0
   ) +
   ggnewscale::new_scale_fill() +
   geom_fruit(
@@ -427,7 +446,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
       barwidth = 5,
       barheight = 0.7,
       order = 4),
-    name = "Mean SLA"
+    name = "Mean LMA"
   ) +
   ggnewscale::new_scale_fill() +
   geom_fruit(

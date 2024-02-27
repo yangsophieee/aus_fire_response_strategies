@@ -31,8 +31,9 @@ aus_native_lookup <- read_csv("data/aus_native_lookup.csv")
 
 resprouting_capacity <-
   resprouting_capacity %>%
-  left_join(aus_native_lookup,
-            by = c("taxon_name" = "canonical_name")) %>%
+  left_join(
+    aus_native_lookup,
+    by = c("taxon_name" = "canonical_name")) %>%
   filter(aus_native == TRUE) %>%
   select(-aus_native) # Lost 1757 taxa
 ```
