@@ -39,7 +39,7 @@ make_phy_f <- function() {
 ```
 
 
-## Make data frame with summarised fire response, mean FRI and leaf traits for each family
+## Make data frame with summarised fire response, mean fire frequency and leaf traits for each family
     - Also maybe woody or herb?
 
 **Start with resprouting and seeding data and only families with > N species/taxa with data**
@@ -59,7 +59,7 @@ resprouting_seeding_new <- resprouting_seeding |>
     by = "taxon_name"
   )
 
-resprouting_seeding_new$family %>% unique() %>% length() # 223 unique families in fire response data
+resprouting_seeding_new$family %>% unique() %>% length() # 223 unique families
 x <- resprouting_seeding_new %>% group_by(family) %>% summarise(count = n())
 hist(x$count, breaks = 100)
 ```
@@ -97,63 +97,64 @@ mean_fires <- read_csv("outputs/final_df_predicted_fires_and_fire_response.csv")
 
 
 ```{r}
-lookup_table <-
-  mean_fires$taxon_name %>%
-  lookup_table(by_species = TRUE, missing_action = "NA") %>%
-  rownames_to_column("taxon_name")
-
 mean_fires_new <-
   mean_fires %>%
-  left_join(lookup_table, by = "taxon_name")
+  left_join(
+    austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
+    by = "taxon_name"
+  )
 
 mean_fires_summary <-
   mean_fires_new %>%
-  drop_na(mean_fri, family) %>%
   group_by(family) %>%
-#  filter(n() > 50) %>%
-  summarise(mean_fri = mean(mean_fri)) %>%
+  summarise(mean_fires_100 = mean(mean_fires_100)) %>%
   ungroup()
 ```
 
 
-SLA data
+LMA data
+
 
 ```{r}
-austraits <- read_rds("raw_data/austraits-sophie-branch.rds") # This is an updated rds file
+aus_native_lookup <- read_csv("data/aus_native_lookup.csv")
 
-sla <-
+lma <-
   austraits$traits %>%
-  filter(trait_name == "specific_leaf_area") %>%
-  select(-trait_name) %>%
-  rename(specific_leaf_area = value)
+  filter(trait_name == "leaf_mass_per_area") %>%
+  pivot_wider(names_from = "trait_name", values_from = "value") |>
+  mutate(leaf_mass_per_area = as.numeric(leaf_mass_per_area))
 
-sla$specific_leaf_area <- as.numeric(sla$specific_leaf_area)
+# Filter out non-native taxa
+lma <-
+  lma %>%
+  left_join(
+    aus_native_lookup,
+    by = c("taxon_name" = "canonical_name")) %>%
+  filter(aus_native == TRUE) %>%
+  select(-aus_native)
 
-mean_sla <-
-    sla %>%
-    group_by(taxon_name) %>%
-    summarise(mean_sla = mean(specific_leaf_area)) %>%
-    ungroup()
+mean_lma <-
+  lma %>%
+  group_by(taxon_name) %>%
+  summarise(mean_lma = mean(leaf_mass_per_area)) %>%
+  ungroup()
 
-lookup_table <-
-  mean_sla$taxon_name %>%
-  lookup_table(by_species = TRUE, missing_action = "NA") %>%
-  rownames_to_column("taxon_name")
+mean_lma_new <-
+  mean_lma %>%
+  left_join(
+    austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
+    by = "taxon_name"
+  )
 
-mean_sla_new <-
-  mean_sla %>%
-  left_join(lookup_table, by = "taxon_name")
-
-mean_sla_new$family %>% unique() %>% length()
-x <- mean_sla_new %>% group_by(family) %>% summarise(count = n())
+mean_lma_new$family %>% unique() %>% length() # 186
+x <- mean_lma_new %>% group_by(family) %>% summarise(count = n())
 hist(x$count, breaks = 100)
 
-mean_sla_summary <-
-  mean_sla_new %>%
-  drop_na(mean_sla, family) %>%
+mean_lma_summary <-
+  mean_lma_new %>%
+  drop_na(mean_lma, family) %>%
   group_by(family) %>%
-#    filter(n() > 70) %>%
-  summarise(mean_sla = mean(mean_sla)) %>%
+  summarise(mean_lma = mean(mean_lma)) %>%
   ungroup()
 ```
 
@@ -164,10 +165,18 @@ Leaf N per dry mass data
 leaf_n <-
   austraits$traits %>%
   filter(trait_name == "leaf_N_per_dry_mass") %>%
-  select(-trait_name) %>%
-  rename(leaf_N_per_dry_mass = value)
+  pivot_wider(names_from = "trait_name", values_from = "value") |>
+  mutate(leaf_N_per_dry_mass = as.numeric(leaf_N_per_dry_mass))
 
-leaf_n$leaf_N_per_dry_mass <- as.numeric(leaf_n$leaf_N_per_dry_mass)
+
+# Filter out non-native taxa
+leaf_n <-
+  leaf_n %>%
+  left_join(
+    aus_native_lookup,
+    by = c("taxon_name" = "canonical_name")) %>%
+  filter(aus_native == TRUE) %>%
+  select(-aus_native)
 
 mean_leaf_n <-
   leaf_n %>%
@@ -175,17 +184,14 @@ mean_leaf_n <-
   summarise(mean_leaf_n = mean(leaf_N_per_dry_mass)) %>%
   ungroup()
 
-
-lookup_table <-
-  mean_leaf_n$taxon_name %>%
-  lookup_table(by_species = TRUE, missing_action = "NA") %>%
-  rownames_to_column("taxon_name")
-
 mean_leaf_n_new <-
   mean_leaf_n %>%
-  left_join(lookup_table, by = "taxon_name")
+  left_join(
+    austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
+    by = "taxon_name"
+  )
 
-mean_leaf_n_new$family %>% unique() %>% length()
+mean_leaf_n_new$family %>% unique() %>% length() # 145
 x <- mean_leaf_n_new %>% group_by(family) %>% summarise(count = n())
 hist(x$count, breaks = 100)
 
@@ -193,7 +199,6 @@ mean_leaf_n_summary <-
   mean_leaf_n_new %>%
   drop_na(mean_leaf_n, family) %>%
   group_by(family) %>%
-#    filter(n() > 70) %>%
   summarise(mean_leaf_n = mean(mean_leaf_n)) %>%
   ungroup()
 ```
@@ -205,17 +210,28 @@ mean_leaf_n_summary <-
 ## Pruned tree with only families with resprouting and/or seeding data
 
 ```{r}
-tt <- read.tree("raw_data/v0.1-big-seed-plant-trees/ALLMB.tre")
-a <- taxonlookup::lookup_table(tt$tip.label, by_species = TRUE)
+tt <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
+a <- taxonlookup::lookup_table(tt$tip.label, by_species = TRUE, missing_action = "NA")
 a <- rownames_to_column(a, "species")
+a <- a %>%
+  left_join(
+    austraits$taxa |>
+      filter(taxonomic_status == "accepted") |>
+      select(all_of(c("genus", "family"))) |>
+      distinct(),
+    by = "genus"
+  ) %>%
+  mutate(family = coalesce(family.x, family.y)) %>%
+  select(-family.x, -family.y)
 take_tenth <- function(x) x[10] # Not [1] because the first species of some families is taxonomically ambiguous
 one_tip <- group_by(a, family) %>% summarise(species = take_tenth(species))
-out <- drop.tip(tt, tt$tip.label[!tt$tip.label %in% one_tip$species])
+out <- ape::drop.tip(tt, tt$tip.label[!tt$tip.label %in% one_tip$species])
 out$tip.label <- one_tip$family[match(out$tip.label, one_tip$species)]
 
-out_pruned <- drop.tip(out, out$tip.label[!out$tip.label %in% resprouting_summary$family])
+# Align tree with APCalign #TODO
 
-plot(out_pruned)
+out_pruned <- ape::drop.tip(out, out$tip.label[!out$tip.label %in% resprouting_summary$family])
+
 ggtree(out_pruned, ladderize = FALSE) +
   geom_tiplab()
 ```
@@ -224,27 +240,37 @@ ggtree(out_pruned, ladderize = FALSE) +
 Number of native Australian taxa
 
 ```{r}
-library(austraits)
-apc <- read_csv("raw_data/APC-taxon-2021-06-08-0734.csv")
-native_lookup <- read_csv("processed_data/aus_native_lookup.csv")
+library(tidyverse)
+taxonomic_resources <- APCalign::load_taxonomic_resources()
+
+apc <- taxonomic_resources$APC |>
+  filter(
+    taxonomic_status == "accepted",
+    taxon_rank %in% c("species", "form", "variety", "subspecies")
+  )
+
+native_lookup <- APCalign::native_anywhere_in_australia(apc$canonical_name, taxonomic_resources)
 
 apc_native <-
   apc %>%
-  left_join(native_lookup, by = c("canonicalName" = "taxon_name"))
+  left_join(native_lookup, by = c("canonical_name" = "species"))
 
 species_diversity <-
   apc_native %>%
   filter(
-    taxonRank == "Species",
-    taxonomicStatus == "accepted",
-    aus_native == TRUE) %>% # Filter for species only
+    taxon_rank == "species", # Filter for species only
+    native_anywhere_in_aus == "native" # Filter for native species only
+  ) %>%
   group_by(family) %>%
-  summarise(nspecies = n_distinct(scientificName)) %>%
-  ungroup()
+  summarise(n_species = n_distinct(canonical_name)) %>%
+  ungroup() %>%
+  arrange(-n_species)
+
+species_diversity
 ```
 
 
-Number of woody species
+Number of woody species #TODO
 
 ```{r}
 
@@ -281,7 +307,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     show.legend = FALSE
   ) +
   geom_text(
-    aes(label = nspecies),
+    aes(label = n_species),
     hjust = 1,
     nudge_x = 0,
     nudge_y = -0.25,
@@ -298,7 +324,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
   geom_fruit(
     data = mean_fires_summary,
     geom = geom_tile,
-    mapping = aes(x = mean_fri, y = family, fill = mean_fri),
+    mapping = aes(x = mean_fires_100, y = family, fill = mean_fires_100),
     offset = 0.7,
     pwidth = 0,
     width = 8,
@@ -308,7 +334,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     palette = "YlOrRd",
     direction = -1,
     trans = "log10",
-    name = "Mean FRI",
+    name = "Mean fire frequency",
     guide = guide_colourbar(
       ticks.colour = "black",
       ticks.linewidth = 1,
@@ -322,7 +348,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
       barheight = 0.7,
       order = 1)
   ) +
-  new_scale_fill() +
+  ggnewscale::new_scale_fill() +
   geom_fruit(
     data = resprouting_summary,
     geom = geom_tile,
@@ -349,7 +375,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
       order = 2),
     name = "Proportion resprouting"
   ) +
-  new_scale_fill() +
+  ggnewscale::new_scale_fill() +
   geom_fruit(
     data = seeding_summary,
     geom = geom_tile,
@@ -377,11 +403,11 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
       order = 3),
     name = "Proportion seeding"
   ) +
-  new_scale_fill() +
+  ggnewscale::new_scale_fill() +
   geom_fruit(
-    data = mean_sla_summary,
+    data = mean_lma_summary,
     geom = geom_tile,
-    mapping = aes(x = mean_sla, y = family, fill = mean_sla),
+    mapping = aes(x = mean_lma, y = family, fill = mean_lma),
     offset = 0.058,
     pwidth = 0,
     width = 8,
@@ -403,7 +429,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
       order = 4),
     name = "Mean SLA"
   ) +
-  new_scale_fill() +
+  ggnewscale::new_scale_fill() +
   geom_fruit(
     data = mean_leaf_n_summary,
     geom = geom_tile,
@@ -501,7 +527,7 @@ ggtree(out_pruned, layout = "rectangular", size = 0.6) +
   geom_fruit(
     data = mean_fires_summary,
     geom = geom_tile,
-    mapping = aes(x = mean_fri, y = family, fill = mean_fri),
+    mapping = aes(x = mean_fires_100, y = family, fill = mean_fires_100),
     pwidth = 0,
     offset = 0.045,
     width = 15,
