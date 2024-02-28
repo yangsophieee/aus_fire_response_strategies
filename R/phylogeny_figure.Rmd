@@ -364,7 +364,6 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     nudge_y = -0.25,
     size = 3.5
   ) +
-  scale_colour_manual(values = c("#ECC119", "#F767C3", "#EA3138", "#B2CE6E", "#FF932C")) +
   theme(
     plot.margin = unit(c(5, 5, 5, 5), "mm"),
     legend.margin = margin(-0, 0, 0, 0, unit = "cm"),
@@ -378,7 +377,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     mapping = aes(x = mean_fires_100, y = family, fill = mean_fires_100),
     offset = 0.7,
     pwidth = 0,
-    width = 8,
+    width = 10,
     height = 1
   ) +
   scale_fill_distiller(
@@ -404,7 +403,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     geom = geom_text,
     mapping = aes(x = mean_fires_100, y = family, label = round(mean_fires_100, digits = 1)),
     colour = "black",
-    offset = 0.058,
+    offset = 0,
     pwidth = 0
   ) +
   ggnewscale::new_scale_fill() +
@@ -412,9 +411,9 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     data = resprouting_summary,
     geom = geom_tile,
     mapping = aes(x = prop_resprouting, y = family, fill = prop_resprouting),
-    offset = 0.058,
+    offset = 0.1,
     pwidth = 0,
-    width = 8,
+    width = 10,
     height = 1
   ) +
   scale_fill_distiller(
@@ -439,9 +438,9 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     data = seeding_summary,
     geom = geom_tile,
     mapping = aes(x = prop_seeding, y = family, fill = prop_seeding),
-    offset = 0.058,
+    offset = 0.1,
     pwidth = 0,
-    width = 8,
+    width = 10,
     height = 1
   ) +
   scale_fill_distiller(
@@ -467,9 +466,9 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     data = mean_lma_summary,
     geom = geom_tile,
     mapping = aes(x = mean_lma, y = family, fill = mean_lma),
-    offset = 0.058,
+    offset = 0.1,
     pwidth = 0,
-    width = 8,
+    width = 10,
     height = 1) +
   scale_fill_distiller(
     palette = "Greens",
@@ -493,9 +492,9 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     data = mean_leaf_n_summary,
     geom = geom_tile,
     mapping = aes(x = mean_leaf_n, y = family, fill = mean_leaf_n),
-    offset = 0.058,
+    offset = 0.1,
     pwidth = 0,
-    width = 8,
+    width = 10,
     height = 1
   ) +
   scale_fill_distiller(
@@ -516,13 +515,63 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     name = "Mean leaf N"
   )
 
-# Myrtaceae = 7, Fabaceae = 3, Asteraceae = 10, Poaceae = 15, Proteaceae = 14
 #ggsave("phylogeny-figure.png", width = 7.5, height = 6.75)
 ```
 
+Try make plot again with gheatmap
 
 ```{r}
+all_data <- resprouting_summary |>
+  select(-data_count) |>
+  left_join(seeding_summary, by = "family") |>
+  left_join(mean_lma_summary, by = "family") |>
+  left_join(mean_leaf_n_summary, by = "family") |>
+  left_join(mean_fires_summary, by = "family") |>
+  left_join(woodiness_summary, by = "family") |>
+  relocate(mean_fires_100, .after = "family") |>
+  as.data.frame()
 
+rownames(all_data) <- all_data$family
+
+all_data <- all_data |>
+  select(-family)
+
+base_tree <- ggtree(new_tree, layout = "rectangular", size = 0.7) +
+  geom_tiplab(
+    aes(subset = (!node %in% c(3, 7, 10, 14, 15, 19))),
+    offset = 3,
+    size = 4,
+    show.legend = FALSE
+  ) +
+  geom_tiplab(
+    aes(subset = (node %in% c(3, 7, 10, 14, 15, 19)), fontface = "bold"),
+    offset = 3,
+    size = 4,
+    show.legend = FALSE
+  ) +
+  geom_text(
+    aes(label = n_species),
+    hjust = 1,
+    nudge_x = 0,
+    nudge_y = -0.25,
+    size = 3.5
+  ) +
+  theme(
+    plot.margin = unit(c(5, 5, 5, 5), "mm"),
+    legend.margin = margin(-0, 0, 0, 0, unit = "cm"),
+    legend.text = element_text(size = 8.5),
+    legend.justification = c("right"),
+    legend.box.margin = margin(0, 0, 0, -20)
+  )
+
+gheatmap(base_tree, all_data, offset = 20) +
+  theme(legend.position = "none")
+
+gheatmap(p, heatmapData, offset = 10, color=NULL,
+         colnames_position="top",
+         colnames_angle=90, colnames_offset_y = 1,
+         hjust=0, font.size=2) +
+  scale_fill_manual(values=heatmap.colours, breaks=0:15)
 ```
 
 
