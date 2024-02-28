@@ -11,12 +11,8 @@ Load libraries
 
 ```{r}
 library(tidyverse)
-library(tidytree)
 library(ggtreeExtra)
 library(ggtree)
-library(ggnewscale)
-library(ape)
-library(RColorBrewer)
 library(phytools)
 ```
 
@@ -209,6 +205,58 @@ mean_leaf_n_summary <-
 ```
 
 
+Number of woody species
+
+```{r}
+woodiness <-
+  austraits$traits %>%
+  filter(dataset_id == "Wenk_2022", trait_name == "woodiness_detailed") %>%
+  pivot_wider(values_from = value, names_from = trait_name)
+
+woody <- c("woody", "semi_woody woody", "woody woody_base")
+herbaceous <- c(
+  "herbaceous", "herbaceous woody", "herbaceous woody_base", "herbaceous woody_root",
+  "herbaceous semi_woody", "herbaceous semi_woody woody"
+  )
+semi_woody <- c("semi_woody", "semi_woody woody_base")
+unclear <- c("woody_like_stem", "woody_base")
+
+
+# Filter out non-native taxa
+woodiness <-
+  woodiness %>%
+  left_join(
+    aus_native_lookup,
+    by = c("taxon_name" = "canonical_name")) %>%
+  filter(aus_native == TRUE) %>%
+  select(-aus_native)
+
+woodiness_new <-
+  woodiness %>%
+  left_join(
+    austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
+    by = "taxon_name"
+  )
+
+woodiness_new <-
+  woodiness_new %>%
+  mutate(
+    woody_or_herb = case_when(
+      woodiness_detailed %in% woody ~ "woody",
+      woodiness_detailed %in% herbaceous ~ "herb",
+      woodiness_detailed %in% semi_woody ~ "semi-woody",
+      woodiness_detailed %in% unclear ~ "unclear")
+    )
+
+woodiness_summary <-
+  woodiness_new %>%
+  drop_na(woody_or_herb) %>%
+  group_by(family) %>%
+  summarise(
+    prop_woody = sum(woody_or_herb == "woody") / n()
+  )
+```
+
 
 ---
 
@@ -245,7 +293,6 @@ ggtree(out_pruned, ladderize = FALSE) +
 Number of native Australian taxa
 
 ```{r}
-library(tidyverse)
 taxonomic_resources <- APCalign::load_taxonomic_resources()
 
 apc <- taxonomic_resources$APC |>
@@ -272,13 +319,6 @@ species_diversity <-
   arrange(-n_species)
 
 species_diversity
-```
-
-
-Number of woody species #TODO
-
-```{r}
-
 ```
 
 
