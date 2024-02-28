@@ -281,7 +281,7 @@ out <- ape::drop.tip(tt, tt$tip.label[!tt$tip.label %in% one_tip$species])
 out$tip.label <- one_tip$family[match(out$tip.label, one_tip$species)]
 
 # Align tree with APCalign #TODO
-# Chenopodiaceae is lost #TODO
+
 out_pruned <- ape::drop.tip(out, out$tip.label[!out$tip.label %in% resprouting_summary$family])
 
 ggtree(out_pruned, ladderize = FALSE) +
@@ -345,15 +345,15 @@ new_tree@phylo |>
 ```{r}
 ggtree(new_tree, layout = "rectangular", size = 0.7) +
   geom_tiplab(
-    aes(subset = (!node %in% c(3, 7, 10, 14, 15, 19))),
+    aes(subset = (!node %in% c(3, 7, 10, 15, 16, 20))),
     offset = 3,
-    size = 4,
+    size = 6,
     show.legend = FALSE
   ) +
   geom_tiplab(
-    aes(subset = (node %in% c(3, 7, 10, 14, 15, 19)), fontface = "bold"),
+    aes(subset = (node %in% c(3, 7, 10, 15, 16, 20)), fontface = "bold"),
     offset = 3,
-    size = 4,
+    size = 6,
     show.legend = FALSE
   ) +
   geom_text(
@@ -361,7 +361,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     hjust = 1,
     nudge_x = 0,
     nudge_y = -0.25,
-    size = 3.5
+    size = 4.5
   ) +
   theme(
     plot.margin = unit(c(5, 5, 5, 5), "mm"),
@@ -377,14 +377,12 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     mapping = aes(x = mean_fires_100, y = family, fill = mean_fires_100),
     offset = 0.7,
     pwidth = 0,
-    width = 10,
+    width = 14,
     height = 1
   ) +
-  scale_fill_distiller(
-    palette = "YlOrRd",
-    direction = 1,
-    trans = "log10",
-    name = "Mean fire frequency"
+  scale_fill_gradient(
+    low = "white",
+    high = "#7d7d7d"
   ) +
   geom_fruit(
     data = mean_fires_summary,
@@ -401,13 +399,12 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     mapping = aes(x = prop_resprouting, y = family, fill = prop_resprouting),
     offset = 0.1,
     pwidth = 0,
-    width = 10,
+    width = 14,
     height = 1
   ) +
-  scale_fill_distiller(
-    palette = "RdPu",
-    direction = 1,
-    name = "Proportion resprouting"
+  scale_fill_gradient(
+    low = "white",
+    high = "#7d7d7d"
   ) +
   geom_fruit(
     data = resprouting_summary,
@@ -424,14 +421,12 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     mapping = aes(x = prop_seeding, y = family, fill = prop_seeding),
     offset = 0.1,
     pwidth = 0,
-    width = 10,
+    width = 14,
     height = 1
   ) +
-  scale_fill_distiller(
-    palette = "YlOrBr",
-    direction = 1,
-    breaks = c(0.4, 0.6, 0.8),
-    name = "Proportion seeding"
+  scale_fill_gradient(
+    low = "white",
+    high = "#7d7d7d"
   ) +
   geom_fruit(
     data = seeding_summary,
@@ -448,12 +443,11 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     mapping = aes(x = mean_lma, y = family, fill = mean_lma),
     offset = 0.1,
     pwidth = 0,
-    width = 10,
+    width = 14,
     height = 1) +
-  scale_fill_distiller(
-    palette = "Greens",
-    direction = 1,
-    name = "Mean LMA"
+  scale_fill_gradient(
+    low = "white",
+    high = "#7d7d7d"
   ) +
   geom_fruit(
     data = mean_lma_summary,
@@ -470,13 +464,12 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     mapping = aes(x = mean_leaf_n, y = family, fill = mean_leaf_n),
     offset = 0.1,
     pwidth = 0,
-    width = 10,
+    width = 14,
     height = 1
   ) +
-  scale_fill_distiller(
-    palette = "PuBu",
-    direction = 1,
-    name = "Mean leaf N"
+  scale_fill_gradient(
+    low = "white",
+    high = "#7d7d7d"
   ) +
   geom_fruit(
     data = mean_leaf_n_summary,
@@ -493,13 +486,12 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     mapping = aes(x = prop_woody, y = family, fill = prop_woody),
     offset = 0.1,
     pwidth = 0,
-    width = 10,
+    width = 14,
     height = 1
   ) +
-  scale_fill_distiller(
-    palette = "Greys",
-    direction = 1,
-    name = "Proportion woody"
+  scale_fill_gradient(
+    low = "white",
+    high = "#7d7d7d"
   ) +
   geom_fruit(
     data = woodiness_summary,
@@ -510,5 +502,172 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     pwidth = 0
   )
 
-#ggsave("phylogeny-figure.png", width = 7.5, height = 6.75)
+ggsave("figures/phylogeny_figure_greyscale.png", width = 10, height = 9)
+```
+
+
+With colour
+
+```{r}
+ggtree(new_tree, layout = "rectangular", size = 0.7) +
+  geom_tiplab(
+    aes(subset = (!node %in% c(3, 7, 10, 15, 16, 20))),
+    offset = 3,
+    size = 6,
+    show.legend = FALSE
+  ) +
+  geom_tiplab(
+    aes(subset = (node %in% c(3, 7, 10, 15, 16, 20)), fontface = "bold"),
+    offset = 3,
+    size = 6,
+    show.legend = FALSE
+  ) +
+  geom_text(
+    aes(label = n_species),
+    hjust = 1,
+    nudge_x = 0,
+    nudge_y = -0.25,
+    size = 4.5
+  ) +
+  theme(
+    plot.margin = unit(c(5, 5, 5, 5), "mm"),
+    legend.position = "none",
+    legend.margin = margin(-0, 0, 0, 0, unit = "cm"),
+    legend.text = element_text(size = 8.5),
+    legend.justification = c("right"),
+    legend.box.margin = margin(0, 0, 0, -20)
+  ) +
+  geom_fruit(
+    data = mean_fires_summary,
+    geom = geom_tile,
+    mapping = aes(x = mean_fires_100, y = family, fill = mean_fires_100),
+    offset = 0.7,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#e04d3d"
+  ) +
+  geom_fruit(
+    data = mean_fires_summary,
+    geom = geom_text,
+    mapping = aes(x = mean_fires_100, y = family, label = round(mean_fires_100, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = resprouting_summary,
+    geom = geom_tile,
+    mapping = aes(x = prop_resprouting, y = family, fill = prop_resprouting),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#e384b8"
+  ) +
+  geom_fruit(
+    data = resprouting_summary,
+    geom = geom_text,
+    mapping = aes(x = prop_resprouting, y = family, label = round(prop_resprouting, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = seeding_summary,
+    geom = geom_tile,
+    mapping = aes(x = prop_seeding, y = family, fill = prop_seeding),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#e3b13d"
+  ) +
+  geom_fruit(
+    data = seeding_summary,
+    geom = geom_text,
+    mapping = aes(x = prop_seeding, y = family, label = round(prop_seeding, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = mean_lma_summary,
+    geom = geom_tile,
+    mapping = aes(x = mean_lma, y = family, fill = mean_lma),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#66914d"
+  ) +
+  geom_fruit(
+    data = mean_lma_summary,
+    geom = geom_text,
+    mapping = aes(x = mean_lma, y = family, label = round(mean_lma, digits = 0)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = mean_leaf_n_summary,
+    geom = geom_tile,
+    mapping = aes(x = mean_leaf_n, y = family, fill = mean_leaf_n),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#5894cc"
+  ) +
+  geom_fruit(
+    data = mean_leaf_n_summary,
+    geom = geom_text,
+    mapping = aes(x = mean_leaf_n, y = family, label = round(mean_leaf_n, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = woodiness_summary,
+    geom = geom_tile,
+    mapping = aes(x = prop_woody, y = family, fill = prop_woody),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#8f6856"
+  ) +
+  geom_fruit(
+    data = woodiness_summary,
+
+    geom = geom_text,
+    mapping = aes(x = prop_woody, y = family, label = round(prop_woody, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  )
+
+ggsave("figures/phylogeny_figure_colour.png", width = 10, height = 9)
 ```
