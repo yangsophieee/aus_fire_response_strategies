@@ -264,25 +264,24 @@ woodiness_summary <-
 
 ```{r}
 tt <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
-a <- taxonlookup::lookup_table(tt$tip.label, by_species = TRUE, missing_action = "NA")
+a <- taxonlookup::lookup_table(tt$tip.label, by_species = TRUE, missing_action = "NA") |>
+  select(-family, -order, -group) # Get genus
 a <- rownames_to_column(a, "species")
 a <- a %>%
   left_join(
     austraits$taxa |>
       filter(taxonomic_status == "accepted") |>
-      select(all_of(c("genus", "family"))) |>
+      select(all_of(c("genus", "family"))) |> # Get family from AusTraits taxa table
       distinct(),
     by = "genus"
-  ) %>%
-  mutate(family = coalesce(family.x, family.y)) %>%
-  select(-family.x, -family.y)
+  )
 take_tenth <- function(x) x[10] # Not [1] because the first species of some families is taxonomically ambiguous
-one_tip <- group_by(a, family) %>% summarise(species = take_tenth(species))
+one_tip <- a |> group_by(family) %>% summarise(species = take_tenth(species))
 out <- ape::drop.tip(tt, tt$tip.label[!tt$tip.label %in% one_tip$species])
 out$tip.label <- one_tip$family[match(out$tip.label, one_tip$species)]
 
 # Align tree with APCalign #TODO
-
+# Chenopodiaceae is lost #TODO
 out_pruned <- ape::drop.tip(out, out$tip.label[!out$tip.label %in% resprouting_summary$family])
 
 ggtree(out_pruned, ladderize = FALSE) +
@@ -366,6 +365,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
   ) +
   theme(
     plot.margin = unit(c(5, 5, 5, 5), "mm"),
+    legend.position = "none",
     legend.margin = margin(-0, 0, 0, 0, unit = "cm"),
     legend.text = element_text(size = 8.5),
     legend.justification = c("right"),
@@ -384,19 +384,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     palette = "YlOrRd",
     direction = 1,
     trans = "log10",
-    name = "Mean fire frequency",
-    guide = guide_colourbar(
-      ticks.colour = "black",
-      ticks.linewidth = 1,
-      frame.colour = "black",
-      frame.linewidth = 1,
-      direction = "horizontal",
-      title.position = "top",
-      title.vjust = 1,
-      title.theme = element_text(size = 9),
-      barwidth = 5,
-      barheight = 0.7,
-      order = 1)
+    name = "Mean fire frequency"
   ) +
   geom_fruit(
     data = mean_fires_summary,
@@ -419,18 +407,6 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
   scale_fill_distiller(
     palette = "RdPu",
     direction = 1,
-    guide = guide_colourbar(
-      ticks.colour = "black",
-      ticks.linewidth = 1,
-      frame.colour = "black",
-      frame.linewidth = 1,
-      direction = "horizontal",
-      title.position = "top",
-      title.vjust = 1,
-      title.theme = element_text(size = 9),
-      barwidth = 5,
-      barheight = 0.7,
-      order = 2),
     name = "Proportion resprouting"
   ) +
   geom_fruit(
@@ -455,18 +431,6 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     palette = "YlOrBr",
     direction = 1,
     breaks = c(0.4, 0.6, 0.8),
-    guide = guide_colourbar(
-      ticks.colour = "black",
-      ticks.linewidth = 1,
-      frame.colour = "black",
-      frame.linewidth = 1,
-      direction = "horizontal",
-      title.position = "top",
-      title.vjust = 1,
-      title.theme = element_text(size = 9),
-      barwidth = 5,
-      barheight = 0.7,
-      order = 3),
     name = "Proportion seeding"
   ) +
   geom_fruit(
@@ -489,18 +453,6 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
   scale_fill_distiller(
     palette = "Greens",
     direction = 1,
-    guide = guide_colourbar(
-      ticks.colour = "black",
-      ticks.linewidth = 1,
-      frame.colour = "black",
-      frame.linewidth = 1,
-      direction = "horizontal",
-      title.position = "top",
-      title.vjust = 1,
-      title.theme = element_text(size = 9),
-      barwidth = 5,
-      barheight = 0.7,
-      order = 4),
     name = "Mean LMA"
   ) +
   geom_fruit(
@@ -524,18 +476,6 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
   scale_fill_distiller(
     palette = "PuBu",
     direction = 1,
-    guide = guide_colourbar(
-      ticks.colour = "black",
-      ticks.linewidth = 1,
-      frame.colour = "black",
-      frame.linewidth = 1,
-      direction = "horizontal",
-      title.position = "top",
-      title.vjust = 1,
-      title.theme = element_text(size = 9),
-      barwidth = 5,
-      barheight = 0.7,
-      order = 5),
     name = "Mean leaf N"
   ) +
   geom_fruit(
@@ -557,20 +497,8 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     height = 1
   ) +
   scale_fill_distiller(
-    palette = "PuBu",
+    palette = "Greys",
     direction = 1,
-    guide = guide_colourbar(
-      ticks.colour = "black",
-      ticks.linewidth = 1,
-      frame.colour = "black",
-      frame.linewidth = 1,
-      direction = "horizontal",
-      title.position = "top",
-      title.vjust = 1,
-      title.theme = element_text(size = 9),
-      barwidth = 5,
-      barheight = 0.7,
-      order = 5),
     name = "Proportion woody"
   ) +
   geom_fruit(
