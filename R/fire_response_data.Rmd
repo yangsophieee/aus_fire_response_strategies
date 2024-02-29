@@ -881,7 +881,7 @@ ggsave("figures/frac_resprouters_and_num_fires.png", width = 13, height = 3)
 
 
 
-## Stats for manuscript
+## Summary statistics for manuscript
 
 
 Number of species with fire response data
@@ -930,8 +930,25 @@ resprouting_seeding |> nrow()
 ```
 
 
-Number of woody and herbacious data
+Number of woody and herbaceous data
 
 ```{r}
+fire_response_woody_herb_only |> filter(woody_or_herb == "woody") |> nrow()
+fire_response_woody_herb_only |> filter(woody_or_herb == "herb") |> nrow()
+fire_response_woody_herb_only |> drop_na(resprouting_binomial) |> nrow()
+fire_response_woody_herb_only |> drop_na(seeding_binomial) |> nrow()
 
+fire_response_woody_herb_only |>
+  filter(woody_or_herb == "woody", !is.na(resprouting_binomial)) |>
+  nrow()
+fire_response_woody_herb_only |>
+  filter(woody_or_herb == "herb", !is.na(resprouting_binomial)) |>
+  nrow()
+
+fire_response_woody_herb_only |>
+  filter(woody_or_herb == "woody", !is.na(seeding_binomial)) |>
+  nrow()
+fire_response_woody_herb_only |>
+  filter(woody_or_herb == "herb", !is.na(seeding_binomial)) |>
+  nrow()
 ```

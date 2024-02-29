@@ -11,7 +11,6 @@ editor_options:
 
 ```{r}
 library(tidyverse)
-library(ggtext)
 library(patchwork)
 
 austraits <- read_rds("data/austraits-5.0.0.rds")
@@ -81,6 +80,21 @@ fire_response_and_leaf_traits <-
   fire_response_and_fire_frequency %>%
   left_join(mean_lma) %>%
   left_join(mean_leaf_n)
+```
+
+
+**Summary statistics for manuscript**
+
+Number of species with data on LMA and leaf N for woody and herbs
+
+```{r}
+fire_response_and_leaf_traits |> drop_na(mean_lma) |> nrow()
+fire_response_and_leaf_traits |> drop_na(mean_lma) |> filter(woody_or_herb == "woody") |> nrow()
+fire_response_and_leaf_traits |> drop_na(mean_lma) |> filter(woody_or_herb == "herb") |> nrow()
+
+fire_response_and_leaf_traits |> drop_na(mean_leaf_n) |> nrow()
+fire_response_and_leaf_traits |> drop_na(mean_leaf_n) |> filter(woody_or_herb == "woody") |> nrow()
+fire_response_and_leaf_traits |> drop_na(mean_leaf_n) |> filter(woody_or_herb == "herb") |> nrow()
 ```
 
 

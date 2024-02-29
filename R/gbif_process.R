@@ -21,11 +21,11 @@ intermediate_check <- data.frame(aus_gbif) %>%
   filter(!decimallatitude == 0 | !decimallongitude == 0)
 
 # Adding some additional filters
-intermediate_check %>%
+i2 <- intermediate_check %>%
   filter(
     !grepl("COUNTRY_COORDINATE_MISMATCH", intermediate_check$issue),
     !grepl("RECORDED_DATE_UNLIKELY", intermediate_check$issue)
-    ) -> i2
+    )
 
 aus_filt <- i2 %>%
   cc_sea(ref = buffland) %>%
