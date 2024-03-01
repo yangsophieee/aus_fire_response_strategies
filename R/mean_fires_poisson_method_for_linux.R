@@ -1,4 +1,8 @@
 
+# Using UNSW HPC Katana
+# This research includes computations using the computational cluster Katana supported by
+# Research Technology Services at UNSW Sydney.
+
 library(dplyr)
 library(readr)
 library(forcats)
