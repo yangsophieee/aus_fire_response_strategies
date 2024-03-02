@@ -14,7 +14,6 @@ Load libraries
 
 ```{r}
 library(tidyverse)
-library(easystats)
 library(patchwork)
 ```
 
@@ -89,7 +88,7 @@ sjPlot::tab_model(glm_resprouting)
 
 ggeffects::ggpredict(glm_resprouting, c("mean_fires_100", "woody_or_herb")) %>%
   ggplot(aes(x, predicted, color = group)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
   scale_x_log10() +
   ylab("Resprouting probability") +
@@ -98,7 +97,7 @@ ggeffects::ggpredict(glm_resprouting, c("mean_fires_100", "woody_or_herb")) %>%
 
 modelbased::estimate_expectation(glm_resprouting) |>
   ggplot(aes(x = mean_fires_100, y = Predicted, color = woody_or_herb)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   geom_ribbon(aes(ymin = CI_low, ymax = CI_high, fill = woody_or_herb), alpha = 0.2, linetype = 0) +
   scale_x_log10() +
   ylab("Resprouting probability") +
@@ -310,7 +309,7 @@ sjPlot::tab_model(glm_seeding)
 
 ggeffects::ggpredict(glm_seeding, c("mean_fires_100", "woody_or_herb")) %>%
   ggplot(aes(x, predicted, color = group)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
   scale_x_log10() +
   ylab("Seeding probability") +
@@ -319,7 +318,7 @@ ggeffects::ggpredict(glm_seeding, c("mean_fires_100", "woody_or_herb")) %>%
 
 modelbased::estimate_expectation(glm_seeding) |>
   ggplot(aes(x = mean_fires_100, y = Predicted, color = woody_or_herb)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   geom_ribbon(aes(ymin = CI_low, ymax = CI_high, fill = woody_or_herb), alpha = 0.2, linetype = 0) +
   scale_x_log10() +
   ylab("Seeding probability") +
@@ -348,7 +347,7 @@ sjPlot::tab_model(glm_seeding_woody)
 
 ggeffects::ggpredict(glm_seeding_woody, c("mean_fires_100")) %>%
   ggplot(aes(x, predicted)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.2, linetype = 0) +
   scale_x_log10() +
   ylab("Seeding probability") +
@@ -648,7 +647,7 @@ sjPlot::tab_model(pglm_resprouting)
 
 modelbased::estimate_prediction(pglm_resprouting) |>
   ggplot(aes(x = mean_fires_100, y = Predicted, color = woody_or_herb)) +
-  geom_line(size = 1) +
+  geom_line(linewidth = 1) +
   scale_x_log10() +
   ylab("Resprouting probability") +
   xlab("Mean fires") +
@@ -1121,3 +1120,4 @@ method_comparison |>
 
 ggsave("figures/method_comparison_woody_herb.png", width = 7, height = 7)
 ```
+
