@@ -543,7 +543,7 @@ library(APCalign)
 
 ```{r}
 gbif_taxa <- gbif$verbatimscientificname %>% unique()
-gbif_taxa <- gbif_taxa[gbif_taxa != "Microcarpaea  R.Br."]
+gbif_taxa <- gbif_taxa[gbif_taxa != "Microcarpaea  R.Br."] # Problem species for APCalign, may be fixed now
 
 resources <- load_taxonomic_resources()
 
@@ -951,4 +951,21 @@ fire_response_woody_herb_only |>
 fire_response_woody_herb_only |>
   filter(woody_or_herb == "herb", !is.na(seeding_binomial)) |>
   nrow()
+```
+
+
+Number of woody resprouters and non-resprouters, seeders and non-seeders
+
+```{r}
+fire_response_woody_herb_only |> filter(woody_or_herb == "woody", resprouting_binomial == TRUE) |> nrow()
+fire_response_woody_herb_only |> filter(woody_or_herb == "woody", resprouting_binomial == FALSE) |> nrow()
+fire_response_woody_herb_only |> filter(woody_or_herb == "woody", seeding_binomial == TRUE) |> nrow()
+fire_response_woody_herb_only |> filter(woody_or_herb == "woody", seeding_binomial == FALSE) |> nrow()
+```
+
+Number of herby resprouters and non-resprouters
+
+```{r}
+fire_response_woody_herb_only |> filter(woody_or_herb == "herb", resprouting_binomial == TRUE) |> nrow()
+fire_response_woody_herb_only |> filter(woody_or_herb == "herb", resprouting_binomial == FALSE) |> nrow()
 ```
