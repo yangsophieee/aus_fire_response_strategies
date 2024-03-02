@@ -16,8 +16,6 @@ library(ape)
 tt <- read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
 tt$tip.label <- gsub("_", " ", tt$tip.label)
 
-tt <- keep.tip(tt, tt$tip.label)
-
 resources <- load_taxonomic_resources()
 
 lookup_table <- create_taxonomic_update_lookup(

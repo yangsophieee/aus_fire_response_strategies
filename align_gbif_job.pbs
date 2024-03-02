@@ -1,0 +1,16 @@
+#!/bin/bash
+
+#PBS -l select=1:ncpus=16:mem=128gb
+#PBS -l walltime=24:00:00
+#PBS -N align_gbif
+#PBS -M sophie.yang@unsw.edu.au
+#PBS -m ae
+#PBS -j oe
+#PBS -o /home/z5208613/honours/output_report_align_gbif
+
+module purge
+module add r/4.3.1
+
+cd honours
+
+Rscript align_phylogeny_with_apcalign.R
