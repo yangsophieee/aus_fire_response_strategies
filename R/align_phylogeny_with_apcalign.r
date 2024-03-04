@@ -19,12 +19,9 @@ tt$tip.label <- gsub("_", " ", tt$tip.label)
 resources <- load_taxonomic_resources()
 
 lookup_table <- create_taxonomic_update_lookup(
-  taxa = tt$tip.label,
+  taxa = tt$tip.label[1:50000],
   resources = resources
 )
 
-out <- drop.tip(tt, tt$tip.label[is.na(lookup_table$accepted_name)])
-
 # Save
-write_csv(lookup_table, "lookup_table_GBIF.csv")
-write.tree(out, "ALLMB_APC_updated.tre")
+write_csv(lookup_table, "outputs/lookup_table_GBIF_1-50000.csv")
