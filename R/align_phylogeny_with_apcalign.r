@@ -16,7 +16,7 @@ library(ape)
 tt <- read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
 tt$tip.label <- gsub("_", " ", tt$tip.label)
 
-resources <- load_taxonomic_resources()
+taxonomic_resources <- load_taxonomic_resources()
 
 # https://github.com/traitecoevo/APCalign/blob/multicore/R/multicore.R
 split_vector <- function(v, N = parallel::detectCores() - 1) {
@@ -52,7 +52,7 @@ multicore_tax_update <-
   function(
     data_vec,
     cores = parallel::detectCores() - 1,
-    resources = resources,
+    resources = taxonomic_resources,
     taxonomic_splits = "most_likely_species"
   ) {
 
@@ -73,7 +73,7 @@ multicore_tax_update <-
 
   }
 
-lookup_table <- multicore_tax_update(tt$tip.label[1:1000])
+lookup_table <- multicore_tax_update(tt$tip.label)
 
 # Save
 write_csv(lookup_table, "outputs/lookup_table_GBIF.csv")
