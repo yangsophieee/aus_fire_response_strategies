@@ -76,4 +76,4 @@ multicore_tax_update <-
 lookup_table <- multicore_tax_update(tt$tip.label[120001:356305])
 
 # Save
-write_csv(lookup_table, "outputs/lookup_table_GBIF_356305.csv")
+write_csv(lookup_table, "outputs/lookup_table_phylogeny_356305.csv")

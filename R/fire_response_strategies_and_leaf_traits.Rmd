@@ -119,6 +119,7 @@ leaf_n_resp_model <- lm(
   log10(mean_leaf_n) ~ resprouting_binomial * woody_or_herb,
   data = fire_response_and_leaf_traits)
 summary(leaf_n_resp_model)
+confint(leaf_n_resp_model)
 
 leaf_n_resp_emmeans <- emmeans::emmeans(
   leaf_n_resp_model,
@@ -388,6 +389,8 @@ fire_response_and_leaf_traits$resprouting_binomial <-
   ifelse(fire_response_and_leaf_traits$resprouting_binomial == TRUE, 1, 0) # Make numeric
 
 pruned_tree <- ape::drop.tip(tree, setdiff(tree$tip.label, fire_response_and_leaf_traits$taxon_name))
+# Remove duplicates
+pruned_tree <- keep.tip(pruned_tree, unique(pruned_tree$tip.label))
 pruned_tree <- ape::as.phylo(pruned_tree)
 
 sorted_data <-
@@ -415,6 +418,7 @@ pm1 <-
     model = "BM"
   )
 summary(pm1)
+confint(pm1)
 ```
 
 
@@ -427,6 +431,7 @@ pm2 <-
     model = "BM"
   )
 summary(pm2)
+confint(pm2)
 ```
 
 
@@ -439,6 +444,7 @@ pm3 <-
     model = "BM"
   )
 summary(pm3)
+confint(pm3)
 ```
 
 
@@ -451,6 +457,7 @@ pm4 <-
     model = "BM"
   )
 summary(pm4)
+confint(pm4)
 ```
 
 

@@ -334,7 +334,8 @@ Model without herb data
 ```{r}
 df_woody_only <-
   df_woody_herb_only %>%
-  filter(woody_or_herb == "woody")
+  filter(woody_or_herb == "woody") |>
+  mutate(across(c("resprouting_binomial", "seeding_binomial", "woody_or_herb"), as.factor))
 
 glm_seeding_woody <- glm(
   seeding_binomial ~ log10(mean_fires_100) + I(log10(mean_fires_100)^2),
@@ -752,7 +753,7 @@ categories <- unique(y)
 mean1 <- mean(pred[which(y == categories[1])], na.rm = TRUE)
 mean2 <- mean(pred[which(y == categories[2])], na.rm = TRUE)
 
-abs(mean1 - mean2) # 0.0312
+abs(mean1 - mean2) # 0.0362
 ```
 
 
@@ -824,7 +825,7 @@ categories <- unique(y)
 mean1 <- mean(pred[which(y == categories[1])], na.rm = TRUE)
 mean2 <- mean(pred[which(y == categories[2])], na.rm = TRUE)
 
-abs(mean1 - mean2) # 0.039
+abs(mean1 - mean2) # 0.037
 ```
 
 
@@ -930,6 +931,66 @@ resprouting_phylo_plot_2 + seeding_phylo_plot_2 + resprouting_density + seeding_
 
 ggsave("figures/fire_response_probabilities_density_functions_phylo.png", width = 10, height = 8)
 ```
+
+
+Check if subsetting to the same taxa as the phyloglm and running a normal lm has the same result
+
+```{r}
+df_woody_herb_only <- read_csv("outputs/final_df_predicted_fires_and_fire_response.csv")
+df_woody_only <- df_woody_herb_only %>% filter(woody_or_herb == "woody")
+
+df_woody_herb_only <- df_woody_herb_only[df_woody_herb_only$taxon_name %in% tree$tip.label, ]
+df_woody_only <- df_woody_only[df_woody_only$taxon_name %in% tree$tip.label, ]
+
+glm_resprouting <- glm(
+  resprouting_binomial ~
+    log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
+    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+  data = df_woody_herb_only,
+  family = binomial
+)
+
+summary(glm_resprouting)
+sjPlot::tab_model(glm_resprouting)
+
+ggeffects::ggpredict(glm_resprouting, c("mean_fires_100", "woody_or_herb")) %>%
+  ggplot(aes(x, predicted, color = group)) +
+  geom_line(linewidth = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
+  scale_x_log10() +
+  ylab("Resprouting probability") +
+  xlab("Mean fires") +
+  theme_classic()
+
+df_woody_only <-
+  df_woody_herb_only %>%
+  filter(woody_or_herb == "woody") |>
+  mutate(across(c("resprouting_binomial", "seeding_binomial", "woody_or_herb"), as.factor))
+
+
+glm_seeding_woody <- glm(
+  seeding_binomial ~ log10(mean_fires_100) + I(log10(mean_fires_100)^2),
+  data = df_woody_only,
+  family = binomial
+)
+
+summary(glm_seeding_woody)
+sjPlot::tab_model(glm_seeding_woody)
+
+ggeffects::ggpredict(glm_seeding_woody, c("mean_fires_100")) %>%
+  ggplot(aes(x, predicted)) +
+  geom_line(linewidth = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.2, linetype = 0) +
+  scale_x_log10() +
+  ylab("Seeding probability") +
+  xlab("Mean fires") +
+  theme_classic()
+```
+
+Increasing the sample size of the phyloglm (by updating the phylogeny tree with APCalign) lead to the same
+pattern as the normal glm. Then I subsetted the dataset to the taxa used in the phyloglm and ran a normal glm
+and it also came out with the same pattern. I think this means that phylogeny doesn't really have an effect
+after all, and the specific subset of taxa that are matched to the phylogeny tree doesn't have an effect either.
 
 
 ---
