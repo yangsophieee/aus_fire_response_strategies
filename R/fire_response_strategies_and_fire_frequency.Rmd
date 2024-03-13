@@ -611,12 +611,22 @@ library(ape)
 plan(multisession)
 
 tree <- read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
-df_woody_herb_only$taxon_name <- gsub(" ", "_", df_woody_herb_only$taxon_name)
+
+# Align with APCalign #TODO
+lookup_table_phylogeny <- read_csv("data/lookup_table_phylogeny.csv")
+
+tree$tip.label <- lookup_table_phylogeny$accepted_name
+df_woody_herb_only |> nrow()
 df_woody_herb_only <- df_woody_herb_only[df_woody_herb_only$taxon_name %in% tree$tip.label, ]
+df_woody_herb_only |> nrow() # Lost 1911 taxa
 df_woody_herb_only$resprouting_binomial <- ifelse(df_woody_herb_only$resprouting_binomial == TRUE, 1, 0) # Make numeric
 
 pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, df_woody_herb_only$taxon_name))
 pruned_tree <- as.phylo(pruned_tree)
+```
+
+```{r}
+
 ```
 
 

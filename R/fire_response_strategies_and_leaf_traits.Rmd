@@ -370,6 +370,7 @@ Rerun with phylogenetic linear models
 tree <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
 
 # Align with APCalign? #TODO
+lookup_table_phylogeny <- read_csv("data/lookup_table_phylogeny.csv")
 
 
 fire_response_and_leaf_traits$taxon_name <- gsub(" ", "_", fire_response_and_leaf_traits$taxon_name)

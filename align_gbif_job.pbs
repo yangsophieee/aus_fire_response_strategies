@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#PBS -l select=1:ncpus=12:mem=128gb
-#PBS -l walltime=12:00:00
+#PBS -l select=1:ncpus=12:mem=80gb
+#PBS -l walltime=10:00:00
 #PBS -N align_gbif
 #PBS -M sophie.yang@unsw.edu.au
 #PBS -m ae
