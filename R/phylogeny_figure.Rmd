@@ -281,6 +281,14 @@ woodiness_summary <-
 
 ```{r}
 tt <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
+
+# TODO Regenerate figures
+# Update names with APCalign
+lookup_table_phylogeny <- read_csv("data/lookup_table_phylogeny.csv")
+
+tt$tip.label <- if_else(is.na(lookup_table_phylogeny$accepted_name), tt$tip.label, lookup_table_phylogeny$accepted_name)
+tt$tip.label <- gsub("_", " ", tt$tip.label)
+
 a <- taxonlookup::lookup_table(tt$tip.label, by_species = TRUE, missing_action = "NA") |>
   select(-family, -order, -group) # Get genus
 a <- rownames_to_column(a, "species")
