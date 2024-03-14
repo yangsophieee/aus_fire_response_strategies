@@ -1193,3 +1193,30 @@ method_comparison |>
 ggsave("figures/method_comparison_woody_herb.png", width = 7, height = 7)
 ```
 
+
+## Summary statistics of fire frequency for woody and herbaceous species
+
+
+Woody resprouters and non-resprouters
+
+```{r}
+
+```
+
+Herbaceous resprouters and non-resprouters
+
+```{r}
+
+```
+
+Woody seeders and non-seeders
+
+```{r}
+
+```
+
+Herbaceous seeders and non-seeders
+
+```{r}
+
+```
