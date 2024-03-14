@@ -285,6 +285,8 @@ out$tip.label <- one_tip$family[match(out$tip.label, one_tip$species)]
 # Align tree with APCalign #TODO
 
 out_pruned <- ape::drop.tip(out, out$tip.label[!out$tip.label %in% resprouting_summary$family])
+# Remove duplicates
+out_pruned <- ape::keep.tip(out_pruned, unique(out_pruned$tip.label))
 
 ggtree(out_pruned, ladderize = FALSE) +
   geom_tiplab()
