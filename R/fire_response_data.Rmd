@@ -33,7 +33,8 @@ resprouting_capacity <-
   resprouting_capacity %>%
   left_join(
     aus_native_lookup,
-    by = c("taxon_name" = "canonical_name")) %>%
+    by = c("taxon_name" = "canonical_name")
+  ) %>%
   filter(aus_native == TRUE) %>%
   select(-aus_native) # Lost 1757 taxa
 ```
@@ -47,7 +48,8 @@ resprouting_capacity <-
   left_join(
     austraits$taxa %>%
       select(taxon_name, genus, family, taxon_rank, taxonomic_status, taxon_distribution),
-    by = "taxon_name")
+    by = "taxon_name"
+  )
 ```
 
 
@@ -686,11 +688,11 @@ frac_woody_resprouters <-
   labs(subtitle = "Woody") +
   ggtitle("a) Proportion of resprouting taxa") +
   theme(
-    plot.title = element_text(size = 16, margin = margin(0, 0, 10, 0)),
+    plot.title = element_text(size = 16, margin = margin(0, 0, 20, 0)),
     plot.title.position = "plot",
-    plot.subtitle = element_text(hjust = 0.55, size = 14),
+    plot.subtitle = element_text(hjust = 0.55, size = 12, face = "bold"),
     axis.title = element_blank(),
-    axis.text = element_text(size = 10, colour = "#1a1a1a"),
+    axis.text = element_text(size = 8, colour = "#1a1a1a"),
     legend.position = "none",
     panel.grid = element_blank(),
     plot.background = element_rect(fill = NA, colour = NA)
@@ -724,9 +726,9 @@ frac_herbaceous_resprouters <-
       ticks.colour = "#1a1a1a")
   ) +
   theme(
-    plot.subtitle = element_text(hjust = 0.5, size = 14),
+    plot.subtitle = element_text(hjust = 0.55, size = 12, face = "bold"),
     axis.title = element_blank(),
-    axis.text = element_text(size = 10, colour = "#1a1a1a"),
+    axis.text = element_text(size = 8, colour = "#1a1a1a"),
     legend.title = element_blank(),
     legend.text = element_text(size = 10, colour = "#1a1a1a"),
     panel.grid = element_blank(),
@@ -854,34 +856,34 @@ num_fires_plot <-
   guides(
     fill = guide_colourbar(
       barwidth = 0.7,
-      barheight = 8,
+      barheight = 15,
       frame.linewidth = 0.3,
       frame.colour = "#1a1a1a",
       ticks.linewidth = 0.3,
-      ticks.colour = "#1a1a1a")) +
+      ticks.colour = "#1a1a1a"
+    )
+  ) +
   ggtitle("b) Number of fires") +
   theme_bw() +
   theme(
-    plot.title = element_text(size = 16, margin = margin(0, 0, 10, 0)),
+    plot.title = element_text(size = 16, margin = margin(0, 0, 15, 0)),
     plot.title.position = "plot",
     plot.subtitle = element_text(hjust = 0.5, size = 14),
     axis.title = element_blank(),
-    axis.text = element_text(size = 10, colour = "#1a1a1a"),
+    axis.text = element_text(size = 8, colour = "#1a1a1a"),
     legend.title = element_blank(),
     legend.text = element_text(size = 10, colour = "#1a1a1a"),
     panel.grid = element_blank(),
-    plot.background = element_rect(fill = NA, colour = NA)
+    plot.background = element_rect(fill = NA, colour = NA),
+    plot.margin = unit(c(0.75, 0, 0, 0), "cm")
   )
 num_fires_plot
 
-layout <- "
-AB
-CC
-"
+layout <- "AB\nCC\nCC"
 frac_woody_resprouters + frac_herbaceous_resprouters + num_fires_plot +
   plot_layout(design = layout)
 
-ggsave("figures/frac_resprouters_and_num_fires.png", width = 13, height = 3)
+ggsave("figures/frac_resprouters_and_num_fires.png", width = 8, height = 8)
 ```
 
 
