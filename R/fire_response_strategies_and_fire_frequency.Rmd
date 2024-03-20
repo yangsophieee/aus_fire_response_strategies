@@ -1201,23 +1201,35 @@ ggsave("figures/method_comparison_woody_herb.png", width = 7, height = 7)
 Woody resprouters and non-resprouters
 
 ```{r}
+df_woody_herb_only |>
+  filter(woody_or_herb == "woody", resprouting_binomial == TRUE) |>
+  summarise(median_fires = median(mean_fires_100), sd = sd(mean_fires_100))
 
+df_woody_herb_only |>
+  filter(woody_or_herb == "woody", resprouting_binomial == FALSE) |>
+  summarise(median_fires = median(mean_fires_100), sd = sd(mean_fires_100))
 ```
 
 Herbaceous resprouters and non-resprouters
 
 ```{r}
+df_woody_herb_only |>
+  filter(woody_or_herb == "herb", resprouting_binomial == TRUE) |>
+  summarise(median_fires = median(mean_fires_100), sd = sd(mean_fires_100))
 
+df_woody_herb_only |>
+  filter(woody_or_herb == "herb", resprouting_binomial == FALSE) |>
+  summarise(median_fires = median(mean_fires_100), sd = sd(mean_fires_100))
 ```
 
 Woody seeders and non-seeders
 
 ```{r}
+df_woody_herb_only |>
+  filter(woody_or_herb == "woody", seeding_binomial == TRUE) |>
+  summarise(median_fires = median(mean_fires_100), sd = sd(mean_fires_100))
 
-```
-
-Herbaceous seeders and non-seeders
-
-```{r}
-
+df_woody_herb_only |>
+  filter(woody_or_herb == "woody", seeding_binomial == FALSE) |>
+  summarise(median_fires = median(mean_fires_100), sd = sd(mean_fires_100))
 ```
