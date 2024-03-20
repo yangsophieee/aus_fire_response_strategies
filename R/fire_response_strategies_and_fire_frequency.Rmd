@@ -602,6 +602,7 @@ ggsave("figures/fire_response_probabilities_density_functions.png", width = 10, 
 
 #### Resprouting binomial
 
+TODO subset normal logistic regression to taxa in phylogenetic logistic regression
 
 Phylogenetic regression
 
@@ -612,23 +613,13 @@ library(ape)
 plan(multisession)
 
 tree <- read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
-# TODO Rerun analyses with aligned tree
-lookup_table_phylogeny <- read_csv("data/lookup_table_phylogeny.csv")
-
-tree$tip.label <- if_else(
-  is.na(lookup_table_phylogeny$accepted_name),
-  tree$tip.label,
-  lookup_table_phylogeny$accepted_name
-)
 tree$tip.label <- gsub("_", " ", tree$tip.label)
 df_woody_herb_only |> nrow()
 df_woody_herb_only <- df_woody_herb_only[df_woody_herb_only$taxon_name %in% tree$tip.label, ]
-df_woody_herb_only |> nrow() # Lost 1911 taxa instead of 2587 as before
+df_woody_herb_only |> nrow() # Lost 2587 taxa
 df_woody_herb_only$resprouting_binomial <- ifelse(df_woody_herb_only$resprouting_binomial == TRUE, 1, 0) # Make numeric
 
 pruned_tree <- drop.tip(tree, setdiff(tree$tip.label, df_woody_herb_only$taxon_name))
-# Remove duplicates
-pruned_tree <- keep.tip(pruned_tree, unique(pruned_tree$tip.label))
 pruned_tree <- as.phylo(pruned_tree)
 ```
 

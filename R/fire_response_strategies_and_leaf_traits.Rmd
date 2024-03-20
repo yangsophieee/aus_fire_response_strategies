@@ -369,17 +369,7 @@ Rerun with phylogenetic linear models
 
 ```{r}
 tree <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
-
-# Align with APCalign? #TODO
-lookup_table_phylogeny <- read_csv("data/lookup_table_phylogeny.csv")
-
-tree$tip.label <- if_else(
-  is.na(lookup_table_phylogeny$accepted_name),
-  tree$tip.label,
-  lookup_table_phylogeny$accepted_name
-)
 tree$tip.label <- gsub("_", " ", tree$tip.label)
-
 fire_response_and_leaf_traits |> nrow()
 fire_response_and_leaf_traits <-
   fire_response_and_leaf_traits[fire_response_and_leaf_traits$taxon_name %in% tree$tip.label, ]
@@ -389,8 +379,6 @@ fire_response_and_leaf_traits$resprouting_binomial <-
   ifelse(fire_response_and_leaf_traits$resprouting_binomial == TRUE, 1, 0) # Make numeric
 
 pruned_tree <- ape::drop.tip(tree, setdiff(tree$tip.label, fire_response_and_leaf_traits$taxon_name))
-# Remove duplicates
-pruned_tree <- keep.tip(pruned_tree, unique(pruned_tree$tip.label))
 pruned_tree <- ape::as.phylo(pruned_tree)
 
 sorted_data <-
