@@ -292,7 +292,7 @@ take_tenth <- function(x) x[10] # Not [1] because the first species of some fami
 one_tip <- a |> group_by(family) %>% summarise(species = take_tenth(species))
 out <- ape::drop.tip(tt, tt$tip.label[!tt$tip.label %in% one_tip$species])
 
-#out$tip.label <- one_tip$family[match(out$tip.label, one_tip$species)]
+out$tip.label <- one_tip$family[match(out$tip.label, one_tip$species)]
 
 ggtree(out, ladderize = FALSE) +
   geom_tiplab() +
@@ -316,6 +316,36 @@ ggtree(out_pruned, ladderize = FALSE) +
 ggsave("test_tree.png", width = 25, height = 15)
 ```
 
+
+```{r}
+tt <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
+
+tt$tip.label <- if_else(is.na(lookup_table_phylogeny$accepted_name), tt$tip.label, lookup_table_phylogeny$accepted_name)
+tt$tip.label <- gsub("_", " ", tt$tip.label)
+
+a <- taxonlookup::lookup_table(unique(tt$tip.label), by_species = TRUE, missing_action = "NA") |>
+  select(-order, -group) # Get genus and familya <- rownames_to_column(a, "species")
+a <- rownames_to_column(a, "species")
+take_tenth <- function(x) x[10] # Not [1] because the first species of some families is taxonomically ambiguous
+one_tip <- a |> group_by(family) %>% summarise(species = take_tenth(species))
+out <- ape::drop.tip(tt, tt$tip.label[!tt$tip.label %in% one_tip$species])
+out$tip.label <- paste(one_tip$family[match(out$tip.label, one_tip$species)], out$tip.label, sep = "_")
+out$tip.label <- one_tip$family[match(out$tip.label, one_tip$species)]
+
+out <- ape::keep.tip(out, out$tip.label[duplicated(out$tip.label)])
+
+ggtree(out, ladderize = FALSE) +
+  geom_tiplab() +
+  xlim(0, 600)
+
+out_pruned <- ape::drop.tip(out, out$tip.label[!out$tip.label %in% resprouting_summary$family])
+# Remove duplicates
+out_pruned <- ape::keep.tip(out_pruned, unique(out_pruned$tip.label))
+
+ggtree(out_pruned, ladderize = FALSE) +
+  geom_tiplab() +
+  xlim(0, 200)
+```
 
 Number of native Australian taxa
 
