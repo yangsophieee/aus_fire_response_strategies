@@ -75,6 +75,18 @@ hist(mean_fires_clean$mean_fires_100, breaks = 40)
 #### Resprouting binomial
 
 ```{r}
+df_woody_herb_only <-
+  mean_fires_clean %>%
+  dplyr::filter(woody_or_herb %in% c("woody", "herb")) |>
+  mutate(across(c("resprouting_binomial", "seeding_binomial", "woody_or_herb"), as.factor))
+
+# Subset normal logistic regression to taxa in phylogenetic logistic regression
+# to check effect of phylogenetic regression
+#tree <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
+#tree$tip.label <- gsub("_", " ", tree$tip.label)
+#df_woody_herb_only |> nrow()
+#df_woody_herb_only <- df_woody_herb_only[df_woody_herb_only$taxon_name %in% tree$tip.label, ]
+
 glm_resprouting <- glm(
   resprouting_binomial ~
     log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
@@ -602,8 +614,6 @@ ggsave("figures/fire_response_probabilities_density_functions.png", width = 10, 
 
 #### Resprouting binomial
 
-TODO subset normal logistic regression to taxa in phylogenetic logistic regression
-
 Phylogenetic regression
 
 ```{r}
@@ -816,7 +826,7 @@ categories <- unique(y)
 mean1 <- mean(pred[which(y == categories[1])], na.rm = TRUE)
 mean2 <- mean(pred[which(y == categories[2])], na.rm = TRUE)
 
-abs(mean1 - mean2) # 0.037
+abs(mean1 - mean2) # 0.039
 ```
 
 
