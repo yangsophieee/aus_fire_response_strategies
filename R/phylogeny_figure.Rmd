@@ -127,28 +127,28 @@ lma <-
   filter(aus_native == TRUE) %>%
   select(-aus_native)
 
-mean_lma <-
+median_lma <-
   lma %>%
   group_by(taxon_name) %>%
-  summarise(mean_lma = mean(leaf_mass_per_area)) %>%
+  summarise(median_lma = median(leaf_mass_per_area)) %>%
   ungroup()
 
-mean_lma_new <-
-  mean_lma %>%
+median_lma_new <-
+  median_lma %>%
   left_join(
     austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
     by = "taxon_name"
   )
 
-mean_lma_new$family %>% unique() %>% length() # 186
-x <- mean_lma_new %>% group_by(family) %>% summarise(count = n())
+median_lma_new$family %>% unique() %>% length() # 186
+x <- median_lma_new %>% group_by(family) %>% summarise(count = n())
 hist(x$count, breaks = 100)
 
-mean_lma_summary <-
-  mean_lma_new %>%
-  drop_na(mean_lma, family) %>%
+median_lma_summary <-
+  median_lma_new %>%
+  drop_na(median_lma, family) %>%
   group_by(family) %>%
-  summarise(mean_lma = mean(mean_lma)) %>%
+  summarise(median_lma = median(median_lma)) %>%
   ungroup()
 ```
 
@@ -173,28 +173,28 @@ leaf_n <-
   filter(aus_native == TRUE) %>%
   select(-aus_native)
 
-mean_leaf_n <-
+median_leaf_n <-
   leaf_n %>%
   group_by(taxon_name) %>%
-  summarise(mean_leaf_n = mean(leaf_N_per_dry_mass)) %>%
+  summarise(median_leaf_n = median(leaf_N_per_dry_mass)) %>%
   ungroup()
 
-mean_leaf_n_new <-
-  mean_leaf_n %>%
+median_leaf_n_new <-
+  median_leaf_n %>%
   left_join(
     austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
     by = "taxon_name"
   )
 
-mean_leaf_n_new$family %>% unique() %>% length() # 145
-x <- mean_leaf_n_new %>% group_by(family) %>% summarise(count = n())
+median_leaf_n_new$family %>% unique() %>% length() # 145
+x <- median_leaf_n_new %>% group_by(family) %>% summarise(count = n())
 hist(x$count, breaks = 100)
 
-mean_leaf_n_summary <-
-  mean_leaf_n_new %>%
-  drop_na(mean_leaf_n, family) %>%
+median_leaf_n_summary <-
+  median_leaf_n_new %>%
+  drop_na(median_leaf_n, family) %>%
   group_by(family) %>%
-  summarise(mean_leaf_n = mean(mean_leaf_n)) %>%
+  summarise(median_leaf_n = median(median_leaf_n)) %>%
   ungroup()
 ```
 
@@ -440,9 +440,9 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
   ) +
   ggnewscale::new_scale_fill() +
   geom_fruit(
-    data = mean_lma_summary,
+    data = median_lma_summary,
     geom = geom_tile,
-    mapping = aes(x = mean_lma, y = family, fill = mean_lma),
+    mapping = aes(x = median_lma, y = family, fill = median_lma),
     offset = 0.1,
     pwidth = 0,
     width = 14,
@@ -452,18 +452,18 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     high = "#7d7d7d"
   ) +
   geom_fruit(
-    data = mean_lma_summary,
+    data = median_lma_summary,
     geom = geom_text,
-    mapping = aes(x = mean_lma, y = family, label = round(mean_lma, digits = 0)),
+    mapping = aes(x = median_lma, y = family, label = round(median_lma, digits = 0)),
     colour = "black",
     offset = 0,
     pwidth = 0
   ) +
   ggnewscale::new_scale_fill() +
   geom_fruit(
-    data = mean_leaf_n_summary,
+    data = median_leaf_n_summary,
     geom = geom_tile,
-    mapping = aes(x = mean_leaf_n, y = family, fill = mean_leaf_n),
+    mapping = aes(x = median_leaf_n, y = family, fill = median_leaf_n),
     offset = 0.1,
     pwidth = 0,
     width = 14,
@@ -474,9 +474,9 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     high = "#7d7d7d"
   ) +
   geom_fruit(
-    data = mean_leaf_n_summary,
+    data = median_leaf_n_summary,
     geom = geom_text,
-    mapping = aes(x = mean_leaf_n, y = family, label = round(mean_leaf_n, digits = 1)),
+    mapping = aes(x = median_leaf_n, y = family, label = round(median_leaf_n, digits = 1)),
     colour = "black",
     offset = 0,
     pwidth = 0
@@ -606,9 +606,9 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
   ) +
   ggnewscale::new_scale_fill() +
   geom_fruit(
-    data = mean_lma_summary,
+    data = median_lma_summary,
     geom = geom_tile,
-    mapping = aes(x = mean_lma, y = family, fill = mean_lma),
+    mapping = aes(x = median_lma, y = family, fill = median_lma),
     offset = 0.1,
     pwidth = 0,
     width = 14,
@@ -618,18 +618,18 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     high = "#66914d"
   ) +
   geom_fruit(
-    data = mean_lma_summary,
+    data = median_lma_summary,
     geom = geom_text,
-    mapping = aes(x = mean_lma, y = family, label = round(mean_lma, digits = 0)),
+    mapping = aes(x = median_lma, y = family, label = round(median_lma, digits = 0)),
     colour = "black",
     offset = 0,
     pwidth = 0
   ) +
   ggnewscale::new_scale_fill() +
   geom_fruit(
-    data = mean_leaf_n_summary,
+    data = median_leaf_n_summary,
     geom = geom_tile,
-    mapping = aes(x = mean_leaf_n, y = family, fill = mean_leaf_n),
+    mapping = aes(x = median_leaf_n, y = family, fill = median_leaf_n),
     offset = 0.1,
     pwidth = 0,
     width = 14,
@@ -640,9 +640,9 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     high = "#5894cc"
   ) +
   geom_fruit(
-    data = mean_leaf_n_summary,
+    data = median_leaf_n_summary,
     geom = geom_text,
-    mapping = aes(x = mean_leaf_n, y = family, label = round(mean_leaf_n, digits = 1)),
+    mapping = aes(x = median_leaf_n, y = family, label = round(median_leaf_n, digits = 1)),
     colour = "black",
     offset = 0,
     pwidth = 0
