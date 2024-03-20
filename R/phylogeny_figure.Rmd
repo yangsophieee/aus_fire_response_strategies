@@ -127,28 +127,28 @@ lma <-
   filter(aus_native == TRUE) %>%
   select(-aus_native)
 
-median_lma <-
+mean_lma <-
   lma %>%
   group_by(taxon_name) %>%
-  summarise(median_lma = median(leaf_mass_per_area)) %>%
+  summarise(mean_lma = mean(leaf_mass_per_area)) %>%
   ungroup()
 
-median_lma_new <-
-  median_lma %>%
+mean_lma_new <-
+  mean_lma %>%
   left_join(
     austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
     by = "taxon_name"
   )
 
-median_lma_new$family %>% unique() %>% length() # 186
-x <- median_lma_new %>% group_by(family) %>% summarise(count = n())
+mean_lma_new$family %>% unique() %>% length() # 186
+x <- mean_lma_new %>% group_by(family) %>% summarise(count = n())
 hist(x$count, breaks = 100)
 
 median_lma_summary <-
-  median_lma_new %>%
-  drop_na(median_lma, family) %>%
+  mean_lma_new %>%
+  drop_na(mean_lma, family) %>%
   group_by(family) %>%
-  summarise(median_lma = median(median_lma)) %>%
+  summarise(median_lma = median(mean_lma)) %>%
   ungroup()
 ```
 
@@ -173,28 +173,28 @@ leaf_n <-
   filter(aus_native == TRUE) %>%
   select(-aus_native)
 
-median_leaf_n <-
+mean_leaf_n <-
   leaf_n %>%
   group_by(taxon_name) %>%
-  summarise(median_leaf_n = median(leaf_N_per_dry_mass)) %>%
+  summarise(mean_leaf_n = mean(leaf_N_per_dry_mass)) %>%
   ungroup()
 
-median_leaf_n_new <-
-  median_leaf_n %>%
+mean_leaf_n_new <-
+  mean_leaf_n %>%
   left_join(
     austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
     by = "taxon_name"
   )
 
-median_leaf_n_new$family %>% unique() %>% length() # 145
-x <- median_leaf_n_new %>% group_by(family) %>% summarise(count = n())
+mean_leaf_n_new$family %>% unique() %>% length() # 145
+x <- mean_leaf_n_new %>% group_by(family) %>% summarise(count = n())
 hist(x$count, breaks = 100)
 
 median_leaf_n_summary <-
-  median_leaf_n_new %>%
-  drop_na(median_leaf_n, family) %>%
+  mean_leaf_n_new %>%
+  drop_na(mean_leaf_n, family) %>%
   group_by(family) %>%
-  summarise(median_leaf_n = median(median_leaf_n)) %>%
+  summarise(median_leaf_n = median(mean_leaf_n)) %>%
   ungroup()
 ```
 
