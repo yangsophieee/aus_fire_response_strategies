@@ -109,6 +109,7 @@ summary(lma_resp_model)
 lma_resp_emmeans <- emmeans::emmeans(
   lma_resp_model,
   specs = pairwise ~ resprouting_binomial:woody_or_herb)
+
 lma_resp_emmeans
 lma_resp_emmeans$contrasts %>% confint()
 ```
@@ -407,6 +408,14 @@ pm1 <-
   )
 summary(pm1)
 confint(pm1)
+
+pm1_emmeans <- marginaleffects::avg_predictions(
+  pm1,
+  by = c("resprouting_binomial", "woody_or_herb"),
+  hypothesis = "pairwise"
+)
+pm1_emmeans
+pm1_emmeans$contrasts %>% confint()
 ```
 
 
@@ -420,6 +429,14 @@ pm2 <-
   )
 summary(pm2)
 confint(pm2)
+
+pm1_emmeans <- marginaleffects::avg_predictions(
+  pm1,
+  by = c("resprouting_binomial", "woody_or_herb"),
+  hypothesis = "pairwise"
+)
+pm1_emmeans
+pm1_emmeans$contrasts %>% confint()
 ```
 
 
