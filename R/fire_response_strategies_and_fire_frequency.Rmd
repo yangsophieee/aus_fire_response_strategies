@@ -32,6 +32,8 @@ Read in mean fire return interval data from GLMs
 ```{r}
 mean_fires <- read_csv("outputs/mean_fires_df_with_poisson_glm.csv", guess_max = 10000)
 mean_fires <- mean_fires %>% left_join(resprouting_seeding, by = c("taxon_name"))
+
+mean_fires |> nrow()
 ```
 
 Filter out taxa with warning messages
@@ -41,6 +43,8 @@ mean_fires_no_errors <-
   mean_fires %>%
   filter(is.na(warnings), is.na(error), is.na(messages)) %>%
   select(-warnings, -messages, -error)
+
+mean_fires_no_errors |> nrow()
 ```
 
 Clean data
@@ -51,6 +55,8 @@ mean_fires_clean <- mean_fires_no_errors |>
   dplyr::filter(num_pixels >= 10) |> # Removed 284
   # Convert to mean number of fires in 100 years, instead of mean number of fires in the sampling period
   mutate(mean_fires_100 = mean_fires / 22.17 * 100)
+
+mean_fires_clean |> nrow()
 
 df_woody_herb_only <-
   mean_fires_clean %>%

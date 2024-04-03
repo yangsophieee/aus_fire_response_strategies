@@ -109,6 +109,14 @@ summary(lma_resp_model)
 lma_resp_emmeans <- emmeans::emmeans(
   lma_resp_model,
   specs = pairwise ~ resprouting_binomial:woody_or_herb)
+lma_resp_emmeans
+lma_resp_emmeans_2 <- marginaleffects::avg_predictions(
+  lma_resp_model,
+  by = c("resprouting_binomial", "woody_or_herb"),
+  hypothesis = "pairwise",
+  p_adjust = "bonferroni"
+)
+lma_resp_emmeans_2
 
 lma_resp_emmeans
 lma_resp_emmeans$contrasts %>% confint()
@@ -376,8 +384,8 @@ fire_response_and_leaf_traits <-
   fire_response_and_leaf_traits[fire_response_and_leaf_traits$taxon_name %in% tree$tip.label, ]
 fire_response_and_leaf_traits |> nrow()
 
-fire_response_and_leaf_traits$resprouting_binomial <-
-  ifelse(fire_response_and_leaf_traits$resprouting_binomial == TRUE, 1, 0) # Make numeric
+#fire_response_and_leaf_traits$resprouting_binomial <-
+#  ifelse(fire_response_and_leaf_traits$resprouting_binomial == TRUE, 1, 0) # Make numeric
 
 pruned_tree <- ape::drop.tip(tree, setdiff(tree$tip.label, fire_response_and_leaf_traits$taxon_name))
 pruned_tree <- ape::as.phylo(pruned_tree)
@@ -412,11 +420,14 @@ confint(pm1)
 pm1_emmeans <- marginaleffects::avg_predictions(
   pm1,
   by = c("resprouting_binomial", "woody_or_herb"),
-  hypothesis = "pairwise"
+  hypothesis = "pairwise",
+  p_adjust = "bonferroni"
 )
 pm1_emmeans
-pm1_emmeans$contrasts %>% confint()
 ```
+
+Very strong evidence that woody resprouters have higher LMA than woody non-resprouters.
+Little evidence that herbaceous resprouters have higher LMA than herbaceous non-resprouters.
 
 
 ```{r}
@@ -430,14 +441,17 @@ pm2 <-
 summary(pm2)
 confint(pm2)
 
-pm1_emmeans <- marginaleffects::avg_predictions(
-  pm1,
+pm2_emmeans <- marginaleffects::avg_predictions(
+  pm2,
   by = c("resprouting_binomial", "woody_or_herb"),
-  hypothesis = "pairwise"
+  hypothesis = "pairwise",
+  p_adjust = "bonferroni"
 )
-pm1_emmeans
-pm1_emmeans$contrasts %>% confint()
+pm2_emmeans
 ```
+
+No evidence that woody resprouters have different leaf N to woody non-resprouters.
+No evidence that herbaceous resprouters have different leaf N to herbaceous non-resprouters.
 
 
 ```{r}
@@ -450,8 +464,18 @@ pm3 <-
   )
 summary(pm3)
 confint(pm3)
+pm3_emmeans <- marginaleffects::avg_predictions(
+  pm3,
+  by = c("seeding_binomial", "woody_or_herb"),
+  hypothesis = "pairwise",
+  p_adjust = "bonferroni"
+)
+pm3_emmeans
 ```
 
+
+Very strong evidence that woody seeders have higher LMA than non-seeders.
+Very strong evidence that herbaceous seeders have lower LMA than non-seeders.
 
 ```{r}
 pm4 <-
@@ -463,8 +487,16 @@ pm4 <-
   )
 summary(pm4)
 confint(pm4)
+pm4_emmeans <- marginaleffects::avg_predictions(
+  pm4,
+  by = c("seeding_binomial", "woody_or_herb"),
+  hypothesis = "pairwise",
+  p_adjust = "bonferroni"
+)
+pm4_emmeans
 ```
 
+No evidence that woody or herbaceous seeders have different leaf N to non-seeders.
 
 ---
 

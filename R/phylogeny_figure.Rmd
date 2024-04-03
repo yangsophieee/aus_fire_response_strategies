@@ -103,6 +103,8 @@ median_fires_summary$median_fires_100 |> max()
 median_fires_summary |>
   filter(family %in% c("Fabaceae", "Myrtaceae", "Orchidaceae", "Proteaceae", "Asteraceae", "Poaceae")) |>
   arrange(-median_fires_100)
+
+resprouting_summary |> filter(family == "Asteraceae")
 ```
 
 
