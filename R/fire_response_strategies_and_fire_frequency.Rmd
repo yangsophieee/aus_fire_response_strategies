@@ -343,7 +343,36 @@ modelbased::estimate_expectation(glm_seeding) |>
   xlab("Mean fires") +
   theme_classic()
 
-# Herb data does not look statistically significant
+# Herb data does not look like it has enough statistical power
+```
+
+
+Try with only herb data
+
+```{r}
+df_herb_only <-
+  df_woody_herb_only %>%
+  filter(woody_or_herb == "herb") |>
+  mutate(across(c("resprouting_binomial", "seeding_binomial", "woody_or_herb"), as.factor))
+
+
+glm_seeding_herb <- glm(
+  seeding_binomial ~ log10(mean_fires_100) + I(log10(mean_fires_100)^2),
+  data = df_herb_only,
+  family = binomial
+)
+
+summary(glm_seeding_herb)
+sjPlot::tab_model(glm_seeding_herb)
+
+ggeffects::ggpredict(glm_seeding_herb, c("mean_fires_100")) %>%
+  ggplot(aes(x, predicted)) +
+  geom_line(linewidth = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.2, linetype = 0) +
+  scale_x_log10() +
+  ylab("Seeding probability") +
+  xlab("Mean fires") +
+  theme_classic()
 ```
 
 
@@ -1238,4 +1267,28 @@ df_woody_herb_only |>
 df_woody_herb_only |>
   filter(woody_or_herb == "woody", seeding_binomial == FALSE) |>
   summarise(median_fires = median(mean_fires_100), sd = sd(mean_fires_100))
+```
+
+
+Median fire frequency experienced by woody and herbaceous plants
+
+```{r}
+df_woody_herb_only |>
+  filter(woody_or_herb == "woody") |>
+  summarise(
+    max_fires = max(mean_fires_100),
+    min_fires = min(mean_fires_100),
+    median_fires = median(mean_fires_100),
+    sd = sd(mean_fires_100)
+  )
+
+df_woody_herb_only |>
+  filter(woody_or_herb == "herb") |>
+  summarise(
+    max_fires = max(mean_fires_100),
+    min_fires = min(mean_fires_100),
+    median_fires = median(mean_fires_100),
+    sd = sd(mean_fires_100)
+  )
+
 ```
