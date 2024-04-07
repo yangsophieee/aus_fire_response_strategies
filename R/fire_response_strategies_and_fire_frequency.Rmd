@@ -1291,4 +1291,19 @@ df_woody_herb_only |>
     sd = sd(mean_fires_100)
   )
 
+# Highest fire frequency species
+df_woody_herb_only |> arrange(-mean_fires_100) |> head(10) |> View()
+```
+
+
+Fire frequencies of facultative herbs
+
+```{r}
+df_woody_herb_only |>
+  filter(woody_or_herb == "herb", resprouting_binomial == TRUE, seeding_binomial == TRUE) |>
+  View()
+
+# Looks like most of these are rarely burnt species
+# So maybe supports the hypothesis that in moderately or frequently burnt systems, herbs are
+# usually only a resprouter or a seeder, not both?
 ```

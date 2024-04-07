@@ -930,10 +930,32 @@ Facultative species
 ```{r}
 resprouting_seeding |>
   filter(data_on_both == TRUE, resprouting_binomial == TRUE, seeding_binomial == TRUE) |>
-  pull(taxon_name) |>
-  unique() |>
-  length()
+  nrow()
 resprouting_seeding |> nrow()
+
+resprouting_seeding |>
+  filter(
+    woody_or_herb == "woody",
+    resprouting_binomial == TRUE,
+    seeding_binomial == TRUE
+  ) |>
+  nrow() # 1245
+resprouting_seeding |> filter(woody_or_herb == "woody") |> nrow() # 6387
+resprouting_seeding |>
+  filter(woody_or_herb == "woody", data_on_both == TRUE) |>
+  nrow() # 2550
+
+resprouting_seeding |>
+  filter(
+    woody_or_herb == "herb",
+    resprouting_binomial == TRUE,
+    seeding_binomial == TRUE
+  ) |>
+  nrow() # 417
+resprouting_seeding |> filter(woody_or_herb == "herb") |> nrow() # 4634
+resprouting_seeding |>
+  filter(woody_or_herb == "herb", data_on_both == TRUE) |>
+  nrow() # 880
 ```
 
 
