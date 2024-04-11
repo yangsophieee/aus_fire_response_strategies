@@ -47,10 +47,10 @@ Function that returns a data frame with predicted FRI and other metrics
 
 ```{r}
 calculate_mean_fires_with_glm <- function(
-  taxon,
-  gbif_data = joined_fire_data,
-  num_of_fires_raster = num_of_fires,
-  sampling_period = 22.17) {
+    taxon,
+    gbif_data = joined_fire_data,
+    num_of_fires_raster = num_of_fires,
+    sampling_period = 22.17) {
 
   # Subset data to taxon
   species_subset <-
@@ -64,7 +64,8 @@ calculate_mean_fires_with_glm <- function(
   species_subset <- species_subset %>%
     mutate(
       decimalLongitude = multiple * round(decimalLongitude / multiple),
-      decimalLatitude = multiple * round(decimalLatitude / multiple)) %>%
+      decimalLatitude = multiple * round(decimalLatitude / multiple)
+    ) %>%
     distinct(.keep_all = TRUE) # Remove duplicates
 
   num_of_fires_raster <- terra::unwrap(num_of_fires_raster)

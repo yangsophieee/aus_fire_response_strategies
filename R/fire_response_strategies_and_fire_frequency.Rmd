@@ -45,6 +45,10 @@ mean_fires_no_errors <-
   select(-warnings, -messages, -error)
 
 mean_fires_no_errors |> nrow()
+mean_fires |> filter(!is.na(warnings) | !is.na(error) | !is.na(messages)) |> nrow() # 359
+mean_fires |> filter(num_unburnt_pixels == num_pixels) |> nrow() # 298
+mean_fires |> nrow() # 10871
+mean_fires |> filter(num_pixels < 10) |> nrow()
 ```
 
 Clean data
@@ -54,9 +58,17 @@ Clean data
 mean_fires_clean <- mean_fires_no_errors |>
   dplyr::filter(num_pixels >= 10) |> # Removed 284
   # Convert to mean number of fires in 100 years, instead of mean number of fires in the sampling period
-  mutate(mean_fires_100 = mean_fires / 22.17 * 100)
+  mutate(
+    mean_fires_100 = mean_fires / 22.17 * 100,
+    mean_fires_100_upr = upr_conf_int / 22.17 * 100,
+    mean_fires_100_lwr = lwr_conf_int / 22.17 * 100,
+    conf_int = mean_fires_100_upr - mean_fires_100_lwr
+  )
+# Removing conf_int > 5 barely changed the results
 
-mean_fires_clean |> nrow()
+mean_fires_clean$conf_int |> hist()
+
+mean_fires_clean |> nrow() # 10240
 
 df_woody_herb_only <-
   mean_fires_clean %>%
@@ -1306,4 +1318,15 @@ df_woody_herb_only |>
 # Looks like most of these are rarely burnt species
 # So maybe supports the hypothesis that in moderately or frequently burnt systems, herbs are
 # usually only a resprouter or a seeder, not both?
+```
+
+
+Investigate proportion of annuals # TODO
+
+```{r}
+austraits <- read_rds("data/austraits-5.0.0.rds")
+```
+
+```{r}
+austraits$traits |>
 ```
