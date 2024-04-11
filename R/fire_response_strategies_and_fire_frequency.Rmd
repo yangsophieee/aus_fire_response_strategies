@@ -64,7 +64,8 @@ mean_fires_clean <- mean_fires_no_errors |>
     mean_fires_100_lwr = lwr_conf_int / 22.17 * 100,
     conf_int = mean_fires_100_upr - mean_fires_100_lwr
   )
-# Removing conf_int > 5 barely changed the results
+# TODO rerun analyses
+mean_fires_clean |> dplyr::filter(conf_int > 5) |> nrow() # 307
 
 mean_fires_clean$conf_int |> hist()
 
@@ -75,6 +76,7 @@ df_woody_herb_only <-
   dplyr::filter(woody_or_herb %in% c("woody", "herb")) |>
   mutate(across(c("resprouting_binomial", "seeding_binomial", "woody_or_herb"), as.factor))
 
+# TODO rerun?
 #write_csv(df_woody_herb_only, "outputs/final_df_predicted_fires_and_fire_response.csv")
 #df_woody_herb_only <- read_csv("outputs/final_df_predicted_fires_and_fire_response.csv")
 ```
