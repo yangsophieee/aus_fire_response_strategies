@@ -118,7 +118,7 @@ df_woody_herb_only <-
 glm_resprouting <- glm(
   resprouting_binomial ~
     log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
-    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+      I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
   data = df_woody_herb_only,
   family = binomial
 )
@@ -167,7 +167,7 @@ set.seed(1)
 glm_resprouting_preds <- glm(
   resprouting_binomial ~
     log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
-    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+      I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
   data = data.frame(training_x, training_y),
   family = binomial
 )
@@ -342,7 +342,7 @@ resprouting_density
 glm_seeding <- glm(
   seeding_binomial ~
     log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
-    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+      I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
   data = df_woody_herb_only,
   family = binomial
 )
@@ -714,7 +714,7 @@ sorted_data <-
 pglm_resprouting <- phyloglm(
   resprouting_binomial ~
     log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
-    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+      I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
   method = "logistic_MPLE",
   data = sorted_data,
   phy = pruned_tree,
@@ -1023,7 +1023,7 @@ df_woody_only <- df_woody_only[df_woody_only$taxon_name %in% tree$tip.label, ]
 glm_resprouting <- glm(
   resprouting_binomial ~
     log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
-    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+      I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
   data = df_woody_herb_only,
   family = binomial
 )
