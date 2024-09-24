@@ -441,8 +441,9 @@ resprouting_seeding_woodiness <-
       woodiness_detailed %in% woody ~ "woody",
       woodiness_detailed %in% herbaceous ~ "herb",
       woodiness_detailed %in% semi_woody ~ "semi-woody",
-      woodiness_detailed %in% unclear ~ "unclear")
+      woodiness_detailed %in% unclear ~ "unclear"
     )
+  )
 
 resprouting_seeding_woodiness %>%
   group_by(woody_or_herb) %>%
