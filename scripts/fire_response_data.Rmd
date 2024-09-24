@@ -60,8 +60,10 @@ resprouting_capacity_summary <-
   resprouting_capacity %>%
   group_by(taxon_name, resprouting_capacity, taxon_rank) %>%
   summarise(count = n()) %>%
-  pivot_wider(names_from = resprouting_capacity,
-              values_from = count) %>%
+  pivot_wider(
+    names_from = resprouting_capacity,
+    values_from = count
+  ) %>%
   ungroup() %>%
   mutate(across(where(is.integer), ~ replace_na(., 0)))
 
@@ -98,10 +100,11 @@ resprouting_capacity_summary <-
         fire_killed_resprouts >= 1 ~ "sometimes resprouts",
         partial_resprouting >= 1 ~ "sometimes resprouts",
         fire_killed_partial_resprouting_resprouts >= 1 ~ "sometimes resprouts",
-        partial_resprouting_resprouts >= 1 ~ "mostly resprouts"),
+        partial_resprouting_resprouts >= 1 ~ "mostly resprouts"
+      ),
       NA_character_
-      )
     )
+  )
 ```
 
 
@@ -116,10 +119,10 @@ resprouting_capacity_summary <-
   mutate(
     resprout_tally =
       resprouts + fire_killed_partial_resprouting + fire_killed_resprouts + partial_resprouting +
-      fire_killed_partial_resprouting_resprouts + partial_resprouting_resprouts,
+        fire_killed_partial_resprouting_resprouts + partial_resprouting_resprouts,
     does_not_resprout_tally =
       fire_killed + fire_killed_partial_resprouting + fire_killed_resprouts +
-      fire_killed_partial_resprouting_resprouts
+        fire_killed_partial_resprouting_resprouts
   )
 ```
 
@@ -153,10 +156,11 @@ resprouting_capacity_summary <-
       case_when(
         resprout_prop < 0.3 ~ "does not resprout",
         resprout_prop < 0.7 ~ "sometimes resprouts",
-        resprout_prop >= 0.7 ~ "mostly resprouts"),
+        resprout_prop >= 0.7 ~ "mostly resprouts"
+      ),
       resprouting
-      )
     )
+  )
 ```
 
 
@@ -197,7 +201,8 @@ Filter out non-native species
 post_fire_recruitment <-
   post_fire_recruitment %>%
   left_join(aus_native_lookup,
-            by = c("taxon_name" = "canonical_name")) %>%
+    by = c("taxon_name" = "canonical_name")
+  ) %>%
   filter(aus_native == TRUE) %>%
   select(-aus_native) # Lost 336
 ```
@@ -211,7 +216,8 @@ post_fire_recruitment <-
   left_join(
     austraits$taxa %>%
       select(taxon_name, genus, family, taxon_rank, taxonomic_status, taxon_distribution),
-    by = "taxon_name")
+    by = "taxon_name"
+  )
 ```
 
 
@@ -255,10 +261,11 @@ post_fire_recruitment_summary <-
       case_when(
         post_fire_recruitment >= 1 ~ "robust post-fire seeding",
         post_fire_recruitment_absent >= 1 ~ "no post-fire seeding",
-        post_fire_recruitment_post_fire_recruitment_absent >= 1 ~ "some post-fire seeding"),
+        post_fire_recruitment_post_fire_recruitment_absent >= 1 ~ "some post-fire seeding"
+      ),
       NA_character_
-      )
     )
+  )
 ```
 
 
@@ -270,12 +277,14 @@ post-fire recruitment
 ```{r}
 post_fire_recruitment_summary <-
   post_fire_recruitment_summary %>%
-  mutate(post_fire_recruitment_tally =
-           post_fire_recruitment +
-           post_fire_recruitment_post_fire_recruitment_absent,
-         no_post_fire_recruitment_tally =
-           post_fire_recruitment_absent +
-           post_fire_recruitment_post_fire_recruitment_absent)
+  mutate(
+    post_fire_recruitment_tally =
+      post_fire_recruitment +
+        post_fire_recruitment_post_fire_recruitment_absent,
+    no_post_fire_recruitment_tally =
+      post_fire_recruitment_absent +
+        post_fire_recruitment_post_fire_recruitment_absent
+  )
 ```
 
 
@@ -307,9 +316,11 @@ post_fire_recruitment_summary <-
       case_when(
         seeding_prop < 0.3 ~ "no post-fire seeding",
         seeding_prop < 0.7 ~ "some post-fire seeding",
-        seeding_prop >= 0.7 ~ "robust post-fire seeding"),
-      post_fire_seeding)
+        seeding_prop >= 0.7 ~ "robust post-fire seeding"
+      ),
+      post_fire_seeding
     )
+  )
 ```
 
 
@@ -361,7 +372,8 @@ resprouting_seeding <-
       (resprouting == "mostly resprouts" | resprouting == "sometimes resprouts") & post_fire_seeding == "no post-fire seeding" ~ "resprouter",
       (post_fire_seeding == "some post-fire seeding" | post_fire_seeding == "robust post-fire seeding") & resprouting == "does not resprout" ~ "seeder",
       (resprouting == "mostly resprouts" | resprouting == "sometimes resprouts") & (post_fire_seeding == "some post-fire seeding" | post_fire_seeding == "robust post-fire seeding") ~ "facultative",
-      (resprouting == "does not resprout" | is.na(resprouting)) & post_fire_seeding == "no post-fire seeding" ~ "neither")
+      (resprouting == "does not resprout" | is.na(resprouting)) & post_fire_seeding == "no post-fire seeding" ~ "neither"
+    )
   )
 ```
 
@@ -429,8 +441,10 @@ resprouting_seeding_woodiness <-
   left_join(woodiness, by = "taxon_name")
 
 woody <- c("woody", "semi_woody woody", "woody woody_base")
-herbaceous <- c("herbaceous", "herbaceous woody", "herbaceous woody_base", "herbaceous woody_root",
-                "herbaceous semi_woody", "herbaceous semi_woody woody")
+herbaceous <- c(
+  "herbaceous", "herbaceous woody", "herbaceous woody_base", "herbaceous woody_root",
+  "herbaceous semi_woody", "herbaceous semi_woody woody"
+)
 semi_woody <- c("semi_woody", "semi_woody woody_base")
 unclear <- c("woody_like_stem", "woody_base")
 
@@ -463,21 +477,24 @@ resprouting_seeding <-
   mutate(
     resprouting_binomial = case_when(
       resprouting %in% c("mostly resprouts", "sometimes resprouts") ~ TRUE,
-      resprouting %in% c("does not resprout") ~ FALSE),
+      resprouting %in% c("does not resprout") ~ FALSE
+    ),
     seeding_binomial = case_when(
       post_fire_seeding %in% c("robust post-fire seeding", "some post-fire seeding") ~ TRUE,
-      post_fire_seeding %in% c("no post-fire seeding") ~ FALSE),
+      post_fire_seeding %in% c("no post-fire seeding") ~ FALSE
+    ),
     obligate_resprouting_or_seeding = if_else(
       data_on_both == TRUE, case_when(
         resprouter_or_seeder == "seeder" ~ "obligate seeder",
         resprouter_or_seeder == "resprouter" ~ "obligate resprouter"
-        ), NA_character_),
+      ), NA_character_
+    ),
     resprouting_seeding_binomial = if_else(data_on_both == TRUE, case_when(
       resprouting == "mostly resprouts" & post_fire_seeding == "some post-fire seeding" ~ "resprouter",
       resprouting == "sometimes resprouts" & post_fire_seeding == "robust post-fire seeding" ~ "seeder",
       resprouter_or_seeder == "seeder" ~ "seeder",
       resprouter_or_seeder == "resprouter" ~ "resprouter"
-      ), NA_character_)
+    ), NA_character_)
   ) |>
   distinct()
 ```
@@ -491,7 +508,8 @@ fire_response_woody_herb_only <-
   resprouting_seeding %>%
   filter(woody_or_herb %in% c("woody", "herb"))
 saveRDS(
-  fire_response_woody_herb_only, "data/fire_response_woody_herb_only.rds")
+  fire_response_woody_herb_only, "data/fire_response_woody_herb_only.rds"
+)
 fire_response_woody_herb_only <-
   read_rds("data/fire_response_woody_herb_only.rds")
 ```
@@ -539,7 +557,7 @@ gbif <- read.csv("data/filtered_aus_obs.csv", skipNul = TRUE)
 ## Try use ausflora to align GBIF names with APC names
 
 ```{r}
-#remotes::install_github("traitecoevo/APCalign")
+# remotes::install_github("traitecoevo/APCalign")
 library(APCalign)
 ```
 
@@ -589,14 +607,17 @@ joined_fire_data_taxa <- joined_fire_data$taxon_name %>% unique()
 
 ```{r}
 joined_fire_data_vect <- joined_fire_data %>% terra::vect(geom = c("decimalLongitude", "decimalLatitude"))
-base_raster <- joined_fire_data_vect %>% terra::ext() %>% terra::rast()
+base_raster <- joined_fire_data_vect %>%
+  terra::ext() %>%
+  terra::rast()
 terra::res(base_raster) <- 2
 
 joined_fire_data$cell <-
   terra::extract(
     base_raster,
     cbind(joined_fire_data$decimalLongitude, joined_fire_data$decimalLatitude),
-    cell = TRUE)$cell # Tracking cell numbers
+    cell = TRUE
+  )$cell # Tracking cell numbers
 
 # Take single record per species per cell, to avoid oversampling
 data_grid <-
@@ -678,7 +699,8 @@ frac_woody_resprouters <-
   ggplot(data_ozmaps) +
   geom_tile(
     data = data_woody |> filter(n_obs >= 10, frac_resprouters >= 0.4, y < -10), # 0.3 value is outside of border
-    aes(x, y, fill = frac_resprouters), width = 2.1, height = 2.1) +
+    aes(x, y, fill = frac_resprouters), width = 2.1, height = 2.1
+  ) +
   geom_sf(data = data_sea, fill = "white", colour = NA) +
   geom_sf(fill = NA, colour = "#1a1a1a", linewidth = 0.2) +
   coord_sf(ylim = c(-45, -8), xlim = c(110, 157), expand = FALSE) +
@@ -703,7 +725,8 @@ frac_herbaceous_resprouters <-
   ggplot(data_ozmaps) +
   geom_tile(
     data = data_herb |> filter(n_obs >= 10, frac_resprouters >= 0.3, y < -10),
-    aes(x, y, fill = frac_resprouters), width = 2.1, height = 2.1) +
+    aes(x, y, fill = frac_resprouters), width = 2.1, height = 2.1
+  ) +
   geom_sf(data = data_sea, fill = "white", colour = NA) +
   geom_sf(fill = NA, colour = "#1a1a1a", linewidth = 0.2) +
   coord_sf(ylim = c(-45, -8), xlim = c(110, 157), expand = FALSE) +
@@ -724,7 +747,8 @@ frac_herbaceous_resprouters <-
       frame.linewidth = 0.3,
       frame.colour = "#1a1a1a",
       ticks.linewidth = 0.3,
-      ticks.colour = "#1a1a1a")
+      ticks.colour = "#1a1a1a"
+    )
   ) +
   theme(
     plot.subtitle = element_text(hjust = 0.55, size = 12, face = "bold"),
@@ -762,7 +786,6 @@ list_of_files <-
 ```{r}
 # Function to extract burn dates
 extract_burn_dates <- function(file_path) {
-
   # `file_path` argument must be a string
   raster <- terra::rast(file_path)
   # Extract year from file_path
@@ -781,7 +804,6 @@ extract_burn_dates <- function(file_path) {
   gc()
   # Return the data.frame
   return(df)
-
 }
 ```
 
@@ -836,7 +858,9 @@ terra::writeRaster(num_fires_raster, "data/num_fires_map_new.tif", overwrite = T
 
 ```{r}
 num_fires <- terra::rast("data/num_fires_map_new.tif")
-num_fires <- num_fires %>% as.data.frame(xy = TRUE) |> filter(!is.na(num_of_fires))
+num_fires <- num_fires %>%
+  as.data.frame(xy = TRUE) |>
+  filter(!is.na(num_of_fires))
 
 num_fires_plot <-
   ggplot(num_fires) +
@@ -895,7 +919,11 @@ ggsave("figures/frac_resprouters_and_num_fires.png", width = 8, height = 8)
 Number of species with fire response data
 
 ```{r}
-resprouting_seeding |> filter(taxon_rank == "species") |> pull(taxon_name) |> unique() |> length()
+resprouting_seeding |>
+  filter(taxon_rank == "species") |>
+  pull(taxon_name) |>
+  unique() |>
+  length()
 ```
 
 Total number of vascular species in APC
@@ -922,7 +950,10 @@ species_diversity <-
     native_anywhere_in_aus == "native" # Filter for native species only
   )
 
-species_diversity |> pull(canonical_name) |> unique() |> length()
+species_diversity |>
+  pull(canonical_name) |>
+  unique() |>
+  length()
 ```
 
 
@@ -941,7 +972,9 @@ resprouting_seeding |>
     seeding_binomial == TRUE
   ) |>
   nrow() # 1245
-resprouting_seeding |> filter(woody_or_herb == "woody") |> nrow() # 6387
+resprouting_seeding |>
+  filter(woody_or_herb == "woody") |>
+  nrow() # 6387
 resprouting_seeding |>
   filter(woody_or_herb == "woody", data_on_both == TRUE) |>
   nrow() # 2550
@@ -953,7 +986,9 @@ resprouting_seeding |>
     seeding_binomial == TRUE
   ) |>
   nrow() # 417
-resprouting_seeding |> filter(woody_or_herb == "herb") |> nrow() # 4634
+resprouting_seeding |>
+  filter(woody_or_herb == "herb") |>
+  nrow() # 4634
 resprouting_seeding |>
   filter(woody_or_herb == "herb", data_on_both == TRUE) |>
   nrow() # 880
