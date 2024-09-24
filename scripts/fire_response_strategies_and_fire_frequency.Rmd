@@ -45,10 +45,16 @@ mean_fires_no_errors <-
   select(-warnings, -messages, -error)
 
 mean_fires_no_errors |> nrow()
-mean_fires |> filter(!is.na(warnings) | !is.na(error) | !is.na(messages)) |> nrow() # 359
-mean_fires |> filter(num_unburnt_pixels == num_pixels) |> nrow() # 298
+mean_fires |>
+  filter(!is.na(warnings) | !is.na(error) | !is.na(messages)) |>
+  nrow() # 359
+mean_fires |>
+  filter(num_unburnt_pixels == num_pixels) |>
+  nrow() # 298
 mean_fires |> nrow() # 10871
-mean_fires |> filter(num_pixels < 10) |> nrow()
+mean_fires |>
+  filter(num_pixels < 10) |>
+  nrow()
 ```
 
 Clean data
@@ -65,7 +71,9 @@ mean_fires_clean <- mean_fires_no_errors |>
     conf_int = mean_fires_100_upr - mean_fires_100_lwr
   )
 # TODO rerun analyses
-mean_fires_clean |> dplyr::filter(conf_int > 5) |> nrow() # 307
+mean_fires_clean |>
+  dplyr::filter(conf_int > 5) |>
+  nrow() # 307
 
 mean_fires_clean$conf_int |> hist()
 
@@ -77,8 +85,8 @@ df_woody_herb_only <-
   mutate(across(c("resprouting_binomial", "seeding_binomial", "woody_or_herb"), as.factor))
 
 # TODO rerun?
-#write_csv(df_woody_herb_only, "outputs/final_df_predicted_fires_and_fire_response.csv")
-#df_woody_herb_only <- read_csv("outputs/final_df_predicted_fires_and_fire_response.csv")
+# write_csv(df_woody_herb_only, "outputs/final_df_predicted_fires_and_fire_response.csv")
+# df_woody_herb_only <- read_csv("outputs/final_df_predicted_fires_and_fire_response.csv")
 ```
 
 Histogram of mean fires
@@ -102,10 +110,10 @@ df_woody_herb_only <-
 
 # Subset normal logistic regression to taxa in phylogenetic logistic regression
 # to check effect of phylogenetic regression
-#tree <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
-#tree$tip.label <- gsub("_", " ", tree$tip.label)
-#df_woody_herb_only |> nrow()
-#df_woody_herb_only <- df_woody_herb_only[df_woody_herb_only$taxon_name %in% tree$tip.label, ]
+# tree <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
+# tree$tip.label <- gsub("_", " ", tree$tip.label)
+# df_woody_herb_only |> nrow()
+# df_woody_herb_only <- df_woody_herb_only[df_woody_herb_only$taxon_name %in% tree$tip.label, ]
 
 glm_resprouting <- glm(
   resprouting_binomial ~
@@ -188,7 +196,7 @@ predictions_vs_real %>%
   drop_na(resprouting_binomial) %>%
   ggplot(aes(resprouting_binomial, preds_transformed)) +
   geom_boxplot() +
-  facet_wrap(~ woody_or_herb) +
+  facet_wrap(~woody_or_herb) +
   theme_classic()
 
 caret::confusionMatrix(predictions_vs_real$preds_binomial, predictions_vs_real$resprouting_binomial)
@@ -215,14 +223,16 @@ resprouting_plot <-
   ) +
   scale_y_continuous(
     limits = c(0, 0.8),
-    expand = c(0, 0)) +
+    expand = c(0, 0)
+  ) +
   ylab("Resprouting probability") +
   xlab("Fire frequency (per century)") +
   scale_colour_manual(
     values = c("#7e5137", "#b9ce6f"),
     name = "",
     breaks = c("woody", "herb"),
-    labels = c("Woody", "Herb")) +
+    labels = c("Woody", "Herb")
+  ) +
   ggtitle("a)") +
   theme_classic() +
   theme(
@@ -235,7 +245,8 @@ resprouting_plot <-
     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
     axis.title.x = element_blank(),
     panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
-    axis.line = element_blank())
+    axis.line = element_blank()
+  )
 
 resprouting_plot
 ```
@@ -247,13 +258,12 @@ Density distributions
 medians <- df_woody_herb_only %>%
   drop_na(resprouting_binomial) %>%
   group_by(woody_or_herb, resprouting_binomial) %>%
-  summarise(median = median(mean_fires_100)) # Medians are robust to log scale and
-  # also more suited to non-normal distributions
+  summarise(median = median(mean_fires_100)) # Medians are robust to log scale and also more suited to non-normal distributions
 
 data_labels <- tibble(
   label = c("Woody", "Herb"),
   woody_or_herb = c("woody", "herb"),
-  x =  c(0.015, 0.015),
+  x = c(0.015, 0.015),
   y = c(1, 1)
 )
 
@@ -267,13 +277,13 @@ resprouting_density <-
     size = 0.8,
     col = NA
   ) +
-  #geom_vline(
+  # geom_vline(
   #  data = medians,
   #  aes(xintercept = median, col = resprouting_binomial),
   #  alpha = 1,
   #  size = 1,
   #  linetype = "longdash"
-  #) +
+  # ) +
   facet_wrap(~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")), ncol = 1, scales = "free") +
   geom_text(
     data = data_labels,
@@ -316,7 +326,8 @@ resprouting_density <-
     axis.text = element_text(size = 10),
     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
     axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0)),
-    legend.position = "none")
+    legend.position = "none"
+  )
 resprouting_density
 ```
 
@@ -422,8 +433,10 @@ Check accuracy of model
 
 ```{r}
 index <-
-  sample(seq_along(df_woody_herb_only$seeding_binomial),
-       0.7 * length(df_woody_herb_only$seeding_binomial))
+  sample(
+    seq_along(df_woody_herb_only$seeding_binomial),
+    0.7 * length(df_woody_herb_only$seeding_binomial)
+  )
 training_x <- df_woody_herb_only[index, c("mean_fires_100", "woody_or_herb")]
 training_y <- df_woody_herb_only[index, "seeding_binomial"]
 test_x <- df_woody_herb_only[-index, c("mean_fires_100", "woody_or_herb")]
@@ -464,7 +477,7 @@ predictions_vs_real %>%
   drop_na(seeding_binomial) %>%
   ggplot(aes(seeding_binomial, preds_transformed)) +
   geom_boxplot() +
-  facet_wrap(~ woody_or_herb) +
+  facet_wrap(~woody_or_herb) +
   theme_classic()
 
 caret::confusionMatrix(predictions_vs_real$preds_binomial, predictions_vs_real$seeding_binomial)
@@ -493,14 +506,16 @@ seeding_plot <-
   ) +
   scale_y_continuous(
     limits = c(0, 1.0),
-    expand = c(0, 0)) +
+    expand = c(0, 0)
+  ) +
   ylab("Seeding probability") +
   xlab("Fire frequency (per century)") +
   scale_colour_manual(
     values = c("#7e5137"),
     name = "",
     breaks = c("woody"),
-    labels = c("Woody")) +
+    labels = c("Woody")
+  ) +
   ggtitle("b)") +
   theme_classic() +
   theme(
@@ -531,7 +546,7 @@ medians <- df_woody_only %>%
 data_labels <- tibble(
   label = c("Woody"),
   woody_or_herb = c("woody"),
-  x =  c(0.015),
+  x = c(0.015),
   y = c(1)
 )
 
@@ -540,7 +555,7 @@ seeding_density <-
   drop_na(seeding_binomial) %>%
   ggplot(aes(mean_fires_100, fill = seeding_binomial)) +
   geom_density(alpha = 0.6, size = 0.8, col = NA) +
-  #geom_vline(
+  # geom_vline(
   #  data = medians,
   #  aes(xintercept = median, col = seeding_binomial),
   #  alpha = 1,
@@ -558,7 +573,8 @@ seeding_density <-
   ) +
   scale_fill_manual(
     values = c("#eb8775", "#172e6d"),
-    labels = c("No", "Yes")) +
+    labels = c("No", "Yes")
+  ) +
   scale_colour_manual(values = c("#eb8775", "#172e6d")) +
   guides(fill = guide_legend(ncol = 2)) +
   labs(
@@ -598,7 +614,7 @@ seeding_density <-
     size = 7,
     fontface = "bold"
   ) +
-  #geom_vline(
+  # geom_vline(
   #  data = medians,
   #  aes(xintercept = median, col = seeding_binomial),
   #  alpha = 1,
@@ -617,7 +633,8 @@ seeding_density <-
   ) +
   scale_fill_manual(
     values = c("#eb8775", "#172e6d"),
-    labels = c("No", "Yes")) +
+    labels = c("No", "Yes")
+  ) +
   scale_colour_manual(
     values = c("#7e5137")
   ) +
@@ -735,14 +752,16 @@ resprouting_phylo_plot <-
   ) +
   scale_y_continuous(
     limits = c(0, 1),
-    expand = c(0, 0)) +
+    expand = c(0, 0)
+  ) +
   ylab("Resprouting probability") +
   xlab("Fire frequency (per century)") +
   scale_colour_manual(
     values = c("#7e5137", "#b9ce6f"),
     name = "",
     breaks = c("woody", "herb"),
-    labels = c("Woody", "Herb")) +
+    labels = c("Woody", "Herb")
+  ) +
   ggtitle("a)") +
   theme_classic() +
   theme(
@@ -755,7 +774,8 @@ resprouting_phylo_plot <-
     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
     axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0)),
     panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
-    axis.line = element_blank())
+    axis.line = element_blank()
+  )
 resprouting_phylo_plot
 
 resprouting_phylo_plot_2 <-
@@ -768,14 +788,16 @@ resprouting_phylo_plot_2 <-
   ) +
   scale_y_continuous(
     limits = c(0, 1),
-    expand = c(0, 0)) +
+    expand = c(0, 0)
+  ) +
   ylab("Resprouting probability") +
   xlab("Fire frequency (per century)") +
   scale_colour_manual(
     values = c("#7e5137", "#b9ce6f"),
     name = "",
     breaks = c("woody", "herb"),
-    labels = c("Woody", "Herb")) +
+    labels = c("Woody", "Herb")
+  ) +
   ggtitle("a)") +
   theme_classic() +
   theme(
@@ -788,7 +810,8 @@ resprouting_phylo_plot_2 <-
     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
     axis.title.x = element_blank(),
     panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
-    axis.line = element_blank())
+    axis.line = element_blank()
+  )
 resprouting_phylo_plot_2
 ```
 
@@ -826,7 +849,7 @@ sorted_data |>
   ggplot(aes(x = mean_fires_100, y = resprouting_binomial)) +
   geom_jitter(height = 0.01, alpha = 0.25) +
   stat_smooth(method = "glm", method.args = list(family = binomial)) +
-  facet_wrap(~ woody_or_herb) +
+  facet_wrap(~woody_or_herb) +
   scale_x_log10() +
   theme_classic()
 ```
@@ -858,7 +881,8 @@ pglm_seeding <- phyloglm(
   data = sorted_data,
   phy = pruned_tree,
   btol = 100,
-  boot = 0)
+  boot = 0
+)
 
 summary(pglm_seeding)
 sjPlot::tab_model(pglm_seeding)
@@ -901,12 +925,14 @@ seeding_phylo_plot <-
   ) +
   scale_y_continuous(
     limits = c(0, 1),
-    expand = c(0, 0)) +
+    expand = c(0, 0)
+  ) +
   scale_colour_manual(
     values = c("#7e5137"),
     name = "",
     breaks = c("woody"),
-    labels = c("Woody")) +
+    labels = c("Woody")
+  ) +
   ggtitle("b)") +
   ylab("Seeding probability") +
   xlab("Fire frequency (per century)") +
@@ -937,12 +963,14 @@ seeding_phylo_plot_2 <-
   ) +
   scale_y_continuous(
     limits = c(0, 1),
-    expand = c(0, 0)) +
+    expand = c(0, 0)
+  ) +
   scale_colour_manual(
     values = c("#7e5137"),
     name = "",
     breaks = c("woody"),
-    labels = c("Woody")) +
+    labels = c("Woody")
+  ) +
   ggtitle("b)") +
   ylab("Seeding probability") +
   xlab("Fire frequency (per century)") +
@@ -1056,8 +1084,12 @@ Read in median fire return interval data from survival analysis
 median_fris <- read_csv("outputs/median_fris_with_survival_analysis.csv")
 median_fris <- median_fris %>% left_join(resprouting_seeding, by = c("taxon_name"))
 
-median_fris |> dplyr::filter(num_pixels >= 10) |> nrow()
-median_fris |> dplyr::filter(!is.na(med_w_warnings), num_pixels >= 10) |> nrow()
+median_fris |>
+  dplyr::filter(num_pixels >= 10) |>
+  nrow()
+median_fris |>
+  dplyr::filter(!is.na(med_w_warnings), num_pixels >= 10) |>
+  nrow()
 
 median_fires_weibull <- median_fris %>%
   dplyr::filter(is.na(med_w_warnings), num_pixels >= 10) %>%
@@ -1069,7 +1101,7 @@ median_fires_weibull <- median_fris %>%
     c("med_w", "med_w_lwr", "med_w_upr", "med_wo", "med_wo_lwr", "med_wo_upr"),
     ~ 100 / .x # Convert to fire frequency per century
   )) |>
-  mutate(confint_size =  med_w_lwr - med_w_upr) |> # Lower minus upper because original FRI was upper minus lower
+  mutate(confint_size = med_w_lwr - med_w_upr) |> # Lower minus upper because original FRI was upper minus lower
   select(all_of(c(
     "taxon_name", "med_w", "med_w_lwr", "med_w_upr", "confint_size", "num_unburnt_pixels", "num_pixels",
     "resprouting_binomial", "seeding_binomial", "data_on_both", "woody_or_herb", "taxon_rank"
@@ -1096,7 +1128,9 @@ hist(median_fires_weibull$confint_size, breaks = 30)
 mean_fires <- read_csv("outputs/mean_fires_df_with_poisson_glm.csv", guess_max = 10871)
 mean_fires <- mean_fires %>% left_join(resprouting_seeding, by = c("taxon_name"))
 
-mean_fires |> dplyr::filter(num_pixels >= 10) |> nrow()
+mean_fires |>
+  dplyr::filter(num_pixels >= 10) |>
+  nrow()
 mean_fires |>
   dplyr::filter(num_pixels >= 10) |>
   dplyr::filter(!is.na(warnings) | !is.na(messages) | !is.na(error)) |>
@@ -1306,7 +1340,10 @@ df_woody_herb_only |>
   )
 
 # Highest fire frequency species
-df_woody_herb_only |> arrange(-mean_fires_100) |> head(10) |> View()
+df_woody_herb_only |>
+  arrange(-mean_fires_100) |>
+  head(10) |>
+  View()
 ```
 
 
@@ -1330,5 +1367,5 @@ austraits <- read_rds("data/austraits-5.0.0.rds")
 ```
 
 ```{r}
-austraits$traits |>
+austraits$traits
 ```
