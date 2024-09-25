@@ -9,6 +9,8 @@ editor_options:
 ```{r}
 library(tidyverse)
 library(patchwork)
+library(arrow)
+library(APCalign)
 ```
 
 
@@ -551,19 +553,17 @@ resprouting_seeding_woody_herb_only %>%
 The GBIF download and cleaning process is in R/gbif_process.R
 
 ```{r}
-gbif <- read.csv("data/filtered_aus_obs.csv", skipNul = TRUE)
+# Specify the columns you need
+columns_needed <- c("decimalLongitude", "decimalLatitude", "species", "verbatimScientificName")
+gbif <- read_parquet("data/filtered_aus_obs.parquet", col_select = all_of(columns_needed)) |>
+  filter(!is.na(species))
 ```
 
 ## Try use ausflora to align GBIF names with APC names
 
-```{r}
-# remotes::install_github("traitecoevo/APCalign")
-library(APCalign)
-```
-
 
 ```{r}
-gbif_taxa <- gbif$verbatimscientificname %>% unique()
+gbif_taxa <- gbif$verbatimScientificName %>% unique()
 gbif_taxa <- gbif_taxa[gbif_taxa != "Microcarpaea  R.Br."] # Problem species for APCalign, may be fixed now
 
 resources <- load_taxonomic_resources()
@@ -581,7 +581,7 @@ lookup_table <- readRDS("data/lookup_table.rds")
 ```{r}
 gbif <-
   gbif %>%
-  left_join(lookup_table, by = c("verbatimscientificname" = "original_name"))
+  left_join(lookup_table, by = c("verbatimScientificName" = "original_name"))
 ```
 
 
@@ -606,7 +606,8 @@ joined_fire_data_taxa <- joined_fire_data$taxon_name %>% unique()
 # Maps of resprouting and seeding
 
 ```{r}
-joined_fire_data_vect <- joined_fire_data %>% terra::vect(geom = c("decimalLongitude", "decimalLatitude"))
+joined_fire_data_vect <- joined_fire_data %>%
+  terra::vect(geom = c("decimalLongitude", "decimalLatitude"))
 base_raster <- joined_fire_data_vect %>%
   terra::ext() %>%
   terra::rast()
@@ -762,6 +763,37 @@ frac_herbaceous_resprouters <-
 
 frac_woody_resprouters + frac_herbaceous_resprouters
 ggsave("figures/frac_resprouters.png", width = 8.5, height = 3)
+```
+
+
+```{r}
+(
+  frac_woody_seeders <-
+    ggplot(data_ozmaps) +
+    geom_tile(
+      data = data_woody |> filter(n_obs >= 10, frac_seeders >= 0.4, y < -10), # 0.3 value is outside of border
+      aes(x, y, fill = frac_seeders), width = 2.1, height = 2.1
+    ) +
+    geom_sf(data = data_sea, fill = "white", colour = NA) +
+    geom_sf(fill = NA, colour = "#1a1a1a", linewidth = 0.2) +
+    coord_sf(ylim = c(-45, -8), xlim = c(110, 157), expand = FALSE) +
+    scale_x_continuous(breaks = seq(110, 150, by = 20)) +
+    scale_y_continuous(breaks = seq(-40, -10, by = 10)) +
+    scale_fill_continuous(type = "viridis", na.value = NA, limits = c(0.3, 0.95)) +
+    theme_bw() +
+    labs(subtitle = "Woody") +
+    ggtitle("a) Proportion of seeding taxa") +
+    theme(
+      plot.title = element_text(size = 16, margin = margin(0, 0, 20, 0)),
+      plot.title.position = "plot",
+      plot.subtitle = element_text(hjust = 0.55, size = 12, face = "bold"),
+      axis.title = element_blank(),
+      axis.text = element_text(size = 8, colour = "#1a1a1a"),
+      legend.position = "none",
+      panel.grid = element_blank(),
+      plot.background = element_rect(fill = NA, colour = NA)
+    )
+)
 ```
 
 

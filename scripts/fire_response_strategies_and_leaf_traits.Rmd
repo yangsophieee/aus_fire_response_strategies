@@ -418,7 +418,7 @@ Plot together and save
 
 ```{r}
 lma_resprouting_plot + lma_seeding_plot + leaf_n_resprouting_plot + leaf_n_seeding_plot
-ggsave("figures/leaf_traits.png", width = 8.5, height = 4.8)
+ggsave("figures/leaf_traits.png", width = 10, height = 5.2)
 ```
 
 
