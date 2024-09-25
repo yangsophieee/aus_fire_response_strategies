@@ -1,0 +1,676 @@
+---
+title: "Phylogeny Figure"
+output: html_notebook
+editor_options:
+  chunk_output_type: console
+---
+
+
+
+Load libraries
+
+```{r}
+library(tidyverse)
+library(ggtreeExtra)
+library(ggtree)
+```
+
+
+### Resprouting data
+
+Join to lookup table
+
+```{r}
+resprouting_seeding <- readRDS("data/resprouting_seeding.rds")
+
+austraits <- read_rds("data/austraits-5.0.0.rds")
+
+resprouting_seeding_new <- resprouting_seeding |>
+  left_join(
+    austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
+    by = "taxon_name"
+  )
+
+resprouting_seeding_new$family %>% unique() %>% length() # 223 unique families
+x <- resprouting_seeding_new %>% group_by(family) %>% summarise(count = n())
+hist(x$count, breaks = 100)
+```
+
+
+Summarise resprouting by family
+
+```{r}
+resprouting_summary <-
+  resprouting_seeding_new %>%
+  drop_na(resprouting_binomial) %>%
+  group_by(family) %>%
+  summarise(
+    prop_resprouting = sum(resprouting_binomial) / n(),
+    data_count = n()
+  ) %>%
+  ungroup() |>
+  arrange(-data_count) |>
+  slice_head(n = 20)
+```
+
+
+Seeding data
+
+```{r}
+seeding_summary <-
+  resprouting_seeding_new %>%
+  drop_na(seeding_binomial, family) %>%
+  group_by(family) %>%
+  summarise(prop_seeding = sum(seeding_binomial) / n()) %>%
+  ungroup()
+```
+
+
+Mean fire frequency data
+
+```{r}
+mean_fires <- read_csv("outputs/final_df_predicted_fires_and_fire_response.csv")
+```
+
+
+```{r}
+mean_fires_new <-
+  mean_fires %>%
+  left_join(
+    austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
+    by = "taxon_name"
+  )
+
+median_fires_summary <-
+  mean_fires_new %>%
+  group_by(family) %>%
+  summarise(median_fires_100 = median(mean_fires_100)) %>%
+  ungroup()
+```
+
+
+
+**Summary statistics for manuscript**
+
+Range and mean fire frequencies in the dataset
+
+```{r}
+mean_fires$mean_fires_100 |> min()
+mean_fires$mean_fires_100 |> max()
+mean_fires$mean_fires_100 |> median()
+median_fires_summary$median_fires_100 |> min()
+median_fires_summary$median_fires_100 |> max()
+median_fires_summary |>
+  filter(family %in% c("Fabaceae", "Myrtaceae", "Orchidaceae", "Proteaceae", "Asteraceae", "Poaceae")) |>
+  arrange(-median_fires_100)
+
+resprouting_summary |> filter(family == "Asteraceae")
+```
+
+
+LMA data
+
+
+```{r}
+aus_native_lookup <- read_csv("data/aus_native_lookup.csv")
+
+lma <-
+  austraits$traits %>%
+  filter(trait_name == "leaf_mass_per_area") %>%
+  pivot_wider(names_from = "trait_name", values_from = "value") |>
+  mutate(leaf_mass_per_area = as.numeric(leaf_mass_per_area))
+
+# Filter out non-native taxa
+lma <-
+  lma %>%
+  left_join(
+    aus_native_lookup,
+    by = c("taxon_name" = "canonical_name")) %>%
+  filter(aus_native == TRUE) %>%
+  select(-aus_native)
+
+mean_lma <-
+  lma %>%
+  group_by(taxon_name) %>%
+  summarise(mean_lma = mean(leaf_mass_per_area)) %>%
+  ungroup()
+
+mean_lma_new <-
+  mean_lma %>%
+  left_join(
+    austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
+    by = "taxon_name"
+  )
+
+mean_lma_new$family %>% unique() %>% length() # 186
+x <- mean_lma_new %>% group_by(family) %>% summarise(count = n())
+hist(x$count, breaks = 100)
+
+median_lma_summary <-
+  mean_lma_new %>%
+  drop_na(mean_lma, family) %>%
+  group_by(family) %>%
+  summarise(median_lma = median(mean_lma)) %>%
+  ungroup()
+```
+
+
+Leaf N per dry mass data
+
+```{r}
+leaf_n <-
+  austraits$traits %>%
+  filter(trait_name == "leaf_N_per_dry_mass") %>%
+  pivot_wider(names_from = "trait_name", values_from = "value") |>
+  mutate(leaf_N_per_dry_mass = as.numeric(leaf_N_per_dry_mass))
+
+
+# Filter out non-native taxa
+leaf_n <-
+  leaf_n %>%
+  left_join(
+    aus_native_lookup,
+    by = c("taxon_name" = "canonical_name")
+  ) %>%
+  filter(aus_native == TRUE) %>%
+  select(-aus_native)
+
+mean_leaf_n <-
+  leaf_n %>%
+  group_by(taxon_name) %>%
+  summarise(mean_leaf_n = mean(leaf_N_per_dry_mass)) %>%
+  ungroup()
+
+mean_leaf_n_new <-
+  mean_leaf_n %>%
+  left_join(
+    austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
+    by = "taxon_name"
+  )
+
+mean_leaf_n_new$family %>% unique() %>% length() # 145
+x <- mean_leaf_n_new %>% group_by(family) %>% summarise(count = n())
+hist(x$count, breaks = 100)
+
+median_leaf_n_summary <-
+  mean_leaf_n_new %>%
+  drop_na(mean_leaf_n, family) %>%
+  group_by(family) %>%
+  summarise(median_leaf_n = median(mean_leaf_n)) %>%
+  ungroup()
+```
+
+
+Number of woody species
+
+```{r}
+woodiness <-
+  austraits$traits %>%
+  filter(dataset_id == "Wenk_2022", trait_name == "woodiness_detailed") %>%
+  pivot_wider(values_from = value, names_from = trait_name)
+
+woody <- c("woody", "semi_woody woody", "woody woody_base")
+herbaceous <- c(
+  "herbaceous", "herbaceous woody", "herbaceous woody_base", "herbaceous woody_root",
+  "herbaceous semi_woody", "herbaceous semi_woody woody"
+)
+semi_woody <- c("semi_woody", "semi_woody woody_base")
+unclear <- c("woody_like_stem", "woody_base")
+
+
+# Filter out non-native taxa
+woodiness <-
+  woodiness %>%
+  left_join(
+    aus_native_lookup,
+    by = c("taxon_name" = "canonical_name")) %>%
+  filter(aus_native == TRUE) %>%
+  select(-aus_native)
+
+woodiness_new <-
+  woodiness %>%
+  left_join(
+    austraits$taxa |> select(all_of(c("taxon_name", "genus", "family"))),
+    by = "taxon_name"
+  )
+
+woodiness_new <-
+  woodiness_new %>%
+  mutate(
+    woody_or_herb = case_when(
+      woodiness_detailed %in% woody ~ "woody",
+      woodiness_detailed %in% herbaceous ~ "herb",
+      woodiness_detailed %in% semi_woody ~ "semi-woody",
+      woodiness_detailed %in% unclear ~ "unclear")
+    )
+
+woodiness_summary <-
+  woodiness_new %>%
+  drop_na(woody_or_herb) %>%
+  group_by(family) %>%
+  summarise(
+    prop_woody = sum(woody_or_herb == "woody") / n()
+  )
+```
+
+
+---
+
+## Pruned tree with only families with resprouting and/or seeding data
+
+```{r}
+tt <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
+
+a <- taxonlookup::lookup_table(unique(tt$tip.label), by_species = TRUE, missing_action = "NA") |>
+  select(-family, -order, -group) # Get genus
+taxonlookup_table <- taxonlookup::lookup_table(unique(tt$tip.label), by_species = TRUE, missing_action = "NA") |>
+  select(genus, family) |>
+  distinct() |>
+  rename(all_of(c("taxonlookup_genus" = "genus", "taxonlookup_family" = "family")))
+a <- rownames_to_column(a, "species")
+a <- a %>%
+  left_join(
+    austraits$taxa |>
+      filter(taxonomic_status == "accepted") |>
+      select(all_of(c("genus", "family"))) |> # Get family from AusTraits taxa table
+      distinct(),
+    by = "genus"
+  ) |>
+  left_join(taxonlookup_table, by = c("genus" = "taxonlookup_genus")) |>
+  mutate(
+    family = if_else(is.na(family), taxonlookup_family, family)
+  ) |>
+  select(-taxonlookup_family)
+take_tenth <- function(x) x[10] # Not [1] because the first species of some families is taxonomically ambiguous
+one_tip <- a |> group_by(family) %>% summarise(species = take_tenth(species))
+out <- ape::drop.tip(tt, tt$tip.label[!tt$tip.label %in% one_tip$species])
+out$tip.label <- one_tip$family[match(out$tip.label, one_tip$species)]
+
+out_pruned <- ape::drop.tip(out, out$tip.label[!out$tip.label %in% resprouting_summary$family])
+
+ggtree(out_pruned, ladderize = FALSE) +
+  geom_tiplab() +
+  xlim(0, 300)
+```
+
+Number of native Australian taxa
+
+```{r}
+taxonomic_resources <- APCalign::load_taxonomic_resources()
+
+apc <- taxonomic_resources$APC |>
+  filter(
+    taxonomic_status == "accepted",
+    taxon_rank %in% c("species", "form", "variety", "subspecies")
+  )
+
+native_lookup <- APCalign::native_anywhere_in_australia(apc$canonical_name, taxonomic_resources)
+
+apc_native <-
+  apc %>%
+  left_join(native_lookup, by = c("canonical_name" = "species"))
+
+species_diversity <-
+  apc_native %>%
+  filter(
+    taxon_rank == "species", # Filter for species only
+    native_anywhere_in_aus == "native" # Filter for native species only
+  ) %>%
+  group_by(family) %>%
+  summarise(n_species = n_distinct(canonical_name)) %>%
+  ungroup() %>%
+  arrange(-n_species)
+
+species_diversity
+```
+
+
+
+New data frame to label and colour key families
+
+```{r}
+extra_data <- tibble(label = out_pruned$tip.label)
+
+extra_data <-
+  extra_data %>%
+  left_join(species_diversity, by = c("label" = "family"))
+
+new_tree <- full_join(out_pruned, extra_data, by = "label")
+```
+
+
+
+```{r}
+new_tree@phylo |>
+  as_tibble() |>
+  filter(label %in% c("Fabaceae", "Myrtaceae", "Orchidaceae", "Proteaceae", "Asteraceae", "Poaceae"))
+```
+
+```{r}
+ggtree(new_tree, layout = "rectangular", size = 0.7) +
+  geom_tiplab(
+    aes(subset = (!node %in% c(3, 7, 10, 15, 16, 20))),
+    offset = 3,
+    size = 6,
+    show.legend = FALSE
+  ) +
+  geom_tiplab(
+    aes(subset = (node %in% c(3, 7, 10, 15, 16, 20)), fontface = "bold"),
+    offset = 3,
+    size = 6,
+    show.legend = FALSE
+  ) +
+  geom_text(
+    aes(label = n_species),
+    hjust = 1,
+    nudge_x = 0,
+    nudge_y = -0.25,
+    size = 4.5
+  ) +
+  theme(
+    plot.margin = unit(c(5, 5, 5, 5), "mm"),
+    legend.position = "none",
+    legend.margin = margin(-0, 0, 0, 0, unit = "cm"),
+    legend.text = element_text(size = 8.5),
+    legend.justification = c("right"),
+    legend.box.margin = margin(0, 0, 0, -20)
+  ) +
+  geom_fruit(
+    data = median_fires_summary,
+    geom = geom_tile,
+    mapping = aes(x = median_fires_100, y = family, fill = median_fires_100),
+    offset = 0.7,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#7d7d7d"
+  ) +
+  geom_fruit(
+    data = median_fires_summary,
+    geom = geom_text,
+    mapping = aes(x = median_fires_100, y = family, label = round(median_fires_100, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = resprouting_summary,
+    geom = geom_tile,
+    mapping = aes(x = prop_resprouting, y = family, fill = prop_resprouting),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#7d7d7d"
+  ) +
+  geom_fruit(
+    data = resprouting_summary,
+    geom = geom_text,
+    mapping = aes(x = prop_resprouting, y = family, label = round(prop_resprouting, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = seeding_summary,
+    geom = geom_tile,
+    mapping = aes(x = prop_seeding, y = family, fill = prop_seeding),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#7d7d7d"
+  ) +
+  geom_fruit(
+    data = seeding_summary,
+    geom = geom_text,
+    mapping = aes(x = prop_seeding, y = family, label = round(prop_seeding, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = median_lma_summary,
+    geom = geom_tile,
+    mapping = aes(x = median_lma, y = family, fill = median_lma),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#7d7d7d"
+  ) +
+  geom_fruit(
+    data = median_lma_summary,
+    geom = geom_text,
+    mapping = aes(x = median_lma, y = family, label = round(median_lma, digits = 0)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = median_leaf_n_summary,
+    geom = geom_tile,
+    mapping = aes(x = median_leaf_n, y = family, fill = median_leaf_n),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#7d7d7d"
+  ) +
+  geom_fruit(
+    data = median_leaf_n_summary,
+    geom = geom_text,
+    mapping = aes(x = median_leaf_n, y = family, label = round(median_leaf_n, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = woodiness_summary,
+    geom = geom_tile,
+    mapping = aes(x = prop_woody, y = family, fill = prop_woody),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#7d7d7d"
+  ) +
+  geom_fruit(
+    data = woodiness_summary,
+    geom = geom_text,
+    mapping = aes(x = prop_woody, y = family, label = round(prop_woody, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  )
+
+ggsave("figures/phylogeny_figure_greyscale.png", width = 10, height = 9)
+```
+
+
+With colour
+
+```{r}
+ggtree(new_tree, layout = "rectangular", size = 0.7) +
+  geom_tiplab(
+    aes(subset = (!node %in% c(3, 7, 10, 15, 16, 20))),
+    offset = 3,
+    size = 6,
+    show.legend = FALSE
+  ) +
+  geom_tiplab(
+    aes(subset = (node %in% c(3, 7, 10, 15, 16, 20)), fontface = "bold"),
+    offset = 3,
+    size = 6,
+    show.legend = FALSE
+  ) +
+  geom_text(
+    aes(label = n_species),
+    hjust = 1,
+    nudge_x = 0,
+    nudge_y = -0.25,
+    size = 4.5
+  ) +
+  theme(
+    plot.margin = unit(c(5, 5, 5, 5), "mm"),
+    legend.position = "none",
+    legend.margin = margin(-0, 0, 0, 0, unit = "cm"),
+    legend.text = element_text(size = 8.5),
+    legend.justification = c("right"),
+    legend.box.margin = margin(0, 0, 0, -20)
+  ) +
+  geom_fruit(
+    data = median_fires_summary,
+    geom = geom_tile,
+    mapping = aes(x = median_fires_100, y = family, fill = median_fires_100),
+    offset = 0.7,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#e04d3d"
+  ) +
+  geom_fruit(
+    data = median_fires_summary,
+    geom = geom_text,
+    mapping = aes(x = median_fires_100, y = family, label = round(median_fires_100, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = resprouting_summary,
+    geom = geom_tile,
+    mapping = aes(x = prop_resprouting, y = family, fill = prop_resprouting),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#e384b8"
+  ) +
+  geom_fruit(
+    data = resprouting_summary,
+    geom = geom_text,
+    mapping = aes(x = prop_resprouting, y = family, label = round(prop_resprouting, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = seeding_summary,
+    geom = geom_tile,
+    mapping = aes(x = prop_seeding, y = family, fill = prop_seeding),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#e3b13d"
+  ) +
+  geom_fruit(
+    data = seeding_summary,
+    geom = geom_text,
+    mapping = aes(x = prop_seeding, y = family, label = round(prop_seeding, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = median_lma_summary,
+    geom = geom_tile,
+    mapping = aes(x = median_lma, y = family, fill = median_lma),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#66914d"
+  ) +
+  geom_fruit(
+    data = median_lma_summary,
+    geom = geom_text,
+    mapping = aes(x = median_lma, y = family, label = round(median_lma, digits = 0)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = median_leaf_n_summary,
+    geom = geom_tile,
+    mapping = aes(x = median_leaf_n, y = family, fill = median_leaf_n),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#5894cc"
+  ) +
+  geom_fruit(
+    data = median_leaf_n_summary,
+    geom = geom_text,
+    mapping = aes(x = median_leaf_n, y = family, label = round(median_leaf_n, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  ) +
+  ggnewscale::new_scale_fill() +
+  geom_fruit(
+    data = woodiness_summary,
+    geom = geom_tile,
+    mapping = aes(x = prop_woody, y = family, fill = prop_woody),
+    offset = 0.1,
+    pwidth = 0,
+    width = 14,
+    height = 1
+  ) +
+  scale_fill_gradient(
+    low = "white",
+    high = "#8f6856"
+  ) +
+  geom_fruit(
+    data = woodiness_summary,
+    geom = geom_text,
+    mapping = aes(x = prop_woody, y = family, label = round(prop_woody, digits = 1)),
+    colour = "black",
+    offset = 0,
+    pwidth = 0
+  )
+
+ggsave("figures/phylogeny_figure_colour.png", width = 10, height = 9)
+```
