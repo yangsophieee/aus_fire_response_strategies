@@ -114,6 +114,8 @@ lma_resp_emmeans <- emmeans::emmeans(
   specs = pairwise ~ resprouting_binomial:woody_or_herb
 )
 lma_resp_emmeans
+
+# Test with Bonferroni p-value adjustment
 lma_resp_emmeans_2 <- marginaleffects::avg_predictions(
   lma_resp_model,
   by = c("resprouting_binomial", "woody_or_herb"),
@@ -186,94 +188,110 @@ lma_resprouting_p_values <- tibble(
   y = c(3.5, 3.5)
 )
 
-lma_resprouting_plot <-
-  fire_response_and_leaf_traits %>%
-  drop_na(resprouting_binomial) %>%
-  ggplot(aes(x = resprouting_binomial, y = mean_lma, fill = woody_or_herb)) +
-  geom_violin(linewidth = 0.8) +
-  geom_boxplot(width = 0.05, linewidth = 0.8) +
-  geom_text(
-    data = lma_resprouting_p_values,
-    aes(x = x, y = y, label = label),
-    hjust = 0,
-    vjust = 0,
-    size = 4,
-    fontface = "bold"
-  ) +
-  facet_wrap(
-    ~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")),
-    labeller = as_labeller(c(
-      "woody" = "Woody",
-      "herb" = "Herbaceous"
-    ))
-  ) +
-  scale_y_log10() +
-  scale_fill_manual(
-    values = c("#7e5137", "#b9ce6f"),
-    breaks = c("woody", "herb")
-  ) +
-  labs(
-    x = "Resprouting",
-    y = expression(LMA ~ (g ~ m^-2))
-  ) +
-  theme_classic() +
-  theme(
-    panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
-    plot.margin = unit(c(0.1, 1, 0.05, 0.1), "cm"),
-    axis.text.y = element_text(colour = "black", size = 10),
-    axis.title.y = element_text(size = 12, margin = margin(0, 10, 0, 0)),
-    axis.title.x = element_blank(),
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank(),
-    legend.position = "none",
-    strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
-    strip.text = element_text(size = 11, face = "bold"),
-    panel.spacing = unit(0.2, "cm"),
-    axis.line = element_blank()
-  )
-lma_resprouting_plot
+(
+  lma_resprouting_plot <-
+    fire_response_and_leaf_traits %>%
+    drop_na(resprouting_binomial) %>%
+    ggplot(aes(x = resprouting_binomial, y = mean_lma, fill = woody_or_herb)) +
+    geom_violin(linewidth = 0.8) +
+    geom_boxplot(width = 0.05, linewidth = 0.8) +
+    geom_text(
+      data = lma_resprouting_p_values,
+      aes(x = x, y = y, label = label),
+      hjust = 0,
+      vjust = 0,
+      size = 4,
+      fontface = "bold"
+    ) +
+    facet_wrap(
+      ~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")),
+      labeller = as_labeller(c(
+        "woody" = "Woody",
+        "herb" = "Herbaceous"
+      ))
+    ) +
+    scale_y_log10() +
+    scale_fill_manual(
+      values = c("#7e5137", "#b9ce6f"),
+      breaks = c("woody", "herb")
+    ) +
+    labs(
+      x = "Resprouting",
+      y = expression(LMA ~ (g ~ m^-2))
+    ) +
+    theme_classic() +
+    theme(
+      panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
+      plot.margin = unit(c(0.1, 1, 0.05, 0.1), "cm"),
+      axis.text.y = element_text(colour = "black", size = 10),
+      axis.title.y = element_text(size = 12, margin = margin(0, 10, 0, 0)),
+      axis.title.x = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      legend.position = "none",
+      strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
+      strip.text = element_text(size = 11, face = "bold"),
+      panel.spacing = unit(0.2, "cm"),
+      axis.line = element_blank()
+    )
+)
 ```
 
 
 
 ```{r}
-leaf_n_resprouting_plot <-
-  fire_response_and_leaf_traits %>%
-  drop_na(resprouting_binomial) %>%
-  ggplot(aes(x = resprouting_binomial, y = mean_leaf_n, fill = woody_or_herb)) +
-  geom_violin(size = 0.8) +
-  geom_boxplot(width = 0.05, size = 0.8) +
-  facet_wrap(
-    ~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")),
-    labeller = as_labeller(c(
-      "woody" = "Woody",
-      "herb" = "Herbaceous"
-    ))
-  ) +
-  scale_y_log10() +
-  scale_x_discrete(labels = c("Non-\nresprouters", "Resprouters")) +
-  scale_fill_manual(
-    values = c("#7e5137", "#b9ce6f"),
-    breaks = c("woody", "herb")
-  ) +
-  labs(
-    x = "Resprouting",
-    y = expression(Leaf ~ N ~ (mg ~ g^-1))
-  ) +
-  theme_classic() +
-  theme(
-    panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
-    plot.margin = unit(c(0.1, 1, 0.1, 0.1), "cm"),
-    axis.text = element_text(colour = "black", size = 10),
-    axis.title.y = element_text(size = 12, margin = margin(0, 10, 0, 0)),
-    axis.title.x = element_text(size = 12, margin = margin(10, 0, 0, 0), face = "bold"),
-    legend.position = "none",
-    strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
-    strip.text = element_text(size = 11, face = "bold"),
-    panel.spacing = unit(0.2, "cm"),
-    axis.line = element_blank()
-  )
-leaf_n_resprouting_plot
+leaf_n_resprouting_p_values <- tibble(
+  label = c("0.476", "0.711"),
+  woody_or_herb = c("woody", "herb"),
+  x = c(0.5, 0.5),
+  y = c(1.5, 1.5)
+)
+
+(
+  leaf_n_resprouting_plot <-
+    fire_response_and_leaf_traits %>%
+    drop_na(resprouting_binomial) %>%
+    ggplot(aes(x = resprouting_binomial, y = mean_leaf_n, fill = woody_or_herb)) +
+    geom_violin(size = 0.8) +
+    geom_boxplot(width = 0.05, size = 0.8) +
+    geom_text(
+      data = leaf_n_resprouting_p_values,
+      aes(x = x, y = y, label = label),
+      hjust = 0,
+      vjust = 0,
+      size = 4
+    ) +
+    facet_wrap(
+      ~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")),
+      labeller = as_labeller(c(
+        "woody" = "Woody",
+        "herb" = "Herbaceous"
+      ))
+    ) +
+    scale_y_log10() +
+    scale_x_discrete(labels = c("Non-\nresprouters", "Resprouters")) +
+    scale_fill_manual(
+      values = c("#7e5137", "#b9ce6f"),
+      breaks = c("woody", "herb")
+    ) +
+    labs(
+      x = "Resprouting",
+      y = expression(Leaf ~ N ~ (mg ~ g^-1))
+    ) +
+    theme_classic() +
+    theme(
+      panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
+      plot.margin = unit(c(0.1, 1, 0.1, 0.1), "cm"),
+      axis.text = element_text(colour = "black", size = 10),
+      axis.title.y = element_text(size = 12, margin = margin(0, 10, 0, 0)),
+      axis.title.x = element_text(size = 12, margin = margin(10, 0, 0, 0), face = "bold"),
+      legend.position = "none",
+      strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
+      strip.text = element_text(size = 11, face = "bold"),
+      panel.spacing = unit(0.2, "cm"),
+      axis.line = element_blank()
+    )
+)
 ```
 
 
@@ -287,101 +305,112 @@ lma_seeding_p_values <- tibble(
   y = c(3.5, 3.5)
 )
 
-lma_seeding_plot <-
-  fire_response_and_leaf_traits %>%
-  drop_na(seeding_binomial) %>%
-  ggplot(aes(x = seeding_binomial, y = mean_lma, fill = woody_or_herb)) +
-  geom_violin(size = 0.8) +
-  geom_boxplot(width = 0.05, size = 0.8) +
-  geom_text(
-    data = lma_seeding_p_values,
-    aes(x = x, y = y, label = label),
-    hjust = 0,
-    vjust = 0,
-    size = 4,
-    fontface = "bold"
-  ) +
-  facet_wrap(
-    ~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")),
-    labeller = as_labeller(c(
-      "woody" = "Woody",
-      "herb" = "Herbaceous"
-    ))
-  ) +
-  scale_y_log10() +
-  scale_fill_manual(
-    values = c("#7e5137", "#b9ce6f"),
-    breaks = c("woody", "herb")
-  ) +
-  labs(
-    x = "Post-fire seeding"
-  ) +
-  theme_classic() +
-  theme(
-    panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
-    plot.margin = unit(c(0.1, 0.1, 0.05, 0.1), "cm"),
-    axis.ticks.y = element_blank(),
-    axis.ticks.x = element_blank(),
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank(),
-    axis.text = element_text(colour = "black", size = 10),
-    axis.title.y = element_blank(),
-    axis.title.x = element_blank(),
-    legend.position = "none",
-    strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
-    strip.text = element_text(size = 11, face = "bold"),
-    panel.spacing = unit(0.2, "cm"),
-    axis.line = element_blank()
-  )
-lma_seeding_plot
+(
+  lma_seeding_plot <-
+    fire_response_and_leaf_traits %>%
+    drop_na(seeding_binomial) %>%
+    ggplot(aes(x = seeding_binomial, y = mean_lma, fill = woody_or_herb)) +
+    geom_violin(size = 0.8) +
+    geom_boxplot(width = 0.05, size = 0.8) +
+    geom_text(
+      data = lma_seeding_p_values,
+      aes(x = x, y = y, label = label),
+      hjust = 0,
+      vjust = 0,
+      size = 4,
+      fontface = "bold"
+    ) +
+    facet_wrap(
+      ~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")),
+      labeller = as_labeller(c(
+        "woody" = "Woody",
+        "herb" = "Herbaceous"
+      ))
+    ) +
+    scale_y_log10() +
+    scale_fill_manual(
+      values = c("#7e5137", "#b9ce6f"),
+      breaks = c("woody", "herb")
+    ) +
+    labs(
+      x = "Post-fire seeding"
+    ) +
+    theme_classic() +
+    theme(
+      panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
+      plot.margin = unit(c(0.1, 0.1, 0.05, 0.1), "cm"),
+      axis.ticks.y = element_blank(),
+      axis.ticks.x = element_blank(),
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.text = element_text(colour = "black", size = 10),
+      axis.title.y = element_blank(),
+      axis.title.x = element_blank(),
+      legend.position = "none",
+      strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
+      strip.text = element_text(size = 11, face = "bold"),
+      panel.spacing = unit(0.2, "cm"),
+      axis.line = element_blank()
+    )
+)
 ```
 
 
 ```{r}
-annotations_p4 <- data.frame(label = c("p = 0.050", ""), woody_or_herb = c("herb", "woody"))
-annotations_p4$woody_or_herb <- annotations_p4$woody_or_herb %>% factor(ordered = TRUE, levels = c("woody", "herb"))
+leaf_n_seeding_p_values <- tibble(
+  label = c("0.270", "0.525"),
+  woody_or_herb = c("woody", "herb"),
+  x = c(0.5, 0.5),
+  y = c(1.5, 1.5)
+)
 
-leaf_n_seeding_plot <-
-  fire_response_and_leaf_traits %>%
-  drop_na(seeding_binomial) %>%
-  ggplot(aes(x = seeding_binomial, y = mean_leaf_n, fill = woody_or_herb)) +
-  geom_violin(size = 0.8) +
-  geom_boxplot(width = 0.05, size = 0.8) +
-  #  geom_text(aes(x = 2.1, y = 2.1, label = label), data = annotations_leaf_n_seeding_plot,
-  #        size = 4, fontface = "bold") +
-  facet_wrap(
-    ~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")),
-    labeller = as_labeller(c(
-      "woody" = "Woody",
-      "herb" = "Herbaceous"
-    ))
-  ) +
-  scale_x_discrete(labels = c("Non-seeders", "Seeders")) +
-  scale_y_log10() +
-  scale_fill_manual(
-    values = c("#7e5137", "#b9ce6f"),
-    breaks = c("woody", "herb")
-  ) +
-  labs(
-    x = "Post-fire seeding",
-    y = "Leaf N (mg/g)"
-  ) +
-  theme_classic() +
-  theme(
-    panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
-    plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
-    axis.ticks.y = element_blank(),
-    axis.text.y = element_blank(),
-    axis.text = element_text(colour = "black", size = 10),
-    axis.title.y = element_blank(),
-    axis.title.x = element_text(size = 12, margin = margin(10, 0, 0, 0), face = "bold"),
-    legend.position = "none",
-    strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
-    strip.text = element_text(size = 11, face = "bold"),
-    panel.spacing = unit(0.2, "cm"),
-    axis.line = element_blank()
-  )
-leaf_n_seeding_plot
+(
+  leaf_n_seeding_plot <-
+    fire_response_and_leaf_traits %>%
+    drop_na(seeding_binomial) %>%
+    ggplot(aes(x = seeding_binomial, y = mean_leaf_n, fill = woody_or_herb)) +
+    geom_violin(size = 0.8) +
+    geom_boxplot(width = 0.05, size = 0.8) +
+    geom_text(
+      data = leaf_n_seeding_p_values,
+      aes(x = x, y = y, label = label),
+      hjust = 0,
+      vjust = 0,
+      size = 4
+    ) +
+    facet_wrap(
+      ~ factor(woody_or_herb, ordered = TRUE, levels = c("woody", "herb")),
+      labeller = as_labeller(c(
+        "woody" = "Woody",
+        "herb" = "Herbaceous"
+      ))
+    ) +
+    scale_x_discrete(labels = c("Non-seeders", "Seeders")) +
+    scale_y_log10() +
+    scale_fill_manual(
+      values = c("#7e5137", "#b9ce6f"),
+      breaks = c("woody", "herb")
+    ) +
+    labs(
+      x = "Post-fire seeding",
+      y = "Leaf N (mg/g)"
+    ) +
+    theme_classic() +
+    theme(
+      panel.background = element_rect(colour = "black", fill = NA, size = 0.5),
+      plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+      axis.ticks.y = element_blank(),
+      axis.text.y = element_blank(),
+      axis.text = element_text(colour = "black", size = 10),
+      axis.title.y = element_blank(),
+      axis.title.x = element_text(size = 12, margin = margin(10, 0, 0, 0), face = "bold"),
+      legend.position = "none",
+      strip.background = element_rect(colour = "black", size = 0.5, fill = "#f0f0f0"),
+      strip.text = element_text(size = 11, face = "bold"),
+      panel.spacing = unit(0.2, "cm"),
+      axis.line = element_blank()
+    )
+)
 ```
 
 
