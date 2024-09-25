@@ -938,7 +938,7 @@ num_fires_plot
 
 layout <- "AB\nCC\nCC"
 frac_woody_resprouters + frac_herbaceous_resprouters + num_fires_plot +
-  plot_layout(design = layout)
+  plot_layout(design = layout, widths = c(4, 4, 4))
 
 ggsave("figures/frac_resprouters_and_num_fires.png", width = 8, height = 8)
 ```
