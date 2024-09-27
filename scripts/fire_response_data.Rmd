@@ -707,9 +707,24 @@ frac_woody_resprouters <-
   coord_sf(ylim = c(-45, -8), xlim = c(110, 157), expand = FALSE) +
   scale_x_continuous(breaks = seq(110, 150, by = 20)) +
   scale_y_continuous(breaks = seq(-40, -10, by = 10)) +
-  scale_fill_continuous(type = "viridis", na.value = NA, limits = c(0.3, 0.95)) +
+  scale_fill_continuous(
+    type = "viridis",
+    na.value = NA,
+    limits = c(0.3, 0.95),
+    breaks = seq(0.3, 0.9, by = 0.2)
+  ) +
   theme_bw() +
   labs(subtitle = "Woody") +
+  guides(
+    fill = guide_colourbar(
+      barwidth = 0.7,
+      barheight = 8,
+      frame.linewidth = 0.3,
+      frame.colour = "#1a1a1a",
+      ticks.linewidth = 0.3,
+      ticks.colour = "#1a1a1a"
+    )
+  ) +
   ggtitle("a) Proportion of resprouting taxa") +
   theme(
     plot.title = element_text(size = 16, margin = margin(0, 0, 20, 0)),
@@ -717,7 +732,8 @@ frac_woody_resprouters <-
     plot.subtitle = element_text(hjust = 0.55, size = 12, face = "bold"),
     axis.title = element_blank(),
     axis.text = element_text(size = 8, colour = "#1a1a1a"),
-    legend.position = "none",
+    legend.title = element_blank(),
+    legend.text = element_text(size = 10, colour = "#1a1a1a"),
     panel.grid = element_blank(),
     plot.background = element_rect(fill = NA, colour = NA)
   )
@@ -761,7 +777,7 @@ frac_herbaceous_resprouters <-
     plot.background = element_rect(fill = NA, colour = NA)
   )
 
-frac_woody_resprouters + frac_herbaceous_resprouters
+frac_woody_resprouters + frac_herbaceous_resprouters + plot_layout(guides = "collect")
 ggsave("figures/frac_resprouters.png", width = 8.5, height = 3)
 ```
 
@@ -937,8 +953,12 @@ num_fires_plot <-
 num_fires_plot
 
 layout <- "AB\nCC\nCC"
-frac_woody_resprouters + frac_herbaceous_resprouters + num_fires_plot +
-  plot_layout(design = layout, widths = c(4, 4, 4))
+layout <- "AB\nCD"
+layout <- "AABB\n#CC#"
+frac_woody_resprouters + frac_herbaceous_resprouters +
+  num_fires_plot + plot_layout(design = layout, widths = c(1, 2, 2, 1))
+
+( frac_woody_resprouters + frac_herbaceous_resprouters + plot_layout(guides = "collect"))
 
 ggsave("figures/frac_resprouters_and_num_fires.png", width = 8, height = 8)
 ```
