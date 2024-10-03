@@ -18,23 +18,24 @@ joined_fire_data <- readRDS("data/joined_fire_data.rds")
 
 safely_n_quietly <- function(.f, otherwise = NULL) {
   retfun <- quietly(safely(.f, otherwise = otherwise, quiet = FALSE))
-    function(...) {
-      ret <- retfun(...)
-      list(
-        result = ret$result$result,
-        output = ret$output,
-        messages = ret$messages,
-        warnings = ret$warnings,
-        error = ret$result$error
-      )
-    }
+  function(...) {
+    ret <- retfun(...)
+    list(
+      result = ret$result$result,
+      output = ret$output,
+      messages = ret$messages,
+      warnings = ret$warnings,
+      error = ret$result$error
+    )
   }
+}
 
 calculate_mean_fires_with_glm <- function(
   taxon,
   gbif_data = joined_fire_data,
   num_of_fires_raster = num_of_fires,
-  sampling_period = 22.17) {
+  sampling_period = 22.17
+) {
 
   # Subset data to taxon
   species_subset <-
@@ -48,7 +49,8 @@ calculate_mean_fires_with_glm <- function(
   species_subset <- species_subset %>%
     mutate(
       decimalLongitude = multiple * round(decimalLongitude / multiple),
-      decimalLatitude = multiple * round(decimalLatitude / multiple)) %>%
+      decimalLatitude = multiple * round(decimalLatitude / multiple)
+    ) %>%
     distinct(.keep_all = TRUE) # Remove duplicates
 
   # Convert to an sf object

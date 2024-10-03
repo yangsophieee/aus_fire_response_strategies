@@ -29,16 +29,16 @@ https://github.com/tidyverse/purrr/issues/426
 ```{r}
 safely_n_quietly <- function(.f, otherwise = NULL) {
   retfun <- quietly(safely(.f, otherwise = otherwise, quiet = FALSE))
-    function(...) {
-      ret <- retfun(...)
-      list(
-        result = ret$result$result,
-        output = ret$output,
-        messages = ret$messages,
-        warnings = ret$warnings,
-        error = ret$result$error
-      )
-    }
+  function(...) {
+    ret <- retfun(...)
+    list(
+      result = ret$result$result,
+      output = ret$output,
+      messages = ret$messages,
+      warnings = ret$warnings,
+      error = ret$result$error
+    )
+  }
 }
 ```
 
@@ -125,7 +125,8 @@ calculate_mean_fires_with_glm <- function(
       ),
       messages = ifelse(
         length(model$messages) >= 1,
-        paste(model$messages, collapse = ", "), NA),
+        paste(model$messages, collapse = ", "), NA
+      ),
       error = NA
     )
 
@@ -144,11 +145,14 @@ calculate_mean_fires_with_glm <- function(
       num_pixels = nrow(species_subset),
       warnings = ifelse(
         length(model$warnings) >= 1,
-        paste(model$warnings, collapse = ", "), NA),
+        paste(model$warnings, collapse = ", "), NA
+      ),
       messages = ifelse(
         length(model$messages) >= 1,
-        paste(model$messages, collapse = ", "), NA),
-      error = paste(model$error, collapse = ", "))
+        paste(model$messages, collapse = ", "), NA
+      ),
+      error = paste(model$error, collapse = ", ")
+    )
 
   }
 
