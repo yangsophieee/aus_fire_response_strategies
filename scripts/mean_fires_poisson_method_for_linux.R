@@ -108,7 +108,8 @@ calculate_mean_fires_with_glm <- function(
       ),
       messages = ifelse(
         length(model$messages) >= 1,
-        paste(model$messages, collapse = ", "), NA),
+        paste(model$messages, collapse = ", "), NA
+      ),
       error = NA
     )
 
@@ -127,11 +128,14 @@ calculate_mean_fires_with_glm <- function(
       num_pixels = nrow(df),
       warnings = ifelse(
         length(model$warnings) >= 1,
-        paste(model$warnings, collapse = ", "), NA),
+        paste(model$warnings, collapse = ", "), NA
+      ),
       messages = ifelse(
         length(model$messages) >= 1,
-        paste(model$messages, collapse = ", "), NA),
-      error = paste(model$error, collapse = ", "))
+        paste(model$messages, collapse = ", "), NA
+      ),
+      error = paste(model$error, collapse = ", ")
+    )
 
   }
 

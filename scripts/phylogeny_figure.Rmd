@@ -11,6 +11,7 @@ Load libraries
 
 ```{r}
 library(tidyverse)
+library(patchwork)
 library(ggtreeExtra)
 library(ggtree)
 ```
@@ -93,7 +94,37 @@ median_fires_summary <-
 TODO Add frequency distribution of fire frequencies to figure
 
 ```{r}
+(
+  fires_histogram <-
+    mean_fires_new |>
+    ggplot(aes(x = mean_fires_100)) +
+    geom_histogram(colour = "#517226", fill = "#517226") +
+    scale_x_log10(
+      expand = c(0, 0),
+      limits = c(0.01, 100),
+      labels = c("0.01", "0.1", "1", "10", "100")
+    ) +
+    scale_y_continuous(
+      expand = c(0, 0),
+      limits = c(0, 1500)
+    ) +
+    labs(
+      title = "a)",
+      x = "Mean fire frequency (per century)",
+      y = "Count"
+    ) +
+    theme_classic() +
+    theme(
+      plot.title.position = "plot",
+      plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
+      plot.margin = unit(c(0.5, 1, 0.5, 0.5), "cm"),
+      axis.text = element_text(size = 10, colour = "black"),
+      axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
+      axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0))
+    )
+)
 
+ggsave("figures/mean_fire_frequency_histogram.png", width = 10, height = 4)
 ```
 
 
@@ -379,8 +410,11 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     nudge_y = -0.25,
     size = 4.5
   ) +
+  labs(title = "b)") +
   theme(
     plot.margin = unit(c(5, 5, 5, 5), "mm"),
+    plot.title.position = "plot",
+    plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
     legend.position = "none",
     legend.margin = margin(-0, 0, 0, 0, unit = "cm"),
     legend.text = element_text(size = 8.5),
@@ -526,165 +560,170 @@ ggsave("figures/phylogeny_figure_greyscale.png", width = 10, height = 9)
 With colour
 
 ```{r}
-ggtree(new_tree, layout = "rectangular", size = 0.7) +
-  geom_tiplab(
-    aes(subset = (!node %in% c(3, 7, 10, 15, 16, 20))),
-    offset = 3,
-    size = 6,
-    show.legend = FALSE
-  ) +
-  geom_tiplab(
-    aes(subset = (node %in% c(3, 7, 10, 15, 16, 20)), fontface = "bold"),
-    offset = 3,
-    size = 6,
-    show.legend = FALSE
-  ) +
-  geom_text(
-    aes(label = n_species),
-    hjust = 1,
-    nudge_x = 0,
-    nudge_y = -0.25,
-    size = 4.5
-  ) +
-  theme(
-    plot.margin = unit(c(5, 5, 5, 5), "mm"),
-    legend.position = "none",
-    legend.margin = margin(-0, 0, 0, 0, unit = "cm"),
-    legend.text = element_text(size = 8.5),
-    legend.justification = c("right"),
-    legend.box.margin = margin(0, 0, 0, -20)
-  ) +
-  geom_fruit(
-    data = median_fires_summary,
-    geom = geom_tile,
-    mapping = aes(x = median_fires_100, y = family, fill = median_fires_100),
-    offset = 0.7,
-    pwidth = 0,
-    width = 14,
-    height = 1
-  ) +
-  scale_fill_gradient(
-    low = "white",
-    high = "#e04d3d"
-  ) +
-  geom_fruit(
-    data = median_fires_summary,
-    geom = geom_text,
-    mapping = aes(x = median_fires_100, y = family, label = round(median_fires_100, digits = 1)),
-    colour = "black",
-    offset = 0,
-    pwidth = 0
-  ) +
-  ggnewscale::new_scale_fill() +
-  geom_fruit(
-    data = resprouting_summary,
-    geom = geom_tile,
-    mapping = aes(x = prop_resprouting, y = family, fill = prop_resprouting),
-    offset = 0.1,
-    pwidth = 0,
-    width = 14,
-    height = 1
-  ) +
-  scale_fill_gradient(
-    low = "white",
-    high = "#e384b8"
-  ) +
-  geom_fruit(
-    data = resprouting_summary,
-    geom = geom_text,
-    mapping = aes(x = prop_resprouting, y = family, label = round(prop_resprouting, digits = 1)),
-    colour = "black",
-    offset = 0,
-    pwidth = 0
-  ) +
-  ggnewscale::new_scale_fill() +
-  geom_fruit(
-    data = seeding_summary,
-    geom = geom_tile,
-    mapping = aes(x = prop_seeding, y = family, fill = prop_seeding),
-    offset = 0.1,
-    pwidth = 0,
-    width = 14,
-    height = 1
-  ) +
-  scale_fill_gradient(
-    low = "white",
-    high = "#e3b13d"
-  ) +
-  geom_fruit(
-    data = seeding_summary,
-    geom = geom_text,
-    mapping = aes(x = prop_seeding, y = family, label = round(prop_seeding, digits = 1)),
-    colour = "black",
-    offset = 0,
-    pwidth = 0
-  ) +
-  ggnewscale::new_scale_fill() +
-  geom_fruit(
-    data = median_lma_summary,
-    geom = geom_tile,
-    mapping = aes(x = median_lma, y = family, fill = median_lma),
-    offset = 0.1,
-    pwidth = 0,
-    width = 14,
-    height = 1
-  ) +
-  scale_fill_gradient(
-    low = "white",
-    high = "#66914d"
-  ) +
-  geom_fruit(
-    data = median_lma_summary,
-    geom = geom_text,
-    mapping = aes(x = median_lma, y = family, label = round(median_lma, digits = 0)),
-    colour = "black",
-    offset = 0,
-    pwidth = 0
-  ) +
-  ggnewscale::new_scale_fill() +
-  geom_fruit(
-    data = median_leaf_n_summary,
-    geom = geom_tile,
-    mapping = aes(x = median_leaf_n, y = family, fill = median_leaf_n),
-    offset = 0.1,
-    pwidth = 0,
-    width = 14,
-    height = 1
-  ) +
-  scale_fill_gradient(
-    low = "white",
-    high = "#5894cc"
-  ) +
-  geom_fruit(
-    data = median_leaf_n_summary,
-    geom = geom_text,
-    mapping = aes(x = median_leaf_n, y = family, label = round(median_leaf_n, digits = 1)),
-    colour = "black",
-    offset = 0,
-    pwidth = 0
-  ) +
-  ggnewscale::new_scale_fill() +
-  geom_fruit(
-    data = woodiness_summary,
-    geom = geom_tile,
-    mapping = aes(x = prop_woody, y = family, fill = prop_woody),
-    offset = 0.1,
-    pwidth = 0,
-    width = 14,
-    height = 1
-  ) +
-  scale_fill_gradient(
-    low = "white",
-    high = "#8f6856"
-  ) +
-  geom_fruit(
-    data = woodiness_summary,
-    geom = geom_text,
-    mapping = aes(x = prop_woody, y = family, label = round(prop_woody, digits = 1)),
-    colour = "black",
-    offset = 0,
-    pwidth = 0
-  )
-
-ggsave("figures/phylogeny_figure_colour.png", width = 10, height = 9)
+(
+  phylogeny_tree <- ggtree(new_tree, layout = "rectangular", size = 0.7) +
+    geom_tiplab(
+      aes(subset = (!node %in% c(3, 7, 10, 15, 16, 20))),
+      offset = 3,
+      size = 6,
+      show.legend = FALSE
+    ) +
+    geom_tiplab(
+      aes(subset = (node %in% c(3, 7, 10, 15, 16, 20)), fontface = "bold"),
+      offset = 3,
+      size = 6,
+      show.legend = FALSE
+    ) +
+    geom_text(
+      aes(label = n_species),
+      hjust = 1,
+      nudge_x = 0,
+      nudge_y = -0.25,
+      size = 4.5
+    ) +
+    labs(title = "b)") +
+    theme(
+      plot.margin = unit(c(5, 5, 5, 5), "mm"),
+      plot.title.position = "plot",
+      plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
+      legend.position = "none",
+      legend.margin = margin(-0, 0, 0, 0, unit = "cm"),
+      legend.text = element_text(size = 8.5),
+      legend.justification = c("right"),
+      legend.box.margin = margin(0, 0, 0, -20)
+    ) +
+    geom_fruit(
+      data = median_fires_summary,
+      geom = geom_tile,
+      mapping = aes(x = median_fires_100, y = family, fill = median_fires_100),
+      offset = 0.7,
+      pwidth = 0,
+      width = 14,
+      height = 1
+    ) +
+    scale_fill_gradient(
+      low = "white",
+      high = "#e04d3d"
+    ) +
+    geom_fruit(
+      data = median_fires_summary,
+      geom = geom_text,
+      mapping = aes(x = median_fires_100, y = family, label = round(median_fires_100, digits = 1)),
+      colour = "black",
+      offset = 0,
+      pwidth = 0
+    ) +
+    ggnewscale::new_scale_fill() +
+    geom_fruit(
+      data = resprouting_summary,
+      geom = geom_tile,
+      mapping = aes(x = prop_resprouting, y = family, fill = prop_resprouting),
+      offset = 0.1,
+      pwidth = 0,
+      width = 14,
+      height = 1
+    ) +
+    scale_fill_gradient(
+      low = "white",
+      high = "#e384b8"
+    ) +
+    geom_fruit(
+      data = resprouting_summary,
+      geom = geom_text,
+      mapping = aes(x = prop_resprouting, y = family, label = round(prop_resprouting, digits = 1)),
+      colour = "black",
+      offset = 0,
+      pwidth = 0
+    ) +
+    ggnewscale::new_scale_fill() +
+    geom_fruit(
+      data = seeding_summary,
+      geom = geom_tile,
+      mapping = aes(x = prop_seeding, y = family, fill = prop_seeding),
+      offset = 0.1,
+      pwidth = 0,
+      width = 14,
+      height = 1
+    ) +
+    scale_fill_gradient(
+      low = "white",
+      high = "#e3b13d"
+    ) +
+    geom_fruit(
+      data = seeding_summary,
+      geom = geom_text,
+      mapping = aes(x = prop_seeding, y = family, label = round(prop_seeding, digits = 1)),
+      colour = "black",
+      offset = 0,
+      pwidth = 0
+    ) +
+    ggnewscale::new_scale_fill() +
+    geom_fruit(
+      data = median_lma_summary,
+      geom = geom_tile,
+      mapping = aes(x = median_lma, y = family, fill = median_lma),
+      offset = 0.1,
+      pwidth = 0,
+      width = 14,
+      height = 1
+    ) +
+    scale_fill_gradient(
+      low = "white",
+      high = "#66914d"
+    ) +
+    geom_fruit(
+      data = median_lma_summary,
+      geom = geom_text,
+      mapping = aes(x = median_lma, y = family, label = round(median_lma, digits = 0)),
+      colour = "black",
+      offset = 0,
+      pwidth = 0
+    ) +
+    ggnewscale::new_scale_fill() +
+    geom_fruit(
+      data = median_leaf_n_summary,
+      geom = geom_tile,
+      mapping = aes(x = median_leaf_n, y = family, fill = median_leaf_n),
+      offset = 0.1,
+      pwidth = 0,
+      width = 14,
+      height = 1
+    ) +
+    scale_fill_gradient(
+      low = "white",
+      high = "#5894cc"
+    ) +
+    geom_fruit(
+      data = median_leaf_n_summary,
+      geom = geom_text,
+      mapping = aes(x = median_leaf_n, y = family, label = round(median_leaf_n, digits = 1)),
+      colour = "black",
+      offset = 0,
+      pwidth = 0
+    ) +
+    ggnewscale::new_scale_fill() +
+    geom_fruit(
+      data = woodiness_summary,
+      geom = geom_tile,
+      mapping = aes(x = prop_woody, y = family, fill = prop_woody),
+      offset = 0.1,
+      pwidth = 0,
+      width = 14,
+      height = 1
+    ) +
+    scale_fill_gradient(
+      low = "white",
+      high = "#8f6856"
+    ) +
+    geom_fruit(
+      data = woodiness_summary,
+      geom = geom_text,
+      mapping = aes(x = prop_woody, y = family, label = round(prop_woody, digits = 1)),
+      colour = "black",
+      offset = 0,
+      pwidth = 0
+    )
+)
+ggsave("figures/phylogeny_figure_colour.png", width = 10, height = 12)
+# Modify in PowerPoint
 ```
