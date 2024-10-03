@@ -98,7 +98,7 @@ TODO Add frequency distribution of fire frequencies to figure
   fires_histogram <-
     mean_fires_new |>
     ggplot(aes(x = mean_fires_100)) +
-    geom_histogram(colour = "#517226", fill = "#517226") +
+    geom_histogram(colour = "#739c3e", fill = "#739c3e") +
     scale_x_log10(
       expand = c(0, 0),
       limits = c(0.01, 100),
