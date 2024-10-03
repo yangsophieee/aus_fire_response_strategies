@@ -124,7 +124,7 @@ TODO Add frequency distribution of fire frequencies to figure
     )
 )
 
-ggsave("figures/mean_fire_frequency_histogram.png", width = 10, height = 4)
+ggsave("figures/mean_fire_frequency_histogram.png", width = 10, height = 3)
 ```
 
 
@@ -553,7 +553,7 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     pwidth = 0
   )
 
-ggsave("figures/phylogeny_figure_greyscale.png", width = 10, height = 9)
+ggsave("figures/phylogeny_figure_greyscale.png", width = 10, height = 9.5)
 ```
 
 
@@ -724,6 +724,6 @@ With colour
       pwidth = 0
     )
 )
-ggsave("figures/phylogeny_figure_colour.png", width = 10, height = 12)
+ggsave("figures/phylogeny_figure_colour.png", width = 10, height = 9.5)
 # Modify in PowerPoint
 ```
