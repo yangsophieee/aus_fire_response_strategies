@@ -90,9 +90,19 @@ median_fires_summary <-
 
 
 
+TODO Add frequency distribution of fire frequencies to figure
+
+```{r}
+
+```
+
+
+
 **Summary statistics for manuscript**
 
 Range and mean fire frequencies in the dataset
+
+TODO Look at more summary statistics
 
 ```{r}
 mean_fires$mean_fires_100 |> min()
@@ -110,7 +120,6 @@ resprouting_summary |> filter(family == "Asteraceae")
 
 LMA data
 
-
 ```{r}
 aus_native_lookup <- read_csv("data/aus_native_lookup.csv")
 
@@ -125,7 +134,8 @@ lma <-
   lma %>%
   left_join(
     aus_native_lookup,
-    by = c("taxon_name" = "canonical_name")) %>%
+    by = c("taxon_name" = "canonical_name")
+  ) %>%
   filter(aus_native == TRUE) %>%
   select(-aus_native)
 
@@ -223,7 +233,8 @@ woodiness <-
   woodiness %>%
   left_join(
     aus_native_lookup,
-    by = c("taxon_name" = "canonical_name")) %>%
+    by = c("taxon_name" = "canonical_name")
+  ) %>%
   filter(aus_native == TRUE) %>%
   select(-aus_native)
 
@@ -241,8 +252,9 @@ woodiness_new <-
       woodiness_detailed %in% woody ~ "woody",
       woodiness_detailed %in% herbaceous ~ "herb",
       woodiness_detailed %in% semi_woody ~ "semi-woody",
-      woodiness_detailed %in% unclear ~ "unclear")
+      woodiness_detailed %in% unclear ~ "unclear"
     )
+  )
 
 woodiness_summary <-
   woodiness_new %>%
@@ -448,7 +460,8 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     offset = 0.1,
     pwidth = 0,
     width = 14,
-    height = 1) +
+    height = 1
+  ) +
   scale_fill_gradient(
     low = "white",
     high = "#7d7d7d"
@@ -614,7 +627,8 @@ ggtree(new_tree, layout = "rectangular", size = 0.7) +
     offset = 0.1,
     pwidth = 0,
     width = 14,
-    height = 1) +
+    height = 1
+  ) +
   scale_fill_gradient(
     low = "white",
     high = "#66914d"
