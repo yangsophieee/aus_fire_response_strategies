@@ -33,7 +33,10 @@ Read in mean fire return interval data from GLMs
 mean_fires <- read_csv("outputs/mean_fires_df_with_poisson_glm.csv", guess_max = 10000)
 mean_fires <- mean_fires %>% left_join(resprouting_seeding, by = c("taxon_name"))
 
-mean_fires |> nrow()
+mean_fires |> nrow() # 10871
+mean_fires |> filter(num_pixels < 10) |> nrow() # 465
+mean_fires |> filter(num_pixels < 10, !is.na(warnings) | !is.na(error) | !is.na(messages)) |> nrow() # 193
+mean_fires |> filter(num_pixels > 10, !is.na(warnings) | !is.na(error) | !is.na(messages)) |> nrow() # 157
 ```
 
 Filter out taxa with warning messages
@@ -54,6 +57,10 @@ mean_fires |>
 mean_fires |> nrow() # 10871
 mean_fires |>
   filter(num_pixels < 10) |>
+  nrow()
+mean_fires |>
+  filter(num_pixels > 10) |>
+  filter(num_unburnt_pixels == num_pixels) |>
   nrow()
 ```
 
