@@ -555,7 +555,7 @@ The GBIF download and cleaning process is in R/gbif_process.R
 ```{r}
 # Specify the columns you need
 columns_needed <- c("decimalLongitude", "decimalLatitude", "species", "verbatimScientificName")
-gbif <- read_parquet("data/filtered_aus_obs.parquet", col_select = all_of(columns_needed)) |>
+gbif <- read_parquet("data/filtered_aus_obs.parquet", col_select = all_of(columns_needed)) |> # See scripts/gbif_process.R for generating this parquet file
   filter(!is.na(species))
 ```
 

@@ -34,4 +34,4 @@ aus_filt <- intermediate_check |>
   cc_inst(buffer = 2000) |> # Remove zoo and herbaria within 2 km
   distinct(decimalLongitude, decimalLatitude, species, .keep_all = TRUE)
 
-aus_filt |> write_parquet("data/filtered_aus_obs.parquet")
+aus_filt |> write_parquet("data/filtered_aus_obs.parquet") # Cannot upload to GitHub repo due to size
