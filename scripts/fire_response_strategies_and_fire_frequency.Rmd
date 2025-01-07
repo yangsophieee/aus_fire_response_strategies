@@ -565,7 +565,6 @@ df_woody_only$predicted_resprouting <- predicted_probabilities
 df_woody_only$CI_low <- CI_low
 df_woody_only$CI_high <- CI_high
 
-# TODO Why has the
 # Plot the predicted probabilities with confidence intervals
 seeding_plot <- ggplot(
   df_woody_only,
@@ -674,8 +673,6 @@ seeding_density <-
     legend.text = element_text(size = 14)
   )
 
-library(cowplot)
-
 get_legend_fixed <- function(plot) {
   # return all legend candidates
   legends <- get_plot_component(plot, "guide-box", return_all = TRUE)
@@ -692,9 +689,9 @@ get_legend_fixed <- function(plot) {
 
 # Convert the plot to a grob object
 grob <- ggplot2::ggplotGrob(seeding_density)
+guide_box <- cowplot::get_plot_component(grob, "guide-box", return_all = TRUE)
+density_legend <- guide_box[[3]]
 
-# Get legend
-density_legend <- get_legend_fixed(seeding_density)
 
 seeding_density <-
   df_woody_only %>%
@@ -831,51 +828,55 @@ modelbased::estimate_prediction(pglm_resprouting) |>
   ylab("Resprouting probability") +
   xlab("Mean fires") +
   theme_classic()
+```
 
-coef2 <- coef(pglm_resprouting)
-x1 <- log10(sorted_data$mean_fires_100)
-x2 <- sorted_data$woody_or_herb
-x2 <- ifelse(x2 == "woody", 1, 0)
-pred_y <- coef2[1] + coef2[2] * x1 + coef2[3] * x1^2 + coef2[4] * x2 + coef2[5] * x1 * x2 + coef2[6] * x1^2 * x2
-pred_p <- exp(pred_y) / (1 + exp(pred_y))
-df1 <- data.frame(x1, x2, sorted_data$woody_or_herb, pred_y, pred_p)
-df1 <- df1 %>% rename(woody_or_herb = sorted_data.woody_or_herb)
 
-resprouting_phylo_plot <-
-  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
-  geom_line(linewidth = 1.3) +
-  scale_x_log10(
-    expand = c(0, 0),
-    limits = c(0.01, 100),
-    labels = c("0.01", "0.1", "1", "10", "100")
-  ) +
-  scale_y_continuous(
-    limits = c(0, 1),
-    expand = c(0, 0)
-  ) +
-  ylab("Resprouting probability") +
-  xlab("Fire frequency (per century)") +
-  scale_colour_manual(
-    values = c("#7e5137", "#b9ce6f"),
-    name = "",
-    breaks = c("woody", "herb"),
-    labels = c("Woody", "Herb")
-  ) +
-  ggtitle("a)") +
-  theme_classic() +
-  theme(
-    panel.border = element_rect(colour = "black", fill = NA),
-    legend.position = "none",
-    axis.text = element_text(size = 10),
-    plot.margin = unit(c(0.1, 1, 0.1, 0.1), "cm"),
-    plot.title.position = "plot",
-    plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
-    axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
-    axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0)),
-    panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
-    axis.line = element_blank()
-  )
-resprouting_phylo_plot
+
+```{r}
+# coef2 <- coef(pglm_resprouting)
+# x1 <- log10(sorted_data$mean_fires_100)
+# x2 <- sorted_data$woody_or_herb
+# x2 <- ifelse(x2 == "woody", 1, 0)
+# pred_y <- coef2[1] + coef2[2] * x1 + coef2[3] * x1^2 + coef2[4] * x2 + coef2[5] * x1 * x2 + coef2[6] * x1^2 * x2
+# pred_p <- exp(pred_y) / (1 + exp(pred_y))
+# df1 <- data.frame(x1, x2, sorted_data$woody_or_herb, pred_y, pred_p)
+# df1 <- df1 %>% rename(woody_or_herb = sorted_data.woody_or_herb)
+
+# resprouting_phylo_plot <-
+#   ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
+#   geom_line(linewidth = 1.3) +
+#   scale_x_log10(
+#     expand = c(0, 0),
+#     limits = c(0.01, 100),
+#     labels = c("0.01", "0.1", "1", "10", "100")
+#   ) +
+#   scale_y_continuous(
+#     limits = c(0, 1),
+#     expand = c(0, 0)
+#   ) +
+#   ylab("Resprouting probability") +
+#   xlab("Fire frequency (per century)") +
+#   scale_colour_manual(
+#     values = c("#7e5137", "#b9ce6f"),
+#     name = "",
+#     breaks = c("woody", "herb"),
+#     labels = c("Woody", "Herb")
+#   ) +
+#   ggtitle("a)") +
+#   theme_classic() +
+#   theme(
+#     panel.border = element_rect(colour = "black", fill = NA),
+#     legend.position = "none",
+#     axis.text = element_text(size = 10),
+#     plot.margin = unit(c(0.1, 1, 0.1, 0.1), "cm"),
+#     plot.title.position = "plot",
+#     plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
+#     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
+#     axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0)),
+#     panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
+#     axis.line = element_blank()
+#   )
+# resprouting_phylo_plot
 
 resprouting_phylo_plot_2 <-
   ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
@@ -915,6 +916,8 @@ resprouting_phylo_plot_2
 ```
 
 
+Plot with confidence intervals
+
 ```{r}
 # Extract model coefficients
 coefficients <- coef(pglm_resprouting)
@@ -949,13 +952,52 @@ sorted_data$CI_low <- CI_low
 sorted_data$CI_high <- CI_high
 
 # Plot the predicted probabilities with confidence intervals
-ggplot(sorted_data, aes(x = mean_fires_100, y = predicted_resprouting, color = woody_or_herb)) +
-  geom_line(linewidth = 1) +
-  geom_ribbon(aes(ymin = CI_low, ymax = CI_high, fill = woody_or_herb), alpha = 0.2, linetype = 0) +
-  scale_x_log10() +
-  ylab("Predicted Resprouting Probability") +
-  xlab("Mean Fires") +
-  theme_classic()
+(
+  resprouting_phylo_plot <-
+    ggplot(
+      sorted_data,
+      aes(x = mean_fires_100, y = predicted_resprouting, color = woody_or_herb)
+    ) +
+    geom_line(linewidth = 1.3) +
+    geom_ribbon(aes(ymin = CI_low, ymax = CI_high, fill = woody_or_herb), alpha = 0.2, linetype = 0) +
+    scale_x_log10(
+      expand = c(0, 0),
+      limits = c(0.01, 100),
+      labels = c("0.01", "0.1", "1", "10", "100")
+    ) +
+    scale_y_continuous(
+      limits = c(0, 1),
+      expand = c(0, 0)
+    ) +
+    ylab("Resprouting probability") +
+    xlab("Fire frequency (per century)") +
+    scale_colour_manual(
+      values = c("#7e5137", "#b9ce6f"),
+      name = "",
+      breaks = c("woody", "herb"),
+      labels = c("Woody", "Herb")
+    ) +
+    scale_fill_manual(
+      values = c("#b19586", "#d4e0a0"),
+      name = "",
+      breaks = c("woody", "herb"),
+      labels = c("Woody", "Herb")
+    ) +
+    ggtitle("a)") +
+    theme_classic() +
+    theme(
+      panel.border = element_rect(colour = "black", fill = NA),
+      legend.position = "none",
+      axis.text = element_text(size = 10),
+      plot.margin = unit(c(0.1, 1, 0.1, 0.1), "cm"),
+      plot.title.position = "plot",
+      plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
+      axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
+      axis.title.x = element_blank(),
+      panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
+      axis.line = element_blank()
+    )
+)
 ```
 
 To calculate R2 Tjur
@@ -1049,51 +1091,51 @@ abs(mean1 - mean2) # 0.039
 Plot
 
 ```{r}
-coef2 <- coef(pglm_seeding)
-x1 <- log10(sorted_data$mean_fires_100)
-x2 <- sorted_data$woody_or_herb
-x2 <- ifelse(x2 == "woody", 1, 0)
-pred_y <- coef2[1] + coef2[2] * x1 + coef2[3] * x1^2
-pred_p <- exp(pred_y) / (1 + exp(pred_y))
-df1 <- data.frame(x1, x2, sorted_data$woody_or_herb, pred_y, pred_p)
-df1 <- df1 %>% rename(woody_or_herb = sorted_data.woody_or_herb)
+# coef2 <- coef(pglm_seeding)
+# x1 <- log10(sorted_data$mean_fires_100)
+# x2 <- sorted_data$woody_or_herb
+# x2 <- ifelse(x2 == "woody", 1, 0)
+# pred_y <- coef2[1] + coef2[2] * x1 + coef2[3] * x1^2
+# pred_p <- exp(pred_y) / (1 + exp(pred_y))
+# df1 <- data.frame(x1, x2, sorted_data$woody_or_herb, pred_y, pred_p)
+# df1 <- df1 %>% rename(woody_or_herb = sorted_data.woody_or_herb)
 
-seeding_phylo_plot <-
-  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
-  geom_line(linewidth = 1.3) +
-  scale_x_log10(
-    expand = c(0, 0),
-    limits = c(0.01, 100),
-    labels = c("0.01", "0.1", "1", "10", "100")
-  ) +
-  scale_y_continuous(
-    limits = c(0, 1),
-    expand = c(0, 0)
-  ) +
-  scale_colour_manual(
-    values = c("#7e5137"),
-    name = "",
-    breaks = c("woody"),
-    labels = c("Woody")
-  ) +
-  ggtitle("b)") +
-  ylab("Seeding probability") +
-  xlab("Fire frequency (per century)") +
-  theme_classic() +
-  theme(
-    panel.border = element_rect(colour = "black", fill = NA),
-    legend.position = "none",
-    axis.text = element_text(size = 10),
-    plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
-    plot.title.position = "plot",
-    plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
-    axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
-    axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0)),
-    panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
-    axis.line = element_blank()
-  )
+# seeding_phylo_plot <-
+#   ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
+#   geom_line(linewidth = 1.3) +
+#   scale_x_log10(
+#     expand = c(0, 0),
+#     limits = c(0.01, 100),
+#     labels = c("0.01", "0.1", "1", "10", "100")
+#   ) +
+#   scale_y_continuous(
+#     limits = c(0, 1),
+#     expand = c(0, 0)
+#   ) +
+#   scale_colour_manual(
+#     values = c("#7e5137"),
+#     name = "",
+#     breaks = c("woody"),
+#     labels = c("Woody")
+#   ) +
+#   ggtitle("b)") +
+#   ylab("Seeding probability") +
+#   xlab("Fire frequency (per century)") +
+#   theme_classic() +
+#   theme(
+#     panel.border = element_rect(colour = "black", fill = NA),
+#     legend.position = "none",
+#     axis.text = element_text(size = 10),
+#     plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+#     plot.title.position = "plot",
+#     plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
+#     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
+#     axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0)),
+#     panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
+#     axis.line = element_blank()
+#   )
 
-seeding_phylo_plot
+# seeding_phylo_plot
 
 
 seeding_phylo_plot_2 <-
@@ -1134,6 +1176,89 @@ seeding_phylo_plot_2 <-
 seeding_phylo_plot_2
 ```
 
+
+Plot with confidence intervals
+
+```{r}
+# Extract model coefficients
+coefficients <- coef(pglm_seeding)
+
+# Create the design matrix for the new data
+design_matrix <- model.matrix(~ log10(mean_fires_100) + I(log10(mean_fires_100)^2), data = sorted_data)
+
+# Calculate predicted values on the logit scale
+logit_values <- design_matrix %*% coefficients
+
+# Convert logit values to probabilities
+predicted_probabilities <- 1 / (1 + exp(-logit_values))
+
+# Calculate standard errors on the logit scale
+vcov_matrix <- vcov(pglm_seeding)
+standard_errors_logit <- sqrt(diag(design_matrix %*% vcov_matrix %*% t(design_matrix)))
+
+# Calculate confidence intervals on the logit scale
+confidence_level <- 0.95
+z_value <- qnorm((1 + confidence_level) / 2)
+CI_low_logit <- logit_values - z_value * standard_errors_logit
+CI_high_logit <- logit_values + z_value * standard_errors_logit
+
+# Convert confidence intervals to probabilities
+CI_low <- 1 / (1 + exp(-CI_low_logit))
+CI_high <- 1 / (1 + exp(-CI_high_logit))
+
+# Add predicted probabilities and confidence intervals to the sorted_data dataframe
+sorted_data$predicted_seeding <- predicted_probabilities
+sorted_data$CI_low <- CI_low
+sorted_data$CI_high <- CI_high
+
+# Plot the predicted probabilities with confidence intervals
+(
+  seeding_phylo_plot <-
+    ggplot(
+      sorted_data,
+      aes(x = mean_fires_100, y = predicted_seeding, color = woody_or_herb)
+    ) +
+    geom_line(linewidth = 1.3) +
+    geom_ribbon(aes(ymin = CI_low, ymax = CI_high, fill = woody_or_herb), alpha = 0.2, linetype = 0) +
+    scale_x_log10(
+      expand = c(0, 0),
+      limits = c(0.01, 100),
+      labels = c("0.01", "0.1", "1", "10", "100")
+    ) +
+    scale_y_continuous(
+      limits = c(0, 1),
+      expand = c(0, 0)
+    ) +
+    ylab("Seeding probability") +
+    xlab("Fire frequency (per century)") +
+    scale_colour_manual(
+      values = c("#7e5137"),
+      name = "",
+      breaks = c("woody"),
+      labels = c("Woody")
+    ) +
+    scale_fill_manual(
+      values = c("#b19586"),
+      name = "",
+      breaks = c("woody"),
+      labels = c("Woody")
+    ) +
+    ggtitle("a)") +
+    theme_classic() +
+    theme(
+      panel.border = element_rect(colour = "black", fill = NA),
+      legend.position = "none",
+      axis.text = element_text(size = 10),
+      plot.margin = unit(c(0.1, 1, 0.1, 0.1), "cm"),
+      plot.title.position = "plot",
+      plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
+      axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
+      axis.title.x = element_blank(),
+      panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
+      axis.line = element_blank()
+    )
+)
+```
 
 ```{r}
 resprouting_phylo_plot + seeding_phylo_plot
