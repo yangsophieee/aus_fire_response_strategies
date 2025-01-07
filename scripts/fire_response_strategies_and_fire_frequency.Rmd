@@ -126,11 +126,6 @@ hist(mean_fires_clean$mean_fires_100, breaks = 40)
 #### Resprouting binomial
 
 ```{r}
-df_woody_herb_only <-
-  mean_fires_clean %>%
-  dplyr::filter(woody_or_herb %in% c("woody", "herb")) |>
-  mutate(across(c("resprouting_binomial", "seeding_binomial", "woody_or_herb"), as.factor))
-
 # Subset normal logistic regression to taxa in phylogenetic logistic regression
 # to check effect of phylogenetic regression
 # tree <- ape::read.tree("data/v0.1-big-seed-plant-trees/ALLMB.tre")
@@ -169,19 +164,100 @@ modelbased::estimate_expectation(glm_resprouting) |>
 ```
 
 
-```{r}
-coef2 <- coef(glm_resprouting)
-x1 <- log10(df_woody_herb_only$mean_fires_100)
-x2 <- df_woody_herb_only$woody_or_herb
-x2 <- ifelse(x2 == "woody", 1, 0)
-pred_y <- coef2[1] + coef2[2] * x1 + coef2[3] * x1^2 + coef2[4] * x2 + coef2[5] * x1 * x2 + coef2[6] * x1^2 * x2
-pred_p <- exp(pred_y) / (1 + exp(pred_y))
-df1 <- data.frame(x1, x2, df_woody_herb_only$woody_or_herb, pred_y, pred_p)
-df1 <- df1 %>% rename(woody_or_herb = df_woody_herb_only.woody_or_herb)
+Original figure without confidence intervals
 
-resprouting_plot <-
-  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
+```{r}
+# coef2 <- coef(glm_resprouting)
+# x1 <- log10(df_woody_herb_only$mean_fires_100)
+# x2 <- df_woody_herb_only$woody_or_herb
+# x2 <- ifelse(x2 == "woody", 1, 0)
+# pred_y <- coef2[1] + coef2[2] * x1 + coef2[3] * x1^2 + coef2[4] * x2 + coef2[5] * x1 * x2 + coef2[6] * x1^2 * x2
+# pred_p <- exp(pred_y) / (1 + exp(pred_y))
+# df1 <- data.frame(x1, x2, df_woody_herb_only$woody_or_herb, pred_y, pred_p)
+# df1 <- df1 %>% rename(woody_or_herb = df_woody_herb_only.woody_or_herb)
+
+# resprouting_plot <-
+#   ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
+#   geom_line(linewidth = 1.3) +
+#   scale_x_log10(
+#     expand = c(0, 0),
+#     limits = c(0.01, 100),
+#     labels = c("0.01", "0.1", "1", "10", "100")
+#   ) +
+#   scale_y_continuous(
+#     limits = c(0, 0.8),
+#     expand = c(0, 0)
+#   ) +
+#   ylab("Resprouting probability") +
+#   xlab("Fire frequency (per century)") +
+#   scale_colour_manual(
+#     values = c("#7e5137", "#b9ce6f"),
+#     name = "",
+#     breaks = c("woody", "herb"),
+#     labels = c("Woody", "Herb")
+#   ) +
+#   ggtitle("a)") +
+#   theme_classic() +
+#   theme(
+#     panel.border = element_rect(colour = "black", fill = NA),
+#     legend.position = "none",
+#     axis.text = element_text(size = 10),
+#     plot.margin = unit(c(0.1, 1, 0.1, 0.1), "cm"),
+#     plot.title.position = "plot",
+#     plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
+#     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
+#     axis.title.x = element_blank(),
+#     panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
+#     axis.line = element_blank()
+#   )
+
+# resprouting_plot
+```
+
+
+Add confidence intervals
+
+```{r}
+# Extract model coefficients
+coefficients <- coef(glm_resprouting)
+
+# Create the design matrix for the new data
+design_matrix <- model.matrix(~ log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
+  I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb, data = df_woody_herb_only)
+
+
+# Calculate predicted values on the logit scale
+logit_values <- design_matrix %*% coefficients
+
+# Convert logit values to probabilities
+predicted_probabilities <- 1 / (1 + exp(-logit_values))
+
+# Calculate standard errors
+vcov_matrix <- vcov(glm_resprouting)
+standard_errors_logit <- sqrt(diag(design_matrix %*% vcov_matrix %*% t(design_matrix)))
+
+# Calculate confidence intervals on the logit scale
+confidence_level <- 0.95
+z_value <- qnorm((1 + confidence_level) / 2)
+CI_low_logit <- logit_values - z_value * standard_errors_logit
+CI_high_logit <- logit_values + z_value * standard_errors_logit
+
+# Convert confidence intervals to probabilities
+CI_low <- 1 / (1 + exp(-CI_low_logit))
+CI_high <- 1 / (1 + exp(-CI_high_logit))
+
+# Add predicted probabilities and confidence intervals to the df_woody_herb_only dataframe
+df_woody_herb_only$predicted_resprouting <- predicted_probabilities
+df_woody_herb_only$CI_low <- CI_low
+df_woody_herb_only$CI_high <- CI_high
+
+# Plot the predicted probabilities with confidence intervals
+resprouting_plot <- ggplot(
+  df_woody_herb_only,
+  aes(x = mean_fires_100, y = predicted_resprouting, color = woody_or_herb)
+) +
   geom_line(linewidth = 1.3) +
+  geom_ribbon(aes(ymin = CI_low, ymax = CI_high, fill = woody_or_herb), alpha = 0.2, linetype = 0) +
   scale_x_log10(
     expand = c(0, 0),
     limits = c(0.01, 100),
@@ -195,6 +271,12 @@ resprouting_plot <-
   xlab("Fire frequency (per century)") +
   scale_colour_manual(
     values = c("#7e5137", "#b9ce6f"),
+    name = "",
+    breaks = c("woody", "herb"),
+    labels = c("Woody", "Herb")
+  ) +
+  scale_fill_manual(
+    values = c("#b19586", "#d4e0a0"),
     name = "",
     breaks = c("woody", "herb"),
     labels = c("Woody", "Herb")
@@ -213,7 +295,6 @@ resprouting_plot <-
     panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
     axis.line = element_blank()
   )
-
 resprouting_plot
 ```
 
@@ -240,7 +321,7 @@ resprouting_density <-
   geom_density(
     aes(mean_fires_100, fill = resprouting_binomial),
     alpha = 0.6,
-    size = 0.8,
+    linewidth = 0.8,
     col = NA
   ) +
   # geom_vline(
@@ -398,18 +479,100 @@ ggeffects::ggpredict(glm_seeding_woody, c("mean_fires_100")) %>%
 Plot fitted model
 
 ```{r}
-coef2 <- coef(glm_seeding_woody)
-x1 <- log10(df_woody_only$mean_fires_100)
-x2 <- df_woody_only$woody_or_herb
-x2 <- ifelse(x2 == "woody", 1, 0)
-pred_y <- coef2[1] + coef2[2] * x1 + coef2[3] * x1^2
-pred_p <- exp(pred_y) / (1 + exp(pred_y))
-df1 <- data.frame(x1, x2, df_woody_only$woody_or_herb, pred_y, pred_p)
-df1 <- df1 %>% rename(woody_or_herb = df_woody_only.woody_or_herb)
+# coef2 <- coef(glm_seeding_woody)
+# x1 <- log10(df_woody_only$mean_fires_100)
+# x2 <- df_woody_only$woody_or_herb
+# x2 <- ifelse(x2 == "woody", 1, 0)
+# pred_y <- coef2[1] + coef2[2] * x1 + coef2[3] * x1^2
+# pred_p <- exp(pred_y) / (1 + exp(pred_y))
+# df1 <- data.frame(x1, x2, df_woody_only$woody_or_herb, pred_y, pred_p)
+# df1 <- df1 %>% rename(woody_or_herb = df_woody_only.woody_or_herb)
 
-seeding_plot <-
-  ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
+# seeding_plot <-
+#   ggplot(data = df1, aes(x = 10^x1, y = pred_p, col = woody_or_herb)) +
+#   geom_line(linewidth = 1.3) +
+#   scale_x_log10(
+#     expand = c(0, 0),
+#     limits = c(0.01, 100),
+#     labels = c("0.01", "0.1", "1", "10", "100")
+#   ) +
+#   scale_y_continuous(
+#     limits = c(0, 1.0),
+#     expand = c(0, 0)
+#   ) +
+#   ylab("Seeding probability") +
+#   xlab("Fire frequency (per century)") +
+#   scale_colour_manual(
+#     values = c("#7e5137"),
+#     name = "",
+#     breaks = c("woody"),
+#     labels = c("Woody")
+#   ) +
+#   ggtitle("b)") +
+#   theme_classic() +
+#   theme(
+#     panel.border = element_rect(colour = "black", fill = NA),
+#     legend.position = "none",
+#     axis.text = element_text(size = 10),
+#     plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+#     plot.title.position = "plot",
+#     plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
+#     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
+#     axis.title.x = element_blank(),
+#     panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
+#     axis.line = element_blank()
+#   )
+
+# seeding_plot
+```
+
+
+Plot with confidence intervals
+
+```{r}
+# Extract model coefficients
+coefficients <- coef(glm_seeding_woody)
+
+# Create the design matrix for the new data
+design_matrix <- model.matrix(
+  ~ log10(mean_fires_100) + I(log10(mean_fires_100)^2),
+  data = df_woody_only
+)
+
+
+# Calculate predicted values on the logit scale
+logit_values <- design_matrix %*% coefficients
+
+# Convert logit values to probabilities
+predicted_probabilities <- 1 / (1 + exp(-logit_values))
+
+# Calculate standard errors
+vcov_matrix <- vcov(glm_seeding_woody)
+standard_errors_logit <- sqrt(diag(design_matrix %*% vcov_matrix %*% t(design_matrix)))
+
+# Calculate confidence intervals on the logit scale
+confidence_level <- 0.95
+z_value <- qnorm((1 + confidence_level) / 2)
+CI_low_logit <- logit_values - z_value * standard_errors_logit
+CI_high_logit <- logit_values + z_value * standard_errors_logit
+
+# Convert confidence intervals to probabilities
+CI_low <- 1 / (1 + exp(-CI_low_logit))
+CI_high <- 1 / (1 + exp(-CI_high_logit))
+
+# Add predicted probabilities and confidence intervals to the df_woody_only dataframe
+df_woody_only$predicted_resprouting <- predicted_probabilities
+df_woody_only$CI_low <- CI_low
+df_woody_only$CI_high <- CI_high
+
+# TODO Why has the
+# Plot the predicted probabilities with confidence intervals
+seeding_plot <- ggplot(
+  df_woody_only,
+  aes(x = mean_fires_100, y = predicted_resprouting, color = woody_or_herb)
+) +
   geom_line(linewidth = 1.3) +
+  geom_ribbon(aes(ymin = CI_low, ymax = CI_high, fill = woody_or_herb), alpha = 0.2, linetype = 0) +
   scale_x_log10(
     expand = c(0, 0),
     limits = c(0.01, 100),
@@ -427,13 +590,19 @@ seeding_plot <-
     breaks = c("woody"),
     labels = c("Woody")
   ) +
+  scale_fill_manual(
+    values = c("#b19586"),
+    name = "",
+    breaks = c("woody"),
+    labels = c("Woody")
+  ) +
   ggtitle("b)") +
   theme_classic() +
   theme(
     panel.border = element_rect(colour = "black", fill = NA),
     legend.position = "none",
     axis.text = element_text(size = 10),
-    plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "cm"),
+    plot.margin = unit(c(0.1, 1, 0.1, 0.1), "cm"),
     plot.title.position = "plot",
     plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
     axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
@@ -441,10 +610,8 @@ seeding_plot <-
     panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
     axis.line = element_blank()
   )
-
 seeding_plot
 ```
-
 
 Density distributions
 
@@ -507,8 +674,27 @@ seeding_density <-
     legend.text = element_text(size = 14)
   )
 
+library(cowplot)
+
+get_legend_fixed <- function(plot) {
+  # return all legend candidates
+  legends <- get_plot_component(plot, "guide-box", return_all = TRUE)
+  # find non-zero legends
+  nonzero <- vapply(legends, \(x) !inherits(x, "zeroGrob"), TRUE)
+  idx <- which(nonzero)
+  # return first non-zero legend if exists, and otherwise first element (which will be a zeroGrob)
+  if (length(idx) > 0) {
+    return(legends[[idx[1]]])
+  } else {
+    return(legends[[1]])
+  }
+}
+
+# Convert the plot to a grob object
+grob <- ggplot2::ggplotGrob(seeding_density)
+
 # Get legend
-density_legend <- cowplot::get_legend(seeding_density)
+density_legend <- get_legend_fixed(seeding_density)
 
 seeding_density <-
   df_woody_only %>%
