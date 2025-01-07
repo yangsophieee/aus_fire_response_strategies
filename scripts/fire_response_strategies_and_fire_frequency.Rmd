@@ -31,6 +31,11 @@ Read in mean fire return interval data from GLMs
 
 ```{r}
 mean_fires <- read_csv("outputs/mean_fires_df_with_poisson_glm.csv", guess_max = 10000)
+
+# Check overdispersion/underdispersion
+mean_fires |> filter(dispersion_p_value < .05) |> pull(dispersion_ratio) |> hist()
+
+
 mean_fires <- mean_fires %>% left_join(resprouting_seeding, by = c("taxon_name"))
 
 mean_fires |> nrow() # 10871
@@ -1291,6 +1296,11 @@ ggsave("figures/method_comparison_woody_herb.png", width = 7, height = 7)
 Woody resprouters and non-resprouters
 
 ```{r}
+df_woody_herb_only <-
+  mean_fires_clean %>%
+  dplyr::filter(woody_or_herb %in% c("woody", "herb")) |>
+  mutate(across(c("resprouting_binomial", "seeding_binomial", "woody_or_herb"), as.factor))
+
 df_woody_herb_only |>
   filter(woody_or_herb == "woody", resprouting_binomial == TRUE) |>
   summarise(median_fires = median(mean_fires_100), sd = sd(mean_fires_100))
@@ -1298,6 +1308,8 @@ df_woody_herb_only |>
 df_woody_herb_only |>
   filter(woody_or_herb == "woody", resprouting_binomial == FALSE) |>
   summarise(median_fires = median(mean_fires_100), sd = sd(mean_fires_100))
+
+wilcox.test(mean_fires_100 ~ resprouting_binomial, data = df_woody_herb_only, subset = woody_or_herb == "woody")
 ```
 
 Herbaceous resprouters and non-resprouters
@@ -1310,6 +1322,8 @@ df_woody_herb_only |>
 df_woody_herb_only |>
   filter(woody_or_herb == "herb", resprouting_binomial == FALSE) |>
   summarise(median_fires = median(mean_fires_100), sd = sd(mean_fires_100))
+
+wilcox.test(mean_fires_100 ~ resprouting_binomial, data = df_woody_herb_only, subset = woody_or_herb == "herb")
 ```
 
 Woody seeders and non-seeders
