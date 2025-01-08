@@ -191,7 +191,7 @@ Original figure without confidence intervals
 #   ylab("Resprouting probability") +
 #   xlab("Fire frequency (per century)") +
 #   scale_colour_manual(
-#     values = c("#7e5137", "#b9ce6f"),
+#     values = c("#5e3a25", "#8aa540"),
 #     name = "",
 #     breaks = c("woody", "herb"),
 #     labels = c("Woody", "Herb")
@@ -252,7 +252,7 @@ df_woody_herb_only$CI_low <- CI_low
 df_woody_herb_only$CI_high <- CI_high
 
 # Plot the predicted probabilities with confidence intervals
-resprouting_plot <- ggplot(
+(resprouting_plot <- ggplot(
   df_woody_herb_only,
   aes(x = mean_fires_100, y = predicted_resprouting, color = woody_or_herb)
 ) +
@@ -270,13 +270,13 @@ resprouting_plot <- ggplot(
   ylab("Resprouting probability") +
   xlab("Fire frequency (per century)") +
   scale_colour_manual(
-    values = c("#7e5137", "#b9ce6f"),
+    values = c("#5e3a25", "#8aa540"),
     name = "",
     breaks = c("woody", "herb"),
     labels = c("Woody", "Herb")
   ) +
   scale_fill_manual(
-    values = c("#b19586", "#d4e0a0"),
+    values = c("#b19586", "#9fb846"),
     name = "",
     breaks = c("woody", "herb"),
     labels = c("Woody", "Herb")
@@ -294,8 +294,7 @@ resprouting_plot <- ggplot(
     axis.title.x = element_blank(),
     panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
     axis.line = element_blank()
-  )
-resprouting_plot
+  ))
 ```
 
 
@@ -355,7 +354,7 @@ resprouting_density <-
     labels = c("No", "Yes")
   ) +
   scale_colour_manual(
-    values = c("#b9ce6f", "#7e5137")
+    values = c("#8aa540", "#5e3a25")
   ) +
   labs(
     x = "Fire frequency (per century)",
@@ -503,7 +502,7 @@ Plot fitted model
 #   ylab("Seeding probability") +
 #   xlab("Fire frequency (per century)") +
 #   scale_colour_manual(
-#     values = c("#7e5137"),
+#     values = c("#5e3a25"),
 #     name = "",
 #     breaks = c("woody"),
 #     labels = c("Woody")
@@ -566,7 +565,7 @@ df_woody_only$CI_low <- CI_low
 df_woody_only$CI_high <- CI_high
 
 # Plot the predicted probabilities with confidence intervals
-seeding_plot <- ggplot(
+(seeding_plot <- ggplot(
   df_woody_only,
   aes(x = mean_fires_100, y = predicted_resprouting, color = woody_or_herb)
 ) +
@@ -584,7 +583,7 @@ seeding_plot <- ggplot(
   ylab("Seeding probability") +
   xlab("Fire frequency (per century)") +
   scale_colour_manual(
-    values = c("#7e5137"),
+    values = c("#5e3a25"),
     name = "",
     breaks = c("woody"),
     labels = c("Woody")
@@ -608,8 +607,7 @@ seeding_plot <- ggplot(
     axis.title.x = element_blank(),
     panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
     axis.line = element_blank()
-  )
-seeding_plot
+  ))
 ```
 
 Density distributions
@@ -673,25 +671,10 @@ seeding_density <-
     legend.text = element_text(size = 14)
   )
 
-get_legend_fixed <- function(plot) {
-  # return all legend candidates
-  legends <- get_plot_component(plot, "guide-box", return_all = TRUE)
-  # find non-zero legends
-  nonzero <- vapply(legends, \(x) !inherits(x, "zeroGrob"), TRUE)
-  idx <- which(nonzero)
-  # return first non-zero legend if exists, and otherwise first element (which will be a zeroGrob)
-  if (length(idx) > 0) {
-    return(legends[[idx[1]]])
-  } else {
-    return(legends[[1]])
-  }
-}
-
 # Convert the plot to a grob object
 grob <- ggplot2::ggplotGrob(seeding_density)
 guide_box <- cowplot::get_plot_component(grob, "guide-box", return_all = TRUE)
 density_legend <- guide_box[[3]]
-
 
 seeding_density <-
   df_woody_only %>%
@@ -730,7 +713,7 @@ seeding_density <-
     labels = c("No", "Yes")
   ) +
   scale_colour_manual(
-    values = c("#7e5137")
+    values = c("#5e3a25")
   ) +
   guides(fill = guide_legend(ncol = 2)) +
   labs(
@@ -857,7 +840,7 @@ modelbased::estimate_prediction(pglm_resprouting) |>
 #   ylab("Resprouting probability") +
 #   xlab("Fire frequency (per century)") +
 #   scale_colour_manual(
-#     values = c("#7e5137", "#b9ce6f"),
+#     values = c("#5e3a25", "#8aa540"),
 #     name = "",
 #     breaks = c("woody", "herb"),
 #     labels = c("Woody", "Herb")
@@ -893,7 +876,7 @@ resprouting_phylo_plot_2 <-
   ylab("Resprouting probability") +
   xlab("Fire frequency (per century)") +
   scale_colour_manual(
-    values = c("#7e5137", "#b9ce6f"),
+    values = c("#5e3a25", "#8aa540"),
     name = "",
     breaks = c("woody", "herb"),
     labels = c("Woody", "Herb")
@@ -972,13 +955,13 @@ sorted_data$CI_high <- CI_high
     ylab("Resprouting probability") +
     xlab("Fire frequency (per century)") +
     scale_colour_manual(
-      values = c("#7e5137", "#b9ce6f"),
+      values = c("#5e3a25", "#8aa540"),
       name = "",
       breaks = c("woody", "herb"),
       labels = c("Woody", "Herb")
     ) +
     scale_fill_manual(
-      values = c("#b19586", "#d4e0a0"),
+      values = c("#b19586", "#9fb846"),
       name = "",
       breaks = c("woody", "herb"),
       labels = c("Woody", "Herb")
@@ -993,7 +976,7 @@ sorted_data$CI_high <- CI_high
       plot.title.position = "plot",
       plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
       axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
-      axis.title.x = element_blank(),
+      axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0)),
       panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
       axis.line = element_blank()
     )
@@ -1113,7 +1096,7 @@ Plot
 #     expand = c(0, 0)
 #   ) +
 #   scale_colour_manual(
-#     values = c("#7e5137"),
+#     values = c("#5e3a25"),
 #     name = "",
 #     breaks = c("woody"),
 #     labels = c("Woody")
@@ -1151,7 +1134,7 @@ seeding_phylo_plot_2 <-
     expand = c(0, 0)
   ) +
   scale_colour_manual(
-    values = c("#7e5137"),
+    values = c("#5e3a25"),
     name = "",
     breaks = c("woody"),
     labels = c("Woody")
@@ -1232,7 +1215,7 @@ sorted_data$CI_high <- CI_high
     ylab("Seeding probability") +
     xlab("Fire frequency (per century)") +
     scale_colour_manual(
-      values = c("#7e5137"),
+      values = c("#5e3a25"),
       name = "",
       breaks = c("woody"),
       labels = c("Woody")
@@ -1253,7 +1236,7 @@ sorted_data$CI_high <- CI_high
       plot.title.position = "plot",
       plot.title = element_text(size = 22, margin = margin(0, 0, 20, 0)),
       axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
-      axis.title.x = element_blank(),
+      axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0)),
       panel.grid.major = element_line(colour = "#ebebeb", linewidth = 0.5),
       axis.line = element_blank()
     )
