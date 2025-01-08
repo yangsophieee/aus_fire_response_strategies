@@ -1317,10 +1317,43 @@ ggeffects::ggpredict(glm_seeding_woody, c("mean_fires_100")) %>%
 ```
 
 Increasing the sample size of the phyloglm (by updating the phylogeny tree with APCalign) lead to the same
-pattern as the normal glm. Then I subsetted the dataset to the taxa used in the phyloglm and ran a normal glm
+pattern as the normal glm (but I'm not sure this is valid because that may screw up the relationships in the
+phylogeny tree). Then I subsetted the dataset to the taxa used in the phyloglm and ran a normal glm
 and it also came out with the same pattern. I think this means that phylogeny doesn't really have an effect
 after all, and the specific subset of taxa that are matched to the phylogeny tree doesn't have an effect either.
 
+
+Test what happens to the results if you only do the species level, not the infraspecific level
+
+```{r}
+df_woody_herb_only$taxon_rank |> table()
+
+df_woody_herb_only_sp_only <- df_woody_herb_only |> filter(taxon_rank == "species")
+
+glm_resprouting_sp_only <- glm(
+  resprouting_binomial ~
+    log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
+    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+  data = df_woody_herb_only_sp_only,
+  family = binomial
+)
+
+df_woody_only_sp_only <- df_woody_only |> filter(taxon_rank == "species")
+
+glm_seeding_woody_sp_only <- glm(
+  seeding_binomial ~ log10(mean_fires_100) + I(log10(mean_fires_100)^2),
+  data = df_woody_only_sp_only,
+  family = binomial
+)
+
+summary(glm_resprouting)
+summary(glm_resprouting_sp_only)
+
+summary(glm_seeding_woody)
+summary(glm_seeding_woody_sp_only)
+```
+
+In conclusion, running with species only does not change the relationships.
 
 ---
 
