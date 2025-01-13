@@ -1351,6 +1351,80 @@ summary(glm_resprouting_sp_only)
 
 summary(glm_seeding_woody)
 summary(glm_seeding_woody_sp_only)
+
+# How many cases do the subspecies have different traits to the species?
+small_df <- df_woody_herb_only |>
+  select(all_of(c(
+    "taxon_name", "mean_fires_100", "taxon_rank", "resprouting_binomial",
+    "seeding_binomial", "num_pixels"
+  )))
+
+species_only <- small_df |>
+  filter(taxon_rank == "species") |>
+  rename(all_of(c(
+    "mean_fires_100_sp" = "mean_fires_100",
+    "resprouting_binomial_sp" = "resprouting_binomial",
+    "seeding_binomial_sp" = "seeding_binomial",
+    "num_pixels_sp" = "num_pixels",
+    "species" = "taxon_name"
+  ))) |>
+  select(-"taxon_rank")
+
+infra_only <- small_df |>
+  filter(taxon_rank != "species") |>
+  mutate(species = str_extract(taxon_name, "^\\S+\\s+\\S+")) |>
+  left_join(species_only, by = "species") |>
+  mutate(
+    mean_fires_100_diff = mean_fires_100_sp - mean_fires_100,
+    resprouting_diff = if_else(resprouting_binomial != resprouting_binomial_sp, TRUE, FALSE),
+    seeding_diff = if_else(seeding_binomial != seeding_binomial_sp, TRUE, FALSE)
+  )
+
+infra_only |> nrow() # 1416
+
+table(infra_only$resprouting_diff) # 971 FALSE, 143 TRUE (12.8% where data available for both species and infraspecies)
+infra_only |>
+  filter(!is.na(resprouting_binomial)) |>
+  nrow() # 1389
+infra_only |>
+  filter(!is.na(resprouting_binomial), !is.na(resprouting_binomial_sp)) |>
+  nrow() # 1114
+
+table(infra_only$seeding_diff) # 192 FALSE, 43 TRUE (18.3% where data available for both species and infraspecies)
+infra_only |>
+  filter(!is.na(seeding_binomial)) |>
+  nrow() # 394
+infra_only |>
+  filter(!is.na(seeding_binomial), !is.na(seeding_binomial_sp)) |>
+  nrow() # 235
+
+# How different are the fire frequencies experienced by the subspecies?
+(
+  infra_diffs_hist <- ggplot(infra_only) +
+    geom_histogram(aes(x = mean_fires_100_diff), colour = "#739c3e", fill = "#739c3e") +
+    scale_x_continuous(
+      expand = c(0, 0),
+      limits = c(-20, 30)
+    ) +
+    scale_y_continuous(
+      expand = c(0, 0),
+      limits = c(0, 800)
+    ) +
+    labs(
+      x = "Difference in mean fire frequency (per century)",
+      y = "Count"
+    ) +
+    theme_classic() +
+    theme(
+      plot.margin = unit(c(0.5, 1, 0.5, 0.5), "cm"),
+      axis.text = element_text(size = 10, colour = "black"),
+      axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
+      axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0))
+    )
+)
+
+ggsave("figures/infra_diffs_hist.png", width = 7, height = 5.5)
+sum(abs(na.omit(infra_only$mean_fires_100_diff)) > 3) # 119
 ```
 
 In conclusion, running with species only does not change the relationships.
@@ -1662,3 +1736,25 @@ austraits <- read_rds("data/austraits-5.0.0.rds")
 ```{r}
 austraits$traits
 ```
+
+Investigate facultative species and post-fire seeding in frequently burnt species
+
+```{r}
+df_woody_herb_only |>
+  filter(mean_fires_100 > 25, woody_or_herb == "woody", !is.na(seeding_binomial)) |>
+  pull(seeding_binomial) |>
+  length() # 68
+df_woody_herb_only |>
+  filter(mean_fires_100 > 25, woody_or_herb == "woody", !is.na(seeding_binomial)) |>
+  pull(seeding_binomial) |>
+  table() # 41 false, 27 true
+df_woody_herb_only |>
+  filter(mean_fires_100 > 25, woody_or_herb == "woody", !is.na(seeding_binomial), seeding_binomial == TRUE, resprouting_binomial == TRUE) |>
+  nrow() # 25
+df_woody_herb_only |>
+  filter(mean_fires_100 > 25, woody_or_herb == "woody", !is.na(seeding_binomial), seeding_binomial == TRUE, resprouting_binomial == FALSE) |>
+  nrow() # 2
+```
+
+When I filter to plants that have mean fire frequency per century of > 25, are woody and have seeding data available,
+40% are seeders and of which 93% are also resprouters (facultative species).
