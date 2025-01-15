@@ -111,10 +111,61 @@ df_woody_herb_only <-
 # df_woody_herb_only <- read_csv("outputs/final_df_predicted_fires_and_fire_response.csv")
 ```
 
+
 Histogram of mean fires
 
 ```{r}
 hist(mean_fires_clean$mean_fires_100, breaks = 40)
+```
+
+
+TODO Investigate proportion of annuals
+
+```{r}
+# remotes::install_github("traitecoevo/austraits", dependencies = TRUE, upgrade = "ask")
+library(austraits)
+austraits <- load_austraits(version = "6.0.0", path = "data/")
+```
+
+```{r}
+# Wenk_2023 dataset
+life_history <- austraits$traits |>
+  filter(trait_name == "life_history", dataset_id == "Wenk_2023") |>
+  pivot_wider(values_from = value, names_from = trait_name) |>
+  select(all_of(c("taxon_name", "life_history"))) |>
+  group_by(taxon_name) |> # Fix when there are multiple rows per species # TODO Flag with Lizzy
+  summarise(life_history = life_history[1])
+
+life_history_summary <-
+  life_history |>
+  mutate(
+    annual_perennial = case_when(
+      str_detect(life_history, "annual") & !str_detect(life_history, "perennial") ~ "annual",
+      str_detect(life_history, "perennial") & !str_detect(life_history, "annual") ~ "perennial",
+      str_detect(life_history, "perennial") & str_detect(life_history, "annual") ~ "perennial" # Assign perennial if both annual and perennial values are listed
+    )
+  )
+
+# TODO How do we decide annual vs perennial when both annual and perennial are listed?
+# "I think I'd push toward perennial - because being a resprouter only relevant if you're perennial,
+# but there is probably more nuance to this than I've thought about"
+# TODO Could also check what resprouting/seeding classification the ones with both annual and perennial are
+```
+
+```{r}
+df_woody_herb_only_life_history <- df_woody_herb_only |>
+  left_join(life_history_summary)
+
+# 26 species without data from Wenk_2023
+missing_species <- df_woody_herb_only_life_history |>
+  filter(is.na(life_history)) |>
+  pull(taxon_name)
+missing_species |> length()
+
+austraits$traits |>
+  filter(trait_name == "life_history", taxon_name %in% missing_species) |>
+  pivot_wider(values_from = value, names_from = trait_name) |>
+  View() # Only 6 of these have data elsewhere in AusTraits
 ```
 
 
@@ -1725,16 +1776,6 @@ df_woody_herb_only |>
 # usually only a resprouter or a seeder, not both?
 ```
 
-
-TODO Investigate proportion of annuals
-
-```{r}
-austraits <- read_rds("data/austraits-5.0.0.rds")
-```
-
-```{r}
-austraits$traits
-```
 
 Investigate facultative species and post-fire seeding in frequently burnt species
 
