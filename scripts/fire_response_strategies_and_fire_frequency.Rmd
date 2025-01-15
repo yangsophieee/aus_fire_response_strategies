@@ -160,7 +160,7 @@ df_woody_herb_only_life_history <- df_woody_herb_only |>
 missing_species <- df_woody_herb_only_life_history |>
   filter(is.na(life_history)) |>
   pull(taxon_name)
-missing_species |> length()
+missing_species |> length() # 26
 
 austraits$traits |>
   filter(trait_name == "life_history", taxon_name %in% missing_species) |>
@@ -168,6 +168,48 @@ austraits$traits |>
   View() # Only 6 of these have data elsewhere in AusTraits
 ```
 
+
+What are the proportions of resprouters and seeders in annuals and perennials?
+
+```{r}
+df_woody_herb_only_life_history |>
+  filter(is.na(annual_perennial)) |>
+  nrow() # Could not get life history for 33 species
+
+df_woody_herb_only_life_history |>
+  filter(woody_or_herb == "herb", !is.na(annual_perennial)) |>
+  mutate(across(c("resprouting_binomial", "seeding_binomial"), ~ if_else(.x == TRUE, 1, 0))) |>
+  group_by(annual_perennial) |>
+  summarise(
+    prop_resprout = sum(resprouting_binomial, na.rm = TRUE) / sum(!is.na(resprouting_binomial)),
+    prop_seed = sum(seeding_binomial, na.rm = TRUE) / sum(!is.na(seeding_binomial))
+  )
+
+df_woody_herb_only_life_history |>
+  filter(woody_or_herb == "herb", !is.na(resprouting_binomial)) |>
+  mutate(across(c("resprouting_binomial", ), ~ if_else(.x == TRUE, 1, 0))) |>
+  group_by(resprouting_binomial) |>
+  summarise(
+    prop_annual = sum(annual_perennial == "annual", na.rm = TRUE) / sum(!is.na(annual_perennial)),
+    prop_perennial = sum(annual_perennial == "perennial", na.rm = TRUE) / sum(!is.na(annual_perennial))
+  )
+
+df_woody_herb_only_life_history |>
+  filter(woody_or_herb == "herb", !is.na(seeding_binomial)) |>
+  mutate(across(c("seeding_binomial"), ~ if_else(.x == TRUE, 1, 0))) |>
+  group_by(seeding_binomial) |>
+  summarise(
+    prop_annual = sum(annual_perennial == "annual", na.rm = TRUE) / sum(!is.na(annual_perennial)),
+    prop_perennial = sum(annual_perennial == "perennial", na.rm = TRUE) / sum(!is.na(annual_perennial))
+  )
+```
+
+
+TODO Supplementary table 
+
+```{r}
+
+```
 
 
 ### Binomial logistic regression
@@ -1798,3 +1840,48 @@ df_woody_herb_only |>
 
 When I filter to plants that have mean fire frequency per century of > 25, are woody and have seeding data available,
 40% are seeders and of which 93% are also resprouters (facultative species).
+
+
+Rerun analyses without annuals
+
+```{r}
+df_woody_herb_only_no_annuals <- df_woody_herb_only_life_history |>
+  filter(annual_perennial != "annual")
+
+glm_resprouting <- glm(
+  resprouting_binomial ~
+    log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
+    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+  data = df_woody_herb_only_no_annuals,
+  family = binomial
+)
+
+summary(glm_resprouting)
+
+ggeffects::ggpredict(glm_resprouting, c("mean_fires_100", "woody_or_herb")) %>%
+  ggplot(aes(x, predicted, color = group)) +
+  geom_line(linewidth = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
+  scale_x_log10() +
+  ylab("Resprouting probability") +
+  xlab("Mean fires") +
+  theme_classic()
+
+glm_resprouting_herb <- glm(
+  resprouting_binomial ~
+    log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
+    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+  data = df_woody_herb_only_no_annuals |> filter(woody_or_herb == "herb"),
+  family = binomial
+)
+
+summary(glm_resprouting_herb)
+ggeffects::ggpredict(glm_resprouting_herb, c("mean_fires_100", "woody_or_herb")) %>%
+  ggplot(aes(x, predicted, color = group)) +
+  geom_line(linewidth = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
+  scale_x_log10() +
+  ylab("Resprouting probability") +
+  xlab("Mean fires") +
+  theme_classic()
+```
