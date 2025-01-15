@@ -10,3 +10,6 @@ filtered_aus_obs.csv
 0004407-230530130749713.csv
 joined_fire_data.rds
 num_fires_df.csv
+.DS_store
+austraits-6.0.0.rds 
+austraits.json
