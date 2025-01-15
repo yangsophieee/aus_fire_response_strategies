@@ -90,8 +90,7 @@ median_fires_summary <-
 ```
 
 
-
-TODO Add frequency distribution of fire frequencies to figure
+Add frequency distribution of fire frequencies to figure
 
 ```{r}
 (
@@ -133,7 +132,7 @@ ggsave("figures/mean_fire_frequency_histogram.png", width = 10, height = 3)
 
 Range and mean fire frequencies in the dataset
 
-TODO Look at more summary statistics
+Look at more summary statistics
 
 ```{r}
 mean_fires$mean_fires_100 |> min()

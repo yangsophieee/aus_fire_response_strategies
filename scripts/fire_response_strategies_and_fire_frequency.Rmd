@@ -63,7 +63,7 @@ mean_fires_no_errors <-
   filter(is.na(warnings), is.na(error), is.na(messages)) %>%
   select(-warnings, -messages, -error)
 
-mean_fires_no_errors |> nrow()
+mean_fires_no_errors |> nrow() # 10512
 mean_fires |>
   filter(!is.na(warnings) | !is.na(error) | !is.na(messages)) |>
   nrow() # 359
@@ -73,11 +73,11 @@ mean_fires |>
 mean_fires |> nrow() # 10871
 mean_fires |>
   filter(num_pixels < 10) |>
-  nrow()
+  nrow() # 465
 mean_fires |>
   filter(num_pixels > 10) |>
   filter(num_unburnt_pixels == num_pixels) |>
-  nrow()
+  nrow() # 117
 ```
 
 Clean data
@@ -85,7 +85,7 @@ Clean data
 ```{r}
 # Eliminate species with less than 10 pixels
 mean_fires_clean <- mean_fires_no_errors |>
-  dplyr::filter(num_pixels >= 10) |> # Removed 284
+  dplyr::filter(num_pixels >= 10) |> # Removed 272
   # Convert to mean number of fires in 100 years, instead of mean number of fires in the sampling period
   mutate(
     mean_fires_100 = mean_fires / 22.17 * 100,
@@ -93,7 +93,7 @@ mean_fires_clean <- mean_fires_no_errors |>
     mean_fires_100_lwr = lwr_conf_int / 22.17 * 100,
     conf_int = mean_fires_100_upr - mean_fires_100_lwr
   )
-# TODO rerun analyses
+
 mean_fires_clean |>
   dplyr::filter(conf_int > 5) |>
   nrow() # 307
@@ -107,7 +107,6 @@ df_woody_herb_only <-
   dplyr::filter(woody_or_herb %in% c("woody", "herb")) |>
   mutate(across(c("resprouting_binomial", "seeding_binomial", "woody_or_herb"), as.factor))
 
-# TODO rerun?
 # write_csv(df_woody_herb_only, "outputs/final_df_predicted_fires_and_fire_response.csv")
 # df_woody_herb_only <- read_csv("outputs/final_df_predicted_fires_and_fire_response.csv")
 ```
@@ -1727,7 +1726,7 @@ df_woody_herb_only |>
 ```
 
 
-Investigate proportion of annuals # TODO
+TODO Investigate proportion of annuals
 
 ```{r}
 austraits <- read_rds("data/austraits-5.0.0.rds")
