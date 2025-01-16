@@ -167,6 +167,21 @@ austraits$traits |>
   filter(trait_name == "life_history", taxon_name %in% missing_species) |>
   pivot_wider(values_from = value, names_from = trait_name) |>
   View() # Only 6 of these have data elsewhere in AusTraits
+
+# How many species in our particular dataset were scored as both perennial and annual?
+df_woody_herb_only_life_history |>
+  filter(str_detect(life_history, "perennial") & str_detect(life_history, "annual")) |>
+  nrow() # 454
+
+df_woody_herb_only_life_history |>
+  filter(str_detect(life_history, "perennial") & str_detect(life_history, "annual")) |>
+  pull(resprouting_binomial) |>
+  table() # 68% of these are non-resprouters
+
+df_woody_herb_only_life_history |>
+  filter(str_detect(life_history, "perennial") & str_detect(life_history, "annual")) |>
+  pull(seeding_binomial) |>
+  table() # 88% of these are seeders
 ```
 
 
