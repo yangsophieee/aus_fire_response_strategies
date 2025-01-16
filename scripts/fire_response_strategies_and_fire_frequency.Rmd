@@ -1868,7 +1868,7 @@ Rerun analyses without annuals
 
 ```{r}
 df_woody_herb_only_no_annuals <- df_woody_herb_only_life_history |>
-  filter(annual_perennial != "annual") # Filters out NAs and annual "woody" species as well
+  filter(annual_perennial != "annual") # Filters out NAs and annual "woody" species as well, 723 species
 
 glm_resprouting <- glm(
   resprouting_binomial ~
