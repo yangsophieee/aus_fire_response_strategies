@@ -119,7 +119,7 @@ hist(mean_fires_clean$mean_fires_100, breaks = 40)
 ```
 
 
-TODO Investigate proportion of annuals
+Investigate proportion of annuals
 
 ```{r}
 # remotes::install_github("traitecoevo/austraits", dependencies = TRUE, upgrade = "ask")
@@ -175,6 +175,12 @@ What are the proportions of resprouters and seeders in annuals and perennials?
 df_woody_herb_only_life_history |>
   filter(is.na(annual_perennial)) |>
   nrow() # Could not get life history for 33 species
+
+df_woody_herb_only_life_history |>
+  filter(!is.na(annual_perennial)) |>
+  group_by(woody_or_herb, annual_perennial) |>
+  summarise(count = n()) # 683 annual herbs and 3544 perennial herbs
+# 7 woody annuals - these are probably between woody and herbaceous and between annual and perennial
 
 df_woody_herb_only_life_history |>
   filter(woody_or_herb == "herb", !is.na(annual_perennial)) |>
@@ -1846,7 +1852,7 @@ Rerun analyses without annuals
 
 ```{r}
 df_woody_herb_only_no_annuals <- df_woody_herb_only_life_history |>
-  filter(annual_perennial != "annual")
+  filter(annual_perennial != "annual") # Filters out NAs and annual "woody" species as well
 
 glm_resprouting <- glm(
   resprouting_binomial ~
@@ -1867,21 +1873,5 @@ ggeffects::ggpredict(glm_resprouting, c("mean_fires_100", "woody_or_herb")) %>%
   xlab("Mean fires") +
   theme_classic()
 
-glm_resprouting_herb <- glm(
-  resprouting_binomial ~
-    log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
-    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
-  data = df_woody_herb_only_no_annuals |> filter(woody_or_herb == "herb"),
-  family = binomial
-)
-
-summary(glm_resprouting_herb)
-ggeffects::ggpredict(glm_resprouting_herb, c("mean_fires_100", "woody_or_herb")) %>%
-  ggplot(aes(x, predicted, color = group)) +
-  geom_line(linewidth = 1) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
-  scale_x_log10() +
-  ylab("Resprouting probability") +
-  xlab("Mean fires") +
-  theme_classic()
+# The relationship does not change when you remove annuals
 ```

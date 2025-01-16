@@ -73,6 +73,39 @@ mean_leaf_n <-
 ```
 
 
+Investigate proportion of annuals
+
+```{r}
+# remotes::install_github("traitecoevo/austraits", dependencies = TRUE, upgrade = "ask")
+library(austraits)
+austraits <- load_austraits(version = "6.0.0", path = "data/")
+```
+
+```{r}
+# Wenk_2023 dataset
+life_history <- austraits$traits |>
+  filter(trait_name == "life_history", dataset_id == "Wenk_2023") |>
+  pivot_wider(values_from = value, names_from = trait_name) |>
+  select(all_of(c("taxon_name", "life_history"))) |>
+  group_by(taxon_name) |> # Fix when there are multiple rows per species # TODO Flag with Lizzy
+  summarise(life_history = life_history[1])
+
+life_history_summary <-
+  life_history |>
+  mutate(
+    annual_perennial = case_when(
+      str_detect(life_history, "annual") & !str_detect(life_history, "perennial") ~ "annual",
+      str_detect(life_history, "perennial") & !str_detect(life_history, "annual") ~ "perennial",
+      str_detect(life_history, "perennial") & str_detect(life_history, "annual") ~ "perennial" # Assign perennial if both annual and perennial values are listed
+    )
+  )
+
+# TODO How do we decide annual vs perennial when both annual and perennial are listed?
+# "I think I'd push toward perennial - because being a resprouter only relevant if you're perennial,
+# but there is probably more nuance to this than I've thought about"
+# TODO Could also check what resprouting/seeding classification the ones with both annual and perennial are
+```
+
 Join to fire response
 
 ```{r}
@@ -81,7 +114,8 @@ fire_response_and_fire_frequency <- read_csv("outputs/final_df_predicted_fires_a
 fire_response_and_leaf_traits <-
   fire_response_and_fire_frequency %>%
   left_join(mean_lma) %>%
-  left_join(mean_leaf_n)
+  left_join(mean_leaf_n) |>
+  left_join(life_history_summary)
 ```
 
 
@@ -90,13 +124,29 @@ fire_response_and_leaf_traits <-
 Number of species with data on LMA and leaf N for woody and herbs
 
 ```{r}
-fire_response_and_leaf_traits |> drop_na(mean_lma) |> nrow()
-fire_response_and_leaf_traits |> drop_na(mean_lma) |> filter(woody_or_herb == "woody") |> nrow()
-fire_response_and_leaf_traits |> drop_na(mean_lma) |> filter(woody_or_herb == "herb") |> nrow()
+fire_response_and_leaf_traits |>
+  drop_na(mean_lma) |>
+  nrow()
+fire_response_and_leaf_traits |>
+  drop_na(mean_lma) |>
+  filter(woody_or_herb == "woody") |>
+  nrow()
+fire_response_and_leaf_traits |>
+  drop_na(mean_lma) |>
+  filter(woody_or_herb == "herb") |>
+  nrow()
 
-fire_response_and_leaf_traits |> drop_na(mean_leaf_n) |> nrow()
-fire_response_and_leaf_traits |> drop_na(mean_leaf_n) |> filter(woody_or_herb == "woody") |> nrow()
-fire_response_and_leaf_traits |> drop_na(mean_leaf_n) |> filter(woody_or_herb == "herb") |> nrow()
+fire_response_and_leaf_traits |>
+  drop_na(mean_leaf_n) |>
+  nrow()
+fire_response_and_leaf_traits |>
+  drop_na(mean_leaf_n) |>
+  filter(woody_or_herb == "woody") |>
+  nrow()
+fire_response_and_leaf_traits |>
+  drop_na(mean_leaf_n) |>
+  filter(woody_or_herb == "herb") |>
+  nrow()
 ```
 
 
