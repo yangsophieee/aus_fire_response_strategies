@@ -142,7 +142,8 @@ life_history_summary <-
     annual_perennial = case_when(
       str_detect(life_history, "annual") & !str_detect(life_history, "perennial") ~ "annual",
       str_detect(life_history, "perennial") & !str_detect(life_history, "annual") ~ "perennial",
-      str_detect(life_history, "perennial") & str_detect(life_history, "annual") ~ "perennial" # Assign perennial if both annual and perennial values are listed
+      # Assign perennial if both annual and perennial values are listed
+      str_detect(life_history, "perennial") & str_detect(life_history, "annual") ~ "perennial"
     )
   )
 
@@ -211,7 +212,7 @@ df_woody_herb_only_life_history |>
 ```
 
 
-TODO Supplementary table 
+TODO Supplementary table
 
 ```{r}
 
