@@ -147,10 +147,11 @@ life_history_summary <-
     )
   )
 
-# TODO How do we decide annual vs perennial when both annual and perennial are listed?
+# How do we decide annual vs perennial when both annual and perennial are listed?
 # "I think I'd push toward perennial - because being a resprouter only relevant if you're perennial,
 # but there is probably more nuance to this than I've thought about"
-# TODO Could also check what resprouting/seeding classification the ones with both annual and perennial are
+# Will says the same, because they are potential perennials
+# See next chunk for how many species were scored as both and what fire response strategies they have
 ```
 
 ```{r}
@@ -1877,6 +1878,8 @@ glm_resprouting <- glm(
   data = df_woody_herb_only_no_annuals,
   family = binomial
 )
+
+# TODO Should I try adding life history as a predictor to the GLM?
 
 summary(glm_resprouting)
 
