@@ -204,7 +204,11 @@ df_woody_herb_only_life_history |>
   mutate(across(c("resprouting_binomial", "seeding_binomial"), ~ if_else(.x == TRUE, 1, 0))) |>
   group_by(annual_perennial) |>
   summarise(
+    num_resprout = sum(resprouting_binomial, na.rm = TRUE),
+    num_resprout_data = sum(!is.na(resprouting_binomial)),
     prop_resprout = sum(resprouting_binomial, na.rm = TRUE) / sum(!is.na(resprouting_binomial)),
+    num_seed = sum(seeding_binomial, na.rm = TRUE),
+    num_seed_data = sum(!is.na(seeding_binomial)),
     prop_seed = sum(seeding_binomial, na.rm = TRUE) / sum(!is.na(seeding_binomial))
   )
 
@@ -225,13 +229,6 @@ df_woody_herb_only_life_history |>
     prop_annual = sum(annual_perennial == "annual", na.rm = TRUE) / sum(!is.na(annual_perennial)),
     prop_perennial = sum(annual_perennial == "perennial", na.rm = TRUE) / sum(!is.na(annual_perennial))
   )
-```
-
-
-TODO Supplementary table
-
-```{r}
-
 ```
 
 

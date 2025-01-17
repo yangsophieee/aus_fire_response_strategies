@@ -753,7 +753,7 @@ leaf_n_seed_emmeans
 ```
 
 
-TODO Plot herb violin plots, grouped by annual/perennial life history
+Plot herb violin plots, grouped by annual/perennial life history
 
 ```{r}
 fire_response_and_leaf_traits_herbs <- fire_response_and_leaf_traits |>
