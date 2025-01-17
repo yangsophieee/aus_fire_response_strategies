@@ -15,8 +15,6 @@ library(tidyverse)
 ```
 
 
-Check if lambda from fitted Poisson models is different to mean fire frequency 
-
 Read in number of fires raster and gbif data
 
 ```{r}
@@ -107,6 +105,7 @@ tictoc::tic()
 mean_fires_list <- parallel::mclapply(list_of_taxa, calculate_mean_fires, mc.cores = num_cores - 1)
 tictoc::toc()
 beepr::beep("treasure")
+# Only took 108 seconds!
 ```
 
 
@@ -120,5 +119,16 @@ mean_fires_df <- mean_fires_list |> bind_rows()
 Write to a csv file
 
 ```{r}
-write_csv(mean_fires_df, "outputs/mean_fires_df_simple_mean.csv", guess_max = 10000)
+write_csv(mean_fires_df, "outputs/mean_fires_df_simple_mean.csv")
 ```
+
+
+Check if lambda from fitted Poisson models is different to mean fire frequency
+
+```{r}
+mean_fires_poisson <- read_csv("outputs/mean_fires_df_with_poisson_glm.csv", guess_max = 10000)
+mean_fires_simple <- read_csv("outputs/mean_fires_df_simple_mean.csv")
+```
+
+
+
