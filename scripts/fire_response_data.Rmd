@@ -1088,10 +1088,18 @@ resprouting_seeding |>
 Number of woody and herbaceous data
 
 ```{r}
-fire_response_woody_herb_only |> filter(woody_or_herb == "woody") |> nrow()
-fire_response_woody_herb_only |> filter(woody_or_herb == "herb") |> nrow()
-fire_response_woody_herb_only |> drop_na(resprouting_binomial) |> nrow()
-fire_response_woody_herb_only |> drop_na(seeding_binomial) |> nrow()
+fire_response_woody_herb_only |>
+  filter(woody_or_herb == "woody") |>
+  nrow()
+fire_response_woody_herb_only |>
+  filter(woody_or_herb == "herb") |>
+  nrow()
+fire_response_woody_herb_only |>
+  drop_na(resprouting_binomial) |>
+  nrow()
+fire_response_woody_herb_only |>
+  drop_na(seeding_binomial) |>
+  nrow()
 
 fire_response_woody_herb_only |>
   filter(woody_or_herb == "woody", !is.na(resprouting_binomial)) |>
@@ -1112,15 +1120,36 @@ fire_response_woody_herb_only |>
 Number of woody resprouters and non-resprouters, seeders and non-seeders
 
 ```{r}
-fire_response_woody_herb_only |> filter(woody_or_herb == "woody", resprouting_binomial == TRUE) |> nrow()
-fire_response_woody_herb_only |> filter(woody_or_herb == "woody", resprouting_binomial == FALSE) |> nrow()
-fire_response_woody_herb_only |> filter(woody_or_herb == "woody", seeding_binomial == TRUE) |> nrow()
-fire_response_woody_herb_only |> filter(woody_or_herb == "woody", seeding_binomial == FALSE) |> nrow()
+fire_response_woody_herb_only |>
+  filter(woody_or_herb == "woody", resprouting_binomial == TRUE) |>
+  nrow()
+fire_response_woody_herb_only |>
+  filter(woody_or_herb == "woody", resprouting_binomial == FALSE) |>
+  nrow()
+fire_response_woody_herb_only |>
+  filter(woody_or_herb == "woody", seeding_binomial == TRUE) |>
+  nrow()
+fire_response_woody_herb_only |>
+  filter(woody_or_herb == "woody", seeding_binomial == FALSE) |>
+  nrow()
 ```
 
 Number of herby resprouters and non-resprouters
 
 ```{r}
-fire_response_woody_herb_only |> filter(woody_or_herb == "herb", resprouting_binomial == TRUE) |> nrow()
-fire_response_woody_herb_only |> filter(woody_or_herb == "herb", resprouting_binomial == FALSE) |> nrow()
+fire_response_woody_herb_only |>
+  filter(woody_or_herb == "herb", resprouting_binomial == TRUE) |>
+  nrow()
+fire_response_woody_herb_only |>
+  filter(woody_or_herb == "herb", resprouting_binomial == FALSE) |>
+  nrow()
+```
+
+
+Is plant lifespan related to resprouting/seeding probability?
+
+TODO GLM
+
+```{r}
+
 ```

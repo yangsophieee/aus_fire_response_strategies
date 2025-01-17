@@ -96,14 +96,16 @@ life_history_summary <-
     annual_perennial = case_when(
       str_detect(life_history, "annual") & !str_detect(life_history, "perennial") ~ "annual",
       str_detect(life_history, "perennial") & !str_detect(life_history, "annual") ~ "perennial",
-      str_detect(life_history, "perennial") & str_detect(life_history, "annual") ~ "perennial" # Assign perennial if both annual and perennial values are listed
+      # Assign perennial if both annual and perennial values are listed
+      str_detect(life_history, "perennial") & str_detect(life_history, "annual") ~ "perennial"
     )
   )
 
-# TODO How do we decide annual vs perennial when both annual and perennial are listed?
+# How do we decide annual vs perennial when both annual and perennial are listed?
 # "I think I'd push toward perennial - because being a resprouter only relevant if you're perennial,
 # but there is probably more nuance to this than I've thought about"
-# TODO Could also check what resprouting/seeding classification the ones with both annual and perennial are
+# Will says the same, because they are potential perennials
+# See next chunk for how many species were scored as both and what fire response strategies they have
 ```
 
 Join to fire response
@@ -686,4 +688,112 @@ all_data$genus %>%
 all_data$family %>%
   unique() %>%
   length() # 85
+```
+
+
+Check results without annuals
+
+```{r}
+fire_response_and_leaf_traits_no_annuals <- fire_response_and_leaf_traits |>
+  filter(annual_perennial != "annual") # Filters out NAs and annual "woody" species as well
+
+lma_resp_model <- lm(
+  log10(mean_lma) ~ resprouting_binomial * woody_or_herb,
+  data = fire_response_and_leaf_traits_no_annuals
+)
+summary(lma_resp_model)
+
+leaf_n_resp_model <- lm(
+  log10(mean_leaf_n) ~ resprouting_binomial * woody_or_herb,
+  data = fire_response_and_leaf_traits_no_annuals
+)
+summary(leaf_n_resp_model)
+
+lma_seed_model <- lm(
+  log10(mean_lma) ~ seeding_binomial * woody_or_herb,
+  data = fire_response_and_leaf_traits_no_annuals
+)
+summary(lma_seed_model)
+
+leaf_n_seed_model <- lm(
+  log10(mean_leaf_n) ~ seeding_binomial * woody_or_herb,
+  data = fire_response_and_leaf_traits_no_annuals
+)
+summary(leaf_n_seed_model)
+```
+
+
+Check estimated marginal means
+
+```{r}
+lma_resp_emmeans <- emmeans::emmeans(
+  lma_resp_model,
+  specs = pairwise ~ resprouting_binomial:woody_or_herb
+)
+lma_resp_emmeans
+
+leaf_n_resp_emmeans <- emmeans::emmeans(
+  leaf_n_resp_model,
+  specs = pairwise ~ resprouting_binomial:woody_or_herb
+)
+leaf_n_resp_emmeans
+
+
+lma_seed_emmeans <- emmeans::emmeans(
+  lma_seed_model,
+  specs = pairwise ~ seeding_binomial:woody_or_herb
+)
+lma_seed_emmeans
+
+leaf_n_seed_emmeans <- emmeans::emmeans(
+  leaf_n_seed_model,
+  specs = pairwise ~ seeding_binomial:woody_or_herb
+)
+leaf_n_seed_emmeans
+```
+
+
+Plot herb violin plots, grouped by annual/perennial life history
+
+```{r}
+fire_response_and_leaf_traits_herbs <- fire_response_and_leaf_traits |>
+  filter(woody_or_herb == "herb")
+
+(
+  lma_resprouting_life_history_plot <-
+    fire_response_and_leaf_traits_herbs %>%
+    drop_na(resprouting_binomial) %>%
+    ggplot(aes(x = resprouting_binomial, y = mean_lma, fill = annual_perennial)) +
+    geom_violin(linewidth = 0.8, position = position_dodge(width = 0.75)) +
+    geom_boxplot(width = 0.05, linewidth = 0.8, position = position_dodge(width = 0.75), show.legend = FALSE) +
+    scale_y_log10() +
+    scale_x_discrete(labels = c("Non-\nresprouters", "Resprouters")) +
+    scale_fill_manual(
+      values = c("#a9c9ee", "#4d5f2b"),
+      labels = c("Annual", "Perennial")
+    ) +
+    labs(
+      x = "Resprouting",
+      y = expression(LMA ~ (g ~ m^-2))
+    ) +
+    guides(fill = guide_legend(override.aes = list(colour = NA, linewidth = 0.4))) +
+    theme_classic() +
+    theme(
+      panel.background = element_rect(colour = "black", fill = NA, linewidth = 0.5),
+      plot.margin = unit(c(0.1, 1, 0.05, 0.1), "cm"),
+      axis.text = element_text(colour = "black", size = 10),
+      axis.title.y = element_text(size = 13, margin = margin(0, 10, 0, 0)),
+      axis.title.x = element_text(size = 13, margin = margin(10, 0, 0, 0)),
+      axis.text.x = element_text(colour = "black"),
+      legend.position = "top",
+      legend.title = element_blank(),
+      legend.text = element_text(size = 11),
+      strip.background = element_rect(colour = "black", linewidth = 0.5, fill = "#f0f0f0"),
+      strip.text = element_text(size = 11, face = "bold"),
+      panel.spacing = unit(0.2, "cm"),
+      axis.line = element_blank()
+    )
+)
+
+ggsave("figures/lma_resprouting_life_history.png", width = 6, height = 5.2)
 ```
