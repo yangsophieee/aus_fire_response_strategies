@@ -51,7 +51,6 @@ calculate_mean_fires_with_glm <- function(
     gbif_data = joined_fire_data,
     num_of_fires_raster = num_of_fires,
     sampling_period = 22.17) {
-
   # Subset data to taxon
   species_subset <-
     gbif_data %>%
@@ -89,7 +88,6 @@ calculate_mean_fires_with_glm <- function(
   model <- safe_quiet_glm(num_of_fires ~ 1, data = df, family = poisson(link = "identity"))
 
   if (length(model$error) < 1) {
-
     # Get summary
     summary <- summary(model$result)
 
@@ -129,9 +127,7 @@ calculate_mean_fires_with_glm <- function(
       ),
       error = NA
     )
-
   } else {
-
     # Return outputs
     output_df <- data.frame(
       taxon_name = taxon,
@@ -153,11 +149,9 @@ calculate_mean_fires_with_glm <- function(
       ),
       error = paste(model$error, collapse = ", ")
     )
-
   }
 
   return(output_df)
-
 }
 ```
 
@@ -211,6 +205,6 @@ mean_fires_df <- mean_fires_list %>% bind_rows()
 Write to a csv file
 
 ```{r}
-write_csv(mean_fires_df, "outputs/mean_fires_df_with_poisson_glm.csv")
+# write_csv(mean_fires_df, "outputs/mean_fires_df_with_poisson_glm.csv")
 ```
 

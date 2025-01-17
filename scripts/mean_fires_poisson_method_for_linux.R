@@ -1,4 +1,3 @@
-
 # Using UNSW HPC Katana
 # This research includes computations using the computational cluster Katana supported by
 # Research Technology Services at UNSW Sydney.
@@ -31,12 +30,10 @@ safely_n_quietly <- function(.f, otherwise = NULL) {
 }
 
 calculate_mean_fires_with_glm <- function(
-  taxon,
-  gbif_data = joined_fire_data,
-  num_of_fires_raster = num_of_fires,
-  sampling_period = 22.17
-) {
-
+    taxon,
+    gbif_data = joined_fire_data,
+    num_of_fires_raster = num_of_fires,
+    sampling_period = 22.17) {
   # Subset data to taxon
   species_subset <-
     gbif_data %>%
@@ -72,7 +69,6 @@ calculate_mean_fires_with_glm <- function(
   model <- safe_quiet_glm(num_of_fires ~ 1, data = df, family = poisson(link = "identity"))
 
   if (length(model$error) < 1) {
-
     # Get summary
     summary <- summary(model$result)
 
@@ -112,9 +108,7 @@ calculate_mean_fires_with_glm <- function(
       ),
       error = NA
     )
-
   } else {
-
     # Return outputs
     output_df <- data.frame(
       taxon_name = taxon,
@@ -136,11 +130,9 @@ calculate_mean_fires_with_glm <- function(
       ),
       error = paste(model$error, collapse = ", ")
     )
-
   }
 
   return(output_df)
-
 }
 
 list_of_taxa <- joined_fire_data$taxon_name %>% unique()
