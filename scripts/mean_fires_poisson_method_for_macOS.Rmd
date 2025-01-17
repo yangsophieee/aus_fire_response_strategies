@@ -1,0 +1,124 @@
+---
+title: "mean_fire_frequency_simple"
+author: "Sophie"
+date: "17/01/2025"
+output: html_document
+editor_options:
+  chunk_output_type: console
+---
+
+
+Load libraries
+
+```{r}
+library(tidyverse)
+```
+
+
+Check if lambda from fitted Poisson models is different to mean fire frequency 
+
+Read in number of fires raster and gbif data
+
+```{r}
+num_of_fires <- terra::rast("data/num_fires_map.tif")
+joined_fire_data <- readRDS("data/joined_fire_data.rds")
+```
+
+
+Function that returns a data frame with mean fire frequency
+
+```{r}
+calculate_mean_fires <- function(
+    taxon,
+    gbif_data = joined_fire_data,
+    num_of_fires_raster = num_of_fires,
+    sampling_period = 22.17) {
+  # Subset data to taxon
+  species_subset <-
+    gbif_data |>
+    filter(taxon_name == taxon) |>
+    select(decimalLongitude, decimalLatitude)
+
+  # Round species_subset to resolution of 0.005 decimal degrees so that any coordinates
+  # that are approximately within the same MODIS pixel can be removed
+  multiple <- 0.005
+  species_subset <- species_subset |>
+    mutate(
+      decimalLongitude = multiple * round(decimalLongitude / multiple),
+      decimalLatitude = multiple * round(decimalLatitude / multiple)
+    ) |>
+    distinct(.keep_all = TRUE) # Remove duplicates
+
+  num_of_fires_raster <- terra::unwrap(num_of_fires_raster)
+
+  # Convert to an sf object
+  sf <- species_subset |> sf::st_as_sf(coords = c("decimalLongitude", "decimalLatitude"))
+
+  # Extract intersecting pixels
+  intersecting_pixels <-
+    num_of_fires_raster |>
+    terra::extract(sf, bind = TRUE)
+
+  # Convert to data frame
+  df <-
+    intersecting_pixels |>
+    terra::as.data.frame() |>
+    filter(!is.na(.data$num_of_fires)) # Filter out NAs
+
+  df |>
+    summarise(
+      taxon_name = unique(taxon),
+      mean_fires = mean(num_of_fires),
+      num_unburnt_pixels = sum(num_of_fires == 0),
+      num_pixels = n()
+    )
+}
+```
+
+
+Extract list of unique taxa
+
+```{r}
+list_of_taxa <- joined_fire_data$taxon_name |> unique()
+```
+
+
+Run for test species
+
+```{r}
+tictoc::tic()
+test_df <- calculate_mean_fires(list_of_taxa[1])
+tictoc::toc()
+test_df |> View()
+```
+
+
+Detect number of cores 
+
+```{r}
+num_cores <- parallel::detectCores()
+```
+
+
+Run on all species
+
+```{r}
+tictoc::tic()
+mean_fires_list <- parallel::mclapply(list_of_taxa, calculate_mean_fires, mc.cores = num_cores - 1)
+tictoc::toc()
+beepr::beep("treasure")
+```
+
+
+Bind into dataframe
+
+```{r}
+mean_fires_df <- mean_fires_list |> bind_rows()
+```
+
+
+Write to a csv file
+
+```{r}
+write_csv(mean_fires_df, "outputs/mean_fires_df_simple_mean.csv", guess_max = 10000)
+```
