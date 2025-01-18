@@ -10,19 +10,11 @@ editor_options:
 
 ```{r}
 library(tidyverse)
-library(survival)
-library(ggfortify)
-library(ggbreak)
-library(performance)
-library(maps)
-library(future)
-library(raster)
-plan(multisession)
 ```
 
 
 ```{r}
-joined_fire_data_inner <- readRDS("processed_data/joined_fire_data_inner.rds")
+joined_fire_data <- readRDS("data/joined_fire_data.rds")
 
 map_australia <-
   map_data("world") %>%
@@ -32,49 +24,58 @@ map_australia <-
 
 
 ```{r}
-species_subset <-
-  joined_fire_data_inner %>%
-  filter(taxon_name == "Acacia longifolia") %>%
-  dplyr::select(decimalLongitude, decimalLatitude)
+plot_distribution <- function(taxon, colour, gbif_data = joined_fire_data) {
+  species_subset <-
+    joined_fire_data %>%
+    filter(taxon_name == taxon) %>%
+    dplyr::select(decimalLongitude, decimalLatitude)
 
-distribution <-
   species_subset %>%
-  ggplot(aes(
-    x = decimalLongitude,
-    y = decimalLatitude
-  )) +
-  geom_point(
-    col = "#fac928",
-    alpha = 1,
-    size = 0.8
-  ) +
-  coord_fixed() +
-  geom_polygon(
-    data = map_australia,
-    mapping = aes(x = long, y = lat, group = group),
-    fill = NA, colour = "#1a1a1a", size = 0.4
-  ) +
-  theme_classic() +
-  theme(
-    axis.line = element_blank(),
-    panel.background = element_rect(fill = NA, size = 0.5, colour = "black"),
-    axis.text = element_text(colour = "black", size = 8),
-    axis.title = element_blank(),
-    legend.position = "right",
-    legend.title = element_blank(),
-    strip.background = element_rect(colour = "white", size = 0.5, fill = "white"),
-    strip.text = element_blank()
-  )
-distribution
+    ggplot(aes(
+      x = decimalLongitude,
+      y = decimalLatitude
+    )) +
+    geom_point(
+      col = colour,
+      alpha = 1,
+      size = 0.8
+    ) +
+    coord_fixed() +
+    geom_polygon(
+      data = map_australia,
+      mapping = aes(x = long, y = lat, group = group),
+      fill = NA, colour = "#1a1a1a", size = 0.4
+    ) +
+    theme_classic() +
+    theme(
+      axis.line = element_blank(),
+      panel.background = element_rect(fill = NA, size = 0.5, colour = "black"),
+      axis.text = element_text(colour = "black", size = 8),
+      axis.title = element_blank(),
+      legend.position = "right",
+      legend.title = element_blank(),
+      strip.background = element_rect(colour = "white", size = 0.5, fill = "white"),
+      strip.text = element_blank()
+    )
+}
+```
 
-# ggsave("A_aneura_distribution.png", plot = distribution, width = 2, height = 1.8)
+```{r}
+plot_distribution("Eucalyptus miniata", "#fa790f")
+# ggsave("E_miniata_distribution.png", width = 2, height = 1.8)
+
+plot_distribution("Allocasuarina littoralis", "#624e47")
+# ggsave("A_littoralis_distribution.png", width = 2, height = 1.8)
+
+plot_distribution("Acacia aneura", "#fac928")
+# ggsave("A_aneura_distribution.png", width = 2, height = 1.8)
 ```
 
 
-## Poisson Regression method
+## Plot number of fires histogram
 
 ```{r}
-num_of_fires <- raster("processed_data/num_fires_map.tif")
+num_of_fires <- terra::rast("data/num_fires_map.tif")
 ```
 
 
@@ -98,7 +99,6 @@ safely_n_quietly <- function(.f, otherwise = NULL) {
 
 
 
-
 ```{r}
 # Round species_subset to resolution of 0.005 decimal degrees so that any coordinates
 # that are approximately within the same MODIS pixel can be removed
@@ -111,25 +111,20 @@ species_subset <-
   ) %>%
   distinct(.keep_all = TRUE) # Remove duplicates
 
-# Convert to a SpatialPointsDataFrame
-spdf <- SpatialPointsDataFrame(
-  coords = species_subset,
-  data = species_subset,
-  proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs")
-)
+
+# Convert to an sf object
+sf <- species_subset %>% sf::st_as_sf(coords = c("decimalLongitude", "decimalLatitude"))
 
 # Extract intersecting pixels
 intersecting_pixels <-
   num_of_fires %>%
-  raster::extract(spdf, sp = TRUE)
+  terra::extract(sf, bind = TRUE)
 
 # Convert to data frame
 df <-
   intersecting_pixels %>%
-  raster::as.data.frame() %>%
-  rename(num_of_fires = num_fires_map) %>%
-  dplyr::select(decimalLongitude, decimalLatitude, num_of_fires) %>%
-  filter(!is.na(num_of_fires)) # Filter out NAs
+  terra::as.data.frame() %>%
+  filter(!is.na(.data$num_of_fires)) # Filter out NAs
 
 num_fires_hist <-
   df %>%
@@ -142,13 +137,13 @@ num_fires_hist <-
   ) +
   scale_y_continuous(
     expand = c(0, 0),
-    limits = c(0, 4000)
+    # limits = c(0, 4000)
   ) +
   xlab("Number of Fires") +
   ylab("Count") +
   theme_classic() +
   theme(
-    axis.line = element_line(size = 0.5, colour = "black"),
+    axis.line = element_line(linewidth = 0.5, colour = "black"),
     axis.text = element_text(colour = "black", size = 9),
     axis.title.y = element_text(size = 11, margin = margin(0, 8, 0, 0)),
     axis.title.x = element_text(size = 11, margin = margin(8, 0, 0, 0))
@@ -176,7 +171,7 @@ mean_fires_in_sampling_period <- model$result$coefficients[[1]]
 median_fires_in_sampling_period <-
   mean_fires_in_sampling_period + 1 / 3 - 0.02 / mean_fires_in_sampling_period
 
-sampling_period <- 20.66
+sampling_period <- 22.17
 # Calculate predicted fire return interval
 predicted_fri <- sampling_period / predict(model$result, type = "link")[[1]]
 
@@ -288,11 +283,12 @@ combined_plot
 
 ## Survival Analysis Method
 
+**Note:** This code is outdated. 
 
 ```{r}
 # Get list of raster file names
 list_of_files <-
-  list.files("raw_data/Win20", recursive = TRUE, full.names = TRUE) %>%
+  list.files("data/Win20", recursive = TRUE, full.names = TRUE) %>%
   str_subset("burndate") # Filter for the burndate layers not the QA layers
 ```
 
@@ -301,19 +297,19 @@ list_of_files <-
 # Function to find intersecting pixels and extract burn dates
 extract_burn_dates <- function(file_path, gbif_coordinates) {
   # file_path argument must be a string
-  raster <- raster(file_path)
+  raster <- terra::rast(file_path)
 
   # Extract year from file_path
   year <- str_match(file_path, "(?<=.A)[0-9]{4}")
 
   # Extract intersecting pixels
   intersecting_pixels <- raster %>%
-    raster::extract(gbif_coordinates, sp = TRUE)
+    terra::extract(gbif_coordinates, bind = TRUE)
 
   # Convert to data frame
   df <-
     intersecting_pixels %>%
-    raster::as.data.frame() %>%
+    terra::as.data.frame() %>%
     rename(burn_date = contains("burndate")) %>%
     dplyr::select(decimalLongitude, decimalLatitude, burn_date) %>%
     # Filter out -2 and 0 values
@@ -324,12 +320,11 @@ extract_burn_dates <- function(file_path, gbif_coordinates) {
   return(df)
 }
 
-
 # Function for extracting fire return intervals for each coordinate
-calc_fri <- function(burn_dates) {
+calc_fri <- function(burn_dates, start_date = "2000-10-31", end_date = "2022-11-01") {
   # Add the start and end of the study period as dates
-  start_data <- as.Date("2000-10-31")
-  end_data <- as.Date("2021-07-01")
+  start_data <- as.Date(start_date)
+  end_data <- as.Date(end_date)
   fire_dates <- c(start_data, burn_dates, end_data)
 
   # Calculate fire return intervals
@@ -341,10 +336,12 @@ calc_fri <- function(burn_dates) {
   # Annotate first and last intervals as open with another column
   fire_intervals <-
     fire_intervals %>%
-    mutate(uncensored = case_when(
-      row_number() == 1 | row_number() == n() ~ 0,
-      TRUE ~ 1
-    ))
+    mutate(
+      uncensored = case_when(
+        row_number() == 1 | row_number() == n() ~ 0,
+        TRUE ~ 1
+      )
+    )
 
   # Calculate mean fire return interval
   return(fire_intervals)
@@ -360,9 +357,9 @@ df2 <-
 
 # Find fire return intervals
 fri_df <-
-  df2 %>%
+  df %>%
   group_by(decimalLongitude, decimalLatitude) %>%
-  summarise(fri = calc_fri(burn_date), .groups = "keep") %>%
+  reframe(fri = calc_fri(burn_date)) %>%
   unpack(cols = fri)
 
 # Join to original gbif coordinates to keep coordinates with no burns
@@ -371,9 +368,9 @@ full_fri_df <-
   left_join(fri_df, by = c("decimalLongitude", "decimalLatitude"))
 
 # Calculate time interval of the whole MODIS period
-start_data <- as.Date("2000-11-01")
-end_data <- as.Date("2021-07-01")
-modis_period <- end_data - start_data # 7547 days
+start_data <- as.Date("2000-10-31")
+end_data <- as.Date("2022-11-01")
+modis_period <- end_data - start_data # 8036 days
 
 # Add open intervals for pixels that did not burn in MODIS period
 full_fri_df <-
