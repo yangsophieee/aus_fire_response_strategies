@@ -130,5 +130,28 @@ mean_fires_poisson <- read_csv("outputs/mean_fires_df_with_poisson_glm.csv", gue
 mean_fires_simple <- read_csv("outputs/mean_fires_df_simple_mean.csv")
 ```
 
+```{r}
+mean_fires_simple <- mean_fires_simple |>
+  rename(mean_fires_simple = mean_fires)
 
+mean_fires_comparison <- mean_fires_poisson |>
+  left_join(mean_fires_simple)
+
+comparison <- mean_fires_comparison |>
+  mutate(check_diff = if_else(!near(mean_fires, mean_fires_simple), TRUE, FALSE))
+
+comparison |>
+  filter(check_diff == TRUE) |>
+  nrow() # 17
+
+comparison |>
+  select(all_of(c(
+    "taxon_name", "mean_fires", "mean_fires_simple",
+    "num_unburnt_pixels", "num_pixels", "check_diff"
+  ))) |>
+  filter(check_diff == TRUE) |>
+  View()
+
+# Not sure why these are different, but only 17 rows
+```
 
