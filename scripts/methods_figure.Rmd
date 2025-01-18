@@ -78,6 +78,84 @@ plot_distribution("Acacia aneura", "#fac928")
 num_of_fires <- terra::rast("data/num_fires_map.tif")
 ```
 
+Plot number of fires histogram
+
+```{r}
+plot_count_data <- function(taxon, max_y, gbif_data = joined_fire_data) {
+  species_subset <-
+    joined_fire_data %>%
+    filter(taxon_name == taxon) %>%
+    dplyr::select(decimalLongitude, decimalLatitude)
+  # Round species_subset to resolution of 0.005 decimal degrees so that any coordinates
+  # that are approximately within the same MODIS pixel can be removed
+  multiple <- 0.005
+  species_subset <-
+    species_subset %>%
+    mutate(
+      decimalLongitude = multiple * round(decimalLongitude / multiple),
+      decimalLatitude = multiple * round(decimalLatitude / multiple)
+    ) %>%
+    distinct(.keep_all = TRUE) # Remove duplicates
+
+
+  # Convert to an sf object
+  sf <- species_subset %>% sf::st_as_sf(coords = c("decimalLongitude", "decimalLatitude"))
+
+  # Extract intersecting pixels
+  intersecting_pixels <-
+    num_of_fires %>%
+    terra::extract(sf, bind = TRUE)
+
+  # Convert to data frame
+  df <-
+    intersecting_pixels %>%
+    terra::as.data.frame() %>%
+    filter(!is.na(.data$num_of_fires)) # Filter out NAs
+
+  mean_fires_in_sampling_period <- df$num_of_fires |> mean()
+
+  df %>%
+    ggplot(aes(x = num_of_fires)) +
+    geom_histogram(
+      binwidth = 0.5,
+      fill = "#b8b8b8",
+      col = "black",
+      size = 0.7
+    ) +
+    geom_vline(
+      xintercept = mean_fires_in_sampling_period,
+      col = "red",
+      size = 1
+    ) +
+    scale_y_continuous(
+      expand = c(0, 0),
+      limits = c(0, max_y)
+    ) +
+    xlab("Number of Fires") +
+    ylab("Count") +
+    theme_classic() +
+    theme(
+      axis.line = element_blank(),
+      panel.border = element_rect(colour = "black", fill = NA, size = 0.5),
+      axis.text = element_text(colour = "black", size = 9),
+      axis.title.y.left = element_text(size = 11, margin = margin(0, 8, 0, 0)),
+      axis.title.y.right = element_text(size = 11, margin = margin(0, 0, 0, 8)),
+      axis.title.x = element_text(size = 11, margin = margin(8, 0, 0, 0))
+    )
+}
+```
+
+```{r}
+plot_count_data("Eucalyptus miniata", 400)
+# ggsave("A_littoralis_count_data.png", width = 2.7, height = 2.1)
+
+plot_count_data("Allocasuarina littoralis", 9000)
+# ggsave("A_littoralis_count_data.png", width = 2.7, height = 2.1)
+
+plot_count_data("Acacia aneura", 4500)
+# ggsave("A_littoralis_count_data.png", width = 2.7, height = 2.1)
+```
+
 
 Safely and quietly function combined to catch errors, warnings and messages
 
@@ -96,7 +174,6 @@ safely_n_quietly <- function(.f, otherwise = NULL) {
   }
 }
 ```
-
 
 
 ```{r}
@@ -125,33 +202,6 @@ df <-
   intersecting_pixels %>%
   terra::as.data.frame() %>%
   filter(!is.na(.data$num_of_fires)) # Filter out NAs
-
-num_fires_hist <-
-  df %>%
-  ggplot(aes(x = num_of_fires)) +
-  geom_histogram( # breaks = c(-0.5,0.5,1.5,2.5,3.5,4.5),
-    binwidth = 0.5,
-    fill = "#b8b8b8",
-    col = "black",
-    size = 0.7
-  ) +
-  scale_y_continuous(
-    expand = c(0, 0),
-    # limits = c(0, 4000)
-  ) +
-  xlab("Number of Fires") +
-  ylab("Count") +
-  theme_classic() +
-  theme(
-    axis.line = element_line(linewidth = 0.5, colour = "black"),
-    axis.text = element_text(colour = "black", size = 9),
-    axis.title.y = element_text(size = 11, margin = margin(0, 8, 0, 0)),
-    axis.title.x = element_text(size = 11, margin = margin(8, 0, 0, 0))
-  )
-
-num_fires_hist
-
-# ggsave("num_fires_hist2.png", plot = num_fires_hist, width = 2.7, height = 2.1)
 ```
 
 
@@ -176,7 +226,7 @@ sampling_period <- 22.17
 predicted_fri <- sampling_period / predict(model$result, type = "link")[[1]]
 
 # Dispersion test
-check_overdispersion(model$result)
+performance::check_overdispersion(model$result)
 ```
 
 
