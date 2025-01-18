@@ -113,6 +113,7 @@ plot_count_data <- function(taxon, max_y, gbif_data = joined_fire_data) {
     filter(!is.na(.data$num_of_fires)) # Filter out NAs
 
   mean_fires_in_sampling_period <- df$num_of_fires |> mean()
+  print(mean_fires_in_sampling_period)
 
   df %>%
     ggplot(aes(x = num_of_fires)) +
@@ -154,6 +155,9 @@ ggsave("A_littoralis_count_data.png", width = 2.7, height = 2.3)
 
 plot_count_data("Acacia aneura", 4500)
 ggsave("A_aneura_count_data.png", width = 2.7, height = 2.3)
+
+plot_count_data("Acacia longifolia", 5000)
+ggsave("A_longifolia_count_data.png", width = 2.5, height = 2.1)
 ```
 
 
