@@ -480,59 +480,67 @@ Check results without annuals
 fire_response_and_leaf_traits_no_annuals <- fire_response_and_leaf_traits |>
   filter(annual_perennial != "annual") # Filters out NAs and annual "woody" species as well
 
-lma_resp_model <- lm(
+lma_resp_model_no_annuals <- lm(
   log10(mean_lma) ~ resprouting_binomial * woody_or_herb,
   data = fire_response_and_leaf_traits_no_annuals
 )
-summary(lma_resp_model)
+summary(lma_resp_model_no_annuals)
+confint(lma_resp_model_no_annuals)
+nobs(lma_resp_model_no_annuals)
 
-leaf_n_resp_model <- lm(
-  log10(mean_leaf_n) ~ resprouting_binomial * woody_or_herb,
-  data = fire_response_and_leaf_traits_no_annuals
-)
-summary(leaf_n_resp_model)
-
-lma_seed_model <- lm(
+lma_seed_model_no_annuals <- lm(
   log10(mean_lma) ~ seeding_binomial * woody_or_herb,
   data = fire_response_and_leaf_traits_no_annuals
 )
-summary(lma_seed_model)
+summary(lma_seed_model_no_annuals)
+confint(lma_seed_model_no_annuals)
+nobs(lma_seed_model_no_annuals)
 
-leaf_n_seed_model <- lm(
+leaf_n_resp_model_no_annuals <- lm(
+  log10(mean_leaf_n) ~ resprouting_binomial * woody_or_herb,
+  data = fire_response_and_leaf_traits_no_annuals
+)
+summary(leaf_n_resp_model_no_annuals)
+confint(leaf_n_resp_model_no_annuals)
+nobs(leaf_n_resp_model_no_annuals)
+
+leaf_n_seed_model_no_annuals <- lm(
   log10(mean_leaf_n) ~ seeding_binomial * woody_or_herb,
   data = fire_response_and_leaf_traits_no_annuals
 )
-summary(leaf_n_seed_model)
+summary(leaf_n_seed_model_no_annuals)
+confint(leaf_n_seed_model_no_annuals)
+nobs(leaf_n_seed_model_no_annuals)
 ```
 
 
 Check estimated marginal means
 
 ```{r}
-lma_resp_emmeans <- emmeans::emmeans(
-  lma_resp_model,
+lma_resp_no_annuals_emmeans <- emmeans::emmeans(
+  lma_resp_model_no_annuals,
   specs = pairwise ~ resprouting_binomial:woody_or_herb
 )
-lma_resp_emmeans
+lma_resp_no_annuals_emmeans
 
-leaf_n_resp_emmeans <- emmeans::emmeans(
-  leaf_n_resp_model,
+leaf_n_resp_no_annuals_emmeans <- emmeans::emmeans(
+  leaf_n_resp_model_no_annuals,
   specs = pairwise ~ resprouting_binomial:woody_or_herb
 )
-leaf_n_resp_emmeans
+leaf_n_resp_no_annuals_emmeans
 
 
-lma_seed_emmeans <- emmeans::emmeans(
-  lma_seed_model,
+lma_seed_no_annuals_emmeans <- emmeans::emmeans(
+  lma_seed_model_no_annuals,
   specs = pairwise ~ seeding_binomial:woody_or_herb
 )
-lma_seed_emmeans
+lma_seed_no_annuals_emmeans
 
-leaf_n_seed_emmeans <- emmeans::emmeans(
-  leaf_n_seed_model,
+leaf_n_seed_no_annuals_emmeans <- emmeans::emmeans(
+  leaf_n_seed_model_no_annuals,
   specs = pairwise ~ seeding_binomial:woody_or_herb
 )
-leaf_n_seed_emmeans
+leaf_n_seed_no_annuals_emmeans
 ```
 
 
