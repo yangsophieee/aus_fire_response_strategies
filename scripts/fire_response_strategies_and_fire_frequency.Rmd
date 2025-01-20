@@ -27,6 +27,11 @@ resprouting_seeding <- readRDS("data/resprouting_seeding.rds")
 
 ## Mean fires from Poisson regression
 
+Note: Results are still from the Poisson regression, rather than using just the mean fire frequency.
+This includes the removal of 157 species which were unable to be fit with a valid set of coefficients when fitting the Poisson model.
+Since Poisson lambda estimates are effectively (almost) the same as calculating the simple mean (see `mean_fires_poisson_method_for_macOS`
+for comparison of the values generated with each method), we have kept the results from the Poisson regression.
+
 Read in mean fire return interval data from GLMs
 
 ```{r}
