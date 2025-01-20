@@ -870,6 +870,151 @@ ggsave("figures/fire_response_probabilities_density_functions.png", width = 10, 
 
 
 
+Rerun analyses without annuals
+
+```{r}
+df_woody_herb_only_no_annuals <- df_woody_herb_only_life_history |>
+  filter(annual_perennial != "annual") # Filters out NAs and annual "woody" species as well, 723 species
+
+glm_resprouting_no_annuals <- glm(
+  resprouting_binomial ~
+    log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
+    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+  data = df_woody_herb_only_no_annuals,
+  family = binomial
+)
+
+# TODO Should I try adding life history as a predictor to the GLM?
+
+summary(glm_resprouting_no_annuals)
+confint(glm_resprouting_no_annuals)
+sjPlot::tab_model(glm_resprouting_no_annuals)
+
+ggeffects::ggpredict(glm_resprouting_no_annuals, c("mean_fires_100", "woody_or_herb")) %>%
+  ggplot(aes(x, predicted, color = group)) +
+  geom_line(linewidth = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
+  scale_x_log10() +
+  ylab("Resprouting probability") +
+  xlab("Mean fires") +
+  theme_classic()
+
+# The relationship does not change when you remove annuals
+```
+
+
+Test what happens to the results if you only do the species level, not the infraspecific level
+
+```{r}
+df_woody_herb_only$taxon_rank |> table()
+
+df_woody_herb_only_sp_only <- df_woody_herb_only |> filter(taxon_rank == "species")
+
+glm_resprouting_sp_only <- glm(
+  resprouting_binomial ~
+    log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
+    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
+  data = df_woody_herb_only_sp_only,
+  family = binomial
+)
+
+df_woody_only_sp_only <- df_woody_only |> filter(taxon_rank == "species")
+
+glm_seeding_woody_sp_only <- glm(
+  seeding_binomial ~ log10(mean_fires_100) + I(log10(mean_fires_100)^2),
+  data = df_woody_only_sp_only,
+  family = binomial
+)
+
+summary(glm_resprouting)
+summary(glm_resprouting_sp_only)
+confint(glm_resprouting_sp_only)
+sjPlot::tab_model(glm_resprouting_sp_only)
+
+summary(glm_seeding_woody)
+summary(glm_seeding_woody_sp_only)
+confint(glm_seeding_woody_sp_only)
+sjPlot::tab_model(glm_seeding_woody_sp_only)
+
+
+# How many cases do the subspecies have different traits to the species?
+small_df <- df_woody_herb_only |>
+  select(all_of(c(
+    "taxon_name", "mean_fires_100", "taxon_rank", "resprouting_binomial",
+    "seeding_binomial", "num_pixels"
+  )))
+
+species_only <- small_df |>
+  filter(taxon_rank == "species") |>
+  rename(all_of(c(
+    "mean_fires_100_sp" = "mean_fires_100",
+    "resprouting_binomial_sp" = "resprouting_binomial",
+    "seeding_binomial_sp" = "seeding_binomial",
+    "num_pixels_sp" = "num_pixels",
+    "species" = "taxon_name"
+  ))) |>
+  select(-"taxon_rank")
+
+infra_only <- small_df |>
+  filter(taxon_rank != "species") |>
+  mutate(species = str_extract(taxon_name, "^\\S+\\s+\\S+")) |>
+  left_join(species_only, by = "species") |>
+  mutate(
+    mean_fires_100_diff = mean_fires_100_sp - mean_fires_100,
+    resprouting_diff = if_else(resprouting_binomial != resprouting_binomial_sp, TRUE, FALSE),
+    seeding_diff = if_else(seeding_binomial != seeding_binomial_sp, TRUE, FALSE)
+  )
+
+infra_only |> nrow() # 1416
+
+table(infra_only$resprouting_diff) # 971 FALSE, 143 TRUE (12.8% where data available for both species and infraspecies)
+infra_only |>
+  filter(!is.na(resprouting_binomial)) |>
+  nrow() # 1389
+infra_only |>
+  filter(!is.na(resprouting_binomial), !is.na(resprouting_binomial_sp)) |>
+  nrow() # 1114
+
+table(infra_only$seeding_diff) # 192 FALSE, 43 TRUE (18.3% where data available for both species and infraspecies)
+infra_only |>
+  filter(!is.na(seeding_binomial)) |>
+  nrow() # 394
+infra_only |>
+  filter(!is.na(seeding_binomial), !is.na(seeding_binomial_sp)) |>
+  nrow() # 235
+
+# How different are the fire frequencies experienced by the subspecies?
+(
+  infra_diffs_hist <- ggplot(infra_only) +
+    geom_histogram(aes(x = mean_fires_100_diff), colour = "#739c3e", fill = "#739c3e") +
+    scale_x_continuous(
+      expand = c(0, 0),
+      limits = c(-20, 30)
+    ) +
+    scale_y_continuous(
+      expand = c(0, 0),
+      limits = c(0, 800)
+    ) +
+    labs(
+      x = "Difference in mean fire frequency (per century)",
+      y = "Count"
+    ) +
+    theme_classic() +
+    theme(
+      plot.margin = unit(c(0.5, 1, 0.5, 0.5), "cm"),
+      axis.text = element_text(size = 10, colour = "black"),
+      axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
+      axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0))
+    )
+)
+
+ggsave("figures/infra_diffs_hist.png", width = 7, height = 5.5)
+sum(abs(na.omit(infra_only$mean_fires_100_diff)) > 3) # 119
+```
+
+In conclusion, running with species only does not change the relationships.
+
+
 ### Phylogenetic logistic regression
 
 #### Resprouting binomial
@@ -1440,112 +1585,6 @@ and it also came out with the same pattern. I think this means that phylogeny do
 after all, and the specific subset of taxa that are matched to the phylogeny tree doesn't have an effect either.
 
 
-Test what happens to the results if you only do the species level, not the infraspecific level
-
-```{r}
-df_woody_herb_only$taxon_rank |> table()
-
-df_woody_herb_only_sp_only <- df_woody_herb_only |> filter(taxon_rank == "species")
-
-glm_resprouting_sp_only <- glm(
-  resprouting_binomial ~
-    log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
-    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
-  data = df_woody_herb_only_sp_only,
-  family = binomial
-)
-
-df_woody_only_sp_only <- df_woody_only |> filter(taxon_rank == "species")
-
-glm_seeding_woody_sp_only <- glm(
-  seeding_binomial ~ log10(mean_fires_100) + I(log10(mean_fires_100)^2),
-  data = df_woody_only_sp_only,
-  family = binomial
-)
-
-summary(glm_resprouting)
-summary(glm_resprouting_sp_only)
-
-summary(glm_seeding_woody)
-summary(glm_seeding_woody_sp_only)
-
-# How many cases do the subspecies have different traits to the species?
-small_df <- df_woody_herb_only |>
-  select(all_of(c(
-    "taxon_name", "mean_fires_100", "taxon_rank", "resprouting_binomial",
-    "seeding_binomial", "num_pixels"
-  )))
-
-species_only <- small_df |>
-  filter(taxon_rank == "species") |>
-  rename(all_of(c(
-    "mean_fires_100_sp" = "mean_fires_100",
-    "resprouting_binomial_sp" = "resprouting_binomial",
-    "seeding_binomial_sp" = "seeding_binomial",
-    "num_pixels_sp" = "num_pixels",
-    "species" = "taxon_name"
-  ))) |>
-  select(-"taxon_rank")
-
-infra_only <- small_df |>
-  filter(taxon_rank != "species") |>
-  mutate(species = str_extract(taxon_name, "^\\S+\\s+\\S+")) |>
-  left_join(species_only, by = "species") |>
-  mutate(
-    mean_fires_100_diff = mean_fires_100_sp - mean_fires_100,
-    resprouting_diff = if_else(resprouting_binomial != resprouting_binomial_sp, TRUE, FALSE),
-    seeding_diff = if_else(seeding_binomial != seeding_binomial_sp, TRUE, FALSE)
-  )
-
-infra_only |> nrow() # 1416
-
-table(infra_only$resprouting_diff) # 971 FALSE, 143 TRUE (12.8% where data available for both species and infraspecies)
-infra_only |>
-  filter(!is.na(resprouting_binomial)) |>
-  nrow() # 1389
-infra_only |>
-  filter(!is.na(resprouting_binomial), !is.na(resprouting_binomial_sp)) |>
-  nrow() # 1114
-
-table(infra_only$seeding_diff) # 192 FALSE, 43 TRUE (18.3% where data available for both species and infraspecies)
-infra_only |>
-  filter(!is.na(seeding_binomial)) |>
-  nrow() # 394
-infra_only |>
-  filter(!is.na(seeding_binomial), !is.na(seeding_binomial_sp)) |>
-  nrow() # 235
-
-# How different are the fire frequencies experienced by the subspecies?
-(
-  infra_diffs_hist <- ggplot(infra_only) +
-    geom_histogram(aes(x = mean_fires_100_diff), colour = "#739c3e", fill = "#739c3e") +
-    scale_x_continuous(
-      expand = c(0, 0),
-      limits = c(-20, 30)
-    ) +
-    scale_y_continuous(
-      expand = c(0, 0),
-      limits = c(0, 800)
-    ) +
-    labs(
-      x = "Difference in mean fire frequency (per century)",
-      y = "Count"
-    ) +
-    theme_classic() +
-    theme(
-      plot.margin = unit(c(0.5, 1, 0.5, 0.5), "cm"),
-      axis.text = element_text(size = 10, colour = "black"),
-      axis.title.y = element_text(size = 16, margin = margin(0, 15, 0, 0)),
-      axis.title.x = element_text(size = 16, margin = margin(15, 0, 0, 0))
-    )
-)
-
-ggsave("figures/infra_diffs_hist.png", width = 7, height = 5.5)
-sum(abs(na.omit(infra_only$mean_fires_100_diff)) > 3) # 119
-```
-
-In conclusion, running with species only does not change the relationships.
-
 ---
 
 ## Comparison of survival analysis and poisson regression methods
@@ -1865,34 +1904,3 @@ df_woody_herb_only |>
 
 When I filter to plants that have mean fire frequency per century of > 25, are woody and have seeding data available,
 40% are seeders and of which 93% are also resprouters (facultative species).
-
-
-Rerun analyses without annuals
-
-```{r}
-df_woody_herb_only_no_annuals <- df_woody_herb_only_life_history |>
-  filter(annual_perennial != "annual") # Filters out NAs and annual "woody" species as well, 723 species
-
-glm_resprouting <- glm(
-  resprouting_binomial ~
-    log10(mean_fires_100) + I(log10(mean_fires_100)^2) + log10(mean_fires_100):woody_or_herb +
-    I(log10(mean_fires_100)^2):woody_or_herb + woody_or_herb,
-  data = df_woody_herb_only_no_annuals,
-  family = binomial
-)
-
-# TODO Should I try adding life history as a predictor to the GLM?
-
-summary(glm_resprouting)
-
-ggeffects::ggpredict(glm_resprouting, c("mean_fires_100", "woody_or_herb")) %>%
-  ggplot(aes(x, predicted, color = group)) +
-  geom_line(linewidth = 1) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high, fill = group), alpha = 0.2, linetype = 0) +
-  scale_x_log10() +
-  ylab("Resprouting probability") +
-  xlab("Mean fires") +
-  theme_classic()
-
-# The relationship does not change when you remove annuals
-```
