@@ -1696,7 +1696,7 @@ method_comparison |>
   geom_density(
     aes(avg_fires, fill = method),
     alpha = 0.6,
-    size = 0.8,
+    linewidth = 0.8,
     col = NA
   ) +
   scale_x_log10(
@@ -1711,7 +1711,7 @@ method_comparison |>
   ) +
   scale_fill_manual(
     values = c("#d1b2eb", "#5e804a"),
-    labels = c("Poisson regression", "Survival analysis")
+    labels = c("Mean event rate", "Survival analysis")
   ) +
   labs(
     x = "Fire frequency (per century)",
@@ -1746,7 +1746,7 @@ method_comparison |>
   geom_density(
     aes(avg_fires, fill = method),
     alpha = 0.6,
-    size = 0.8,
+    linewidth = 0.8,
     col = NA
   ) +
   facet_wrap(
@@ -1765,7 +1765,7 @@ method_comparison |>
   ) +
   scale_fill_manual(
     values = c("#d1b2eb", "#5e804a"),
-    labels = c("Poisson regression", "Survival analysis")
+    labels = c("Mean event rate", "Survival analysis")
   ) +
   labs(
     x = "Fire frequency (per century)",
