@@ -1,5 +1,7 @@
 # Fire response strategies and fire frequency in Australia
 
+[![DOI](https://zenodo.org/badge/734630995.svg)](https://doi.org/10.5281/zenodo.14751968)
+
 This repository contains code and data used for the article in review:
 
 Continental-scale empirical evidence for relationships between fire response strategies and fire frequency
