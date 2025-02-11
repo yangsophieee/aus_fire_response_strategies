@@ -6,7 +6,7 @@ This repository contains code and data used for the article:
 
 Continental-scale empirical evidence for relationships between fire response strategies and fire frequency
 
-**Authors:** Sophie Yang, Mark K. J. Ooi, Daniel S. Falster, Will K. Cornwell
+**Authors:** Sophie Yang, Mark K. J. Ooi, Daniel S. Falster, William K. Cornwell
 
 Published article is available here: https://doi.org/10.1111/nph.20464 
 
