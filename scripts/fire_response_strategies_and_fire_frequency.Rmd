@@ -37,6 +37,8 @@ Read in mean fire return interval data from GLMs
 ```{r}
 mean_fires <- read_csv("outputs/mean_fires_df_with_poisson_glm.csv", guess_max = 10000)
 
+mean_fires <- mean_fires %>% left_join(resprouting_seeding, by = c("taxon_name"))
+
 # Check overdispersion/underdispersion
 mean_fires |>
   filter(dispersion_p_value < .05) |>
@@ -45,8 +47,6 @@ mean_fires |>
 mean_fires |>
   filter(dispersion_p_value < .05, dispersion_ratio > 2) |>
   nrow() # 2243
-
-mean_fires <- mean_fires %>% left_join(resprouting_seeding, by = c("taxon_name"))
 
 mean_fires |> nrow() # 10871
 mean_fires |>
