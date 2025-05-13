@@ -811,7 +811,7 @@ Get list of rasters from MODIS
 Win20 = Australia
 A list of geoTIFFs for each year and month
 See pg 15 of the documentation/user guide for MCD64:
-https://lpdaac.usgs.gov/documents/875/MCD64_User_Guide_V6.pdf
+<https://lpdaac.usgs.gov/documents/875/MCD64_User_Guide_V6.pdf>
 
 Instructions for obtaining the data begins on pg 22.
 
