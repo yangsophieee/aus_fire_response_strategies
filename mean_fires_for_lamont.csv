@@ -1,0 +1,139 @@
+taxon_name,genus,num_unburnt_pixels,num_pixels,taxon_rank,mean_fires_per_century,resprouting,post_fire_seeding,data_on_both,woody_or_herb,resprouting_binomial,seeding_binomial
+Cryptandra amara,Cryptandra,1641,2270,species,1.7595529059854131,sometimes resprouts,robust post-fire seeding,TRUE,woody,TRUE,TRUE
+Cryptandra arbutiflora,Cryptandra,37,45,species,0.536976179736667,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra armata,Cryptandra,42,59,species,2.369976223786916,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra campanulata,Cryptandra,114,123,species,0.40338698380217897,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra ericoides,Cryptandra,100,255,species,3.483796678291546,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra gemmata,Cryptandra,2,22,species,17.632345101898554,mostly resprouts,NA,FALSE,woody,TRUE,NA
+Cryptandra hispidula,Cryptandra,95,142,species,2.414123895379494,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra lanosiflora,Cryptandra,32,83,species,3.8584649830716633,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra leucopogon,Cryptandra,69,75,species,0.36084799278304003,mostly resprouts,no post-fire seeding,TRUE,woody,TRUE,FALSE
+Cryptandra longistaminea,Cryptandra,91,140,species,2.086993988110866,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra magniflora,Cryptandra,100,106,species,0.2553169760257359,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra mutila,Cryptandra,39,65,species,1.0825439783491202,does not resprout,no post-fire seeding,TRUE,woody,FALSE,FALSE
+Cryptandra myriantha,Cryptandra,192,227,species,0.894171788283965,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Cryptandra propinqua,Cryptandra,114,167,species,1.886250871365892,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra propinqua subsp. propinqua,Cryptandra,30,57,subspecies,3.4634963593015016,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra pungens,Cryptandra,179,231,species,1.212099535229375,does not resprout,no post-fire seeding,TRUE,woody,FALSE,FALSE
+Cryptandra sp. Floriferous (W.R.Barker 4131),Cryptandra,335,485,species,1.789328889833257,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra speciosa subsp. speciosa,Cryptandra,52,85,subspecies,2.0695693703733182,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra tomentosa,Cryptandra,1046,1399,species,1.2157602624231458,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Cryptandra triplex,Cryptandra,1,26,species,18.38936886298185,mostly resprouts,NA,FALSE,woody,TRUE,NA
+Polianthion wichurae,Polianthion,49,62,species,1.0185225602747099,mostly resprouts,NA,FALSE,woody,TRUE,NA
+Pomaderris andromedifolia,Pomaderris,133,266,species,3.263350692308743,sometimes resprouts,robust post-fire seeding,TRUE,woody,TRUE,TRUE
+Pomaderris andromedifolia subsp. andromedifolia,Pomaderris,129,292,subspecies,3.676447871676522,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris andromedifolia subsp. confusa,Pomaderris,27,49,subspecies,2.2092734252022868,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris angustifolia,Pomaderris,213,344,species,1.9799435650522916,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris apetala,Pomaderris,87,119,species,1.1481527043096729,does not resprout,no post-fire seeding,TRUE,woody,FALSE,FALSE
+Pomaderris apetala subsp. apetala,Pomaderris,162,245,subspecies,1.303062196160978,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris apetala subsp. maritima,Pomaderris,25,51,subspecies,1.0934787660092122,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris aspera,Pomaderris,4087,7072,species,2.2291052528683175,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Pomaderris aurea,Pomaderris,32,73,species,2.718717753844823,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris betulina,Pomaderris,96,151,species,2.270235716184689,sometimes resprouts,no post-fire seeding,TRUE,woody,TRUE,FALSE
+Pomaderris betulina subsp. actensis,Pomaderris,5,42,subspecies,5.369761797366668,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris betulina subsp. betulina,Pomaderris,71,127,subspecies,2.3085747569781114,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris bodalla,Pomaderris,27,52,species,2.168557648936539,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris brogoensis,Pomaderris,29,55,species,2.042535808205887,sometimes resprouts,NA,FALSE,woody,TRUE,NA
+Pomaderris brunnea,Pomaderris,62,111,species,2.1717703269349635,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Pomaderris cinerea,Pomaderris,172,273,species,1.6810722911018015,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris costata,Pomaderris,26,61,species,3.031714693464066,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris cotoneaster,Pomaderris,56,81,species,1.670592559180741,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Pomaderris crassifolia,Pomaderris,9,16,species,2.8191249436175005,mostly resprouts,NA,FALSE,woody,TRUE,NA
+Pomaderris discolor,Pomaderris,157,254,species,1.8764095624718085,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Pomaderris elachophylla,Pomaderris,128,221,species,2.163455160350806,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris elliptica,Pomaderris,101,154,species,1.4309489368982626,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris elliptica var. elliptica,Pomaderris,456,772,variety,2.0785898654667156,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris eriocephala,Pomaderris,182,326,species,2.1578487222751237,sometimes resprouts,robust post-fire seeding,TRUE,woody,TRUE,TRUE
+Pomaderris ferruginea,Pomaderris,683,1133,species,2.0957935122470652,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Pomaderris halmaturina subsp. continentis,Pomaderris,29,36,subspecies,0.8770610935698889,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris halmaturina subsp. halmaturina,Pomaderris,109,114,subspecies,0.20136606740125004,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris helianthemifolia subsp. helianthemifolia,Pomaderris,6,18,subspecies,3.2576554904024455,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris helianthemifolia subsp. hispida,Pomaderris,20,53,subspecies,3.2340150296593215,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris helianthemifolia subsp. minor,Pomaderris,13,38,subspecies,4.629299907414,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris intermedia,Pomaderris,397,770,species,2.622719682644944,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Pomaderris lanigera,Pomaderris,552,1142,species,3.0522257340084886,sometimes resprouts,some post-fire seeding,TRUE,woody,TRUE,TRUE
+Pomaderris ledifolia,Pomaderris,86,172,species,3.2518278419401856,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris ligustrina subsp. ligustrina,Pomaderris,75,144,subspecies,2.631183280709667,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris nitidula,Pomaderris,46,79,species,2.370956362837283,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris obcordata,Pomaderris,396,565,species,1.3070488374953866,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris oblongifolia,Pomaderris,5,28,species,4.188414201946002,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris oraria,Pomaderris,49,81,species,1.230163611760364,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris oraria subsp. calcicola,Pomaderris,47,69,subspecies,1.4351908803870912,sometimes resprouts,NA,FALSE,woody,TRUE,NA
+Pomaderris oraria subsp. oraria,Pomaderris,25,48,subspecies,0.8730193373783229,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris paniculosa,Pomaderris,156,194,species,0.42703904471365695,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris paniculosa subsp. paniculosa,Pomaderris,422,544,subspecies,0.7767215612290542,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris paniculosa subsp. paralia,Pomaderris,247,358,subspecies,0.1930606965278911,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris parrisiae,Pomaderris,28,40,species,1.272220487376103,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris pauciflora,Pomaderris,31,58,species,2.4886068467795877,sometimes resprouts,NA,FALSE,woody,TRUE,NA
+Pomaderris phylicifolia,Pomaderris,17,34,species,2.785958767810236,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Pomaderris phylicifolia subsp. ericoides,Pomaderris,79,188,subspecies,3.262987168782809,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris phylicifolia subsp. phylicifolia,Pomaderris,57,90,subspecies,2.155064401343156,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris pilifera,Pomaderris,35,51,species,1.409562471808751,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris pilifera subsp. pilifera,Pomaderris,140,180,subspecies,1.24168199763827,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris prunifolia,Pomaderris,120,185,species,1.8630738757819998,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris prunifolia var. prunifolia,Pomaderris,187,348,variety,2.4117369459849143,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris queenslandica,Pomaderris,185,210,species,0.7517666516313335,mostly resprouts,no post-fire seeding,TRUE,woody,TRUE,FALSE
+Pomaderris racemosa,Pomaderris,334,401,species,0.9406527450060406,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Pomaderris sericea,Pomaderris,5,12,species,2.631183280709669,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Pomaderris subcapitata,Pomaderris,62,124,species,2.4735547892385816,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Pomaderris vacciniifolia,Pomaderris,52,104,species,2.2552999548940007,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Pomaderris vellea,Pomaderris,27,53,species,2.7757537906387704,mostly resprouts,no post-fire seeding,TRUE,woody,TRUE,FALSE
+Pomaderris velutina,Pomaderris,58,184,species,4.042286257952088,does not resprout,NA,FALSE,woody,FALSE,NA
+Pomaderris virgata,Pomaderris,20,45,species,2.5058888387711122,does not resprout,NA,FALSE,woody,FALSE,NA
+Sorghum intrans,Sorghum,77,1441,species,35.24240152511713,does not resprout,NA,FALSE,herb,FALSE,NA
+Sorghum leiocladum,Sorghum,1574,2306,species,2.0575696637097174,sometimes resprouts,NA,FALSE,herb,TRUE,NA
+Sorghum plumosum,Sorghum,346,2483,species,27.443654116149517,does not resprout,NA,FALSE,herb,FALSE,NA
+Sorghum timorense,Sorghum,319,759,species,13.447601864381289,does not resprout,NA,FALSE,herb,FALSE,NA
+Spyridium cinereum,Spyridium,15,59,species,3.4218344143219324,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Spyridium cordatum,Spyridium,87,99,species,0.5923009982549902,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Spyridium daltonii,Spyridium,6,47,species,4.1267190664017885,does not resprout,NA,FALSE,woody,FALSE,NA
+Spyridium eriocephalum var. eriocephalum,Spyridium,244,329,variety,1.182657293420025,does not resprout,NA,FALSE,woody,FALSE,NA
+Spyridium furculentum,Spyridium,9,12,species,1.1276499774470008,does not resprout,NA,FALSE,woody,FALSE,NA
+Spyridium globulosum,Spyridium,224,418,species,1.3636697401684654,sometimes resprouts,NA,FALSE,woody,TRUE,NA
+Spyridium microcephalum,Spyridium,79,91,species,0.6443714156840005,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Spyridium mucronatum subsp. mucronatum,Spyridium,28,42,subspecies,1.718323775157334,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Spyridium nitidum,Spyridium,88,130,species,1.4677348912802228,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Spyridium parvifolium,Spyridium,2046,3227,species,1.7954401780622475,sometimes resprouts,robust post-fire seeding,TRUE,woody,TRUE,TRUE
+Spyridium phlebophyllum,Spyridium,104,111,species,0.28445224656320733,does not resprout,NA,FALSE,woody,FALSE,NA
+Spyridium phylicoides,Spyridium,306,486,species,1.3419034731619304,does not resprout,NA,FALSE,woody,FALSE,NA
+Spyridium polycephalum,Spyridium,26,28,species,0.32218570784200007,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Spyridium scortechinii,Spyridium,90,207,species,3.7404974861656592,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Spyridium spathulatum,Spyridium,85,106,species,0.8674230595746155,does not resprout,NA,FALSE,woody,FALSE,NA
+Spyridium subochreatum,Spyridium,476,714,species,1.619514133107613,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Spyridium thymifolium,Spyridium,311,376,species,1.031679766600447,does not resprout,NA,FALSE,woody,FALSE,NA
+Spyridium tricolor,Spyridium,23,33,species,1.4095624718087503,does not resprout,NA,FALSE,woody,FALSE,NA
+Spyridium vexilliferum,Spyridium,349,520,species,1.5035333032626674,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Spyridium vexilliferum var. latifolium,Spyridium,21,45,variety,3.07540902940091,does not resprout,NA,FALSE,woody,FALSE,NA
+Spyridium vexilliferum var. vexilliferum,Spyridium,164,233,variety,1.1223558460974838,does not resprout,NA,FALSE,woody,FALSE,NA
+Stenanthemum centrale,Stenanthemum,13,15,species,0.6014133213050669,mostly resprouts,NA,FALSE,woody,TRUE,NA
+Stenanthemum leucophractum,Stenanthemum,653,958,species,1.5664426464954146,sometimes resprouts,robust post-fire seeding,TRUE,woody,TRUE,TRUE
+Stenanthemum notiale subsp. notiale,Stenanthemum,100,136,subspecies,1.3030621961609785,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Stenanthemum petraeum,Stenanthemum,51,75,species,2.2252292888287473,mostly resprouts,NA,FALSE,woody,TRUE,NA
+Stenanthemum tridentatum,Stenanthemum,44,53,species,1.2765848801286797,does not resprout,NA,FALSE,woody,FALSE,NA
+Triodia basedowii,Triodia,684,1205,species,3.045778842738908,mostly resprouts,NA,FALSE,herb,TRUE,NA
+Triodia bitextura,Triodia,189,2787,species,26.07224098934654,mostly resprouts,NA,FALSE,herb,TRUE,NA
+Triodia brizoides,Triodia,111,214,species,3.41456628684886,does not resprout,NA,FALSE,herb,FALSE,NA
+Triodia bynoei,Triodia,27,210,species,22.52998628409415,sometimes resprouts,NA,FALSE,herb,TRUE,NA
+Triodia gracilis,Triodia,3,10,species,8.570139828597203,mostly resprouts,NA,FALSE,herb,TRUE,NA
+Triodia hubbardii,Triodia,16,33,species,3.1437514522764847,mostly resprouts,NA,FALSE,herb,TRUE,NA
+Triodia intermedia,Triodia,6,71,species,13.531799729364,mostly resprouts,NA,FALSE,herb,TRUE,NA
+Triodia irritans,Triodia,1456,1659,species,0.6514094529912283,sometimes resprouts,NA,FALSE,herb,TRUE,NA
+Triodia longiceps,Triodia,108,206,species,3.7184945597764503,sometimes resprouts,NA,FALSE,herb,TRUE,NA
+Triodia marginata,Triodia,28,40,species,1.8042399639152014,mostly resprouts,NA,FALSE,herb,TRUE,NA
+Triodia melvillei,Triodia,120,186,species,2.740310697881957,mostly resprouts,NA,FALSE,herb,TRUE,NA
+Triodia microstachya,Triodia,177,1003,species,17.970114384187454,mostly resprouts,NA,FALSE,herb,TRUE,NA
+Triodia mitchellii,Triodia,253,393,species,2.66953872211943,mostly resprouts,NA,FALSE,herb,TRUE,NA
+Triodia plectrachnoides,Triodia,12,105,species,17.7846510728784,mostly resprouts,NA,FALSE,herb,TRUE,NA
+Triodia pungens,Triodia,310,1340,species,9.520503324922764,mostly resprouts,NA,FALSE,herb,TRUE,NA
+Triodia scariosa,Triodia,3562,4130,species,0.6628088131259767,mostly resprouts,robust post-fire seeding,TRUE,herb,TRUE,TRUE
+Triodia schinzii,Triodia,125,881,species,8.20949733011529,does not resprout,NA,FALSE,herb,FALSE,NA
+Triodia spicata,Triodia,32,93,species,7.12965792192297,does not resprout,NA,FALSE,herb,FALSE,NA
+Triodia stenostachya,Triodia,27,63,species,8.321279143919243,mostly resprouts,NA,FALSE,herb,TRUE,NA
+Trymalium elachophyllum,Trymalium,58,60,species,0.15035333032626672,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Trymalium ledifolium,Trymalium,62,90,species,1.7308115932907449,does not resprout,robust post-fire seeding,TRUE,woody,FALSE,TRUE
+Trymalium ledifolium var. ledifolium,Trymalium,19,31,variety,1.9331142470520015,mostly resprouts,NA,FALSE,woody,TRUE,NA
+Trymalium odoratissimum subsp. odoratissimum,Trymalium,63,95,subspecies,1.967389322354341,does not resprout,NA,FALSE,woody,FALSE,NA
+Trymalium wayi,Trymalium,74,85,species,0.5369761797366668,does not resprout,NA,FALSE,woody,FALSE,NA
+Cryptandra nutans,Cryptandra,122,159,species,1.44679619747917,NA,robust post-fire seeding,FALSE,woody,NA,TRUE
+Cryptandra recurva,Cryptandra,39,58,species,1.5035333032626674,NA,robust post-fire seeding,FALSE,woody,NA,TRUE
+Pomaderris halmaturina,Pomaderris,10,16,species,1.1276499774470008,NA,robust post-fire seeding,FALSE,woody,NA,TRUE
